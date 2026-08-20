@@ -61,3 +61,10 @@ security-feature pair must publish either a value or an explicit unavailable
 reason. Reports show per-feature coverage and missingness, correlations only
 across paired available values, and turnover of direction-aware top buckets
 between two formation dates.
+
+P4.1 normalizes each available feature within its dated sector cohort in
+`services/research/src/quantrade_research/ranking.py`. Percentiles are tie-aware
+and always oriented so `1` is better: lower-is-better features are inverted.
+Sector classifications must be known by the decision timestamp. A cohort with
+fewer than two available peers is explicitly unavailable rather than ranked
+against a different sector.

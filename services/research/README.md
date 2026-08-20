@@ -158,3 +158,11 @@ correlations, and direction-aware top-bucket turnover. It requires an explicit
 outcome for every requested security-feature pair: either a value tied to its
 definition hash or an unavailable reason. Correlations with fewer than two
 pairs or zero variance are reported as unavailable, never substituted.
+
+## Sector-aware feature ranks
+
+P4.1 converts explicit feature outcomes into tie-aware 0–1 percentiles inside
+dated sector cohorts. Every rank is oriented so higher means better, including
+inversion of lower-is-better features. Sector labels must be available by the
+decision timestamp, and sectors with fewer than two available peers produce an
+explicit unavailable rank instead of a cross-sector fallback.

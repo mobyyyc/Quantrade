@@ -35,7 +35,7 @@ Each item is intended to fit a focused development session. A negative research 
 
 ## Phase 4: baseline model and simulation
 
-- P4.1: create sector-aware percentile ranks.
+- [x] P4.1: create sector-aware percentile ranks.
 - P4.2: create a transparent composite baseline.
 - P4.3: persist explanation contributions.
 - P4.4: implement next-open rebalance ledger.
