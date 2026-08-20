@@ -150,3 +150,11 @@ returns (61 closes) using sample standard deviation and `sqrt(252)`
 annualization. `median_dollar_volume_20d@v1` takes the median of unadjusted
 close multiplied by volume across 20 completed sessions. Both calculations are
 fail-closed on incomplete, duplicate, unavailable, or invalid observations.
+
+## Feature diagnostics
+
+P3.5 reports feature coverage, missingness reasons, paired cross-sectional
+correlations, and direction-aware top-bucket turnover. It requires an explicit
+outcome for every requested security-feature pair: either a value tied to its
+definition hash or an unavailable reason. Correlations with fewer than two
+pairs or zero variance are reported as unavailable, never substituted.

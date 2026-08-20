@@ -54,3 +54,10 @@ P3.4 implements `trailing_volatility_60d@v1` and
 60 daily log returns (and therefore 61 closes), sample standard deviation, and
 the square root of 252 annualization. Dollar volume uses unadjusted closes and
 volumes, requiring a complete 20-session window.
+
+P3.5 adds fail-closed diagnostics in
+`services/research/src/quantrade_research/feature_diagnostics.py`. Each
+security-feature pair must publish either a value or an explicit unavailable
+reason. Reports show per-feature coverage and missingness, correlations only
+across paired available values, and turnover of direction-aware top buckets
+between two formation dates.
