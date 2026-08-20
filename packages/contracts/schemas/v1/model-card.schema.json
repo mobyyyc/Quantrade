@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantrade.local/contracts/v1/model-card.schema.json",
+  "title": "Quantrade immutable model card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "modelVersion", "status", "protocolVersion", "featureRegistryHash", "dataCapabilityTier", "createdAt", "purpose", "methodology", "limitations"],
+  "properties": {
+    "contractVersion": { "const": "v1" },
+    "modelVersion": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["research_only", "private_beta_approved", "rejected"] },
+    "protocolVersion": { "type": "string", "minLength": 1 },
+    "featureRegistryHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "dataCapabilityTier": { "enum": ["A", "B", "C"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "purpose": { "type": "string", "minLength": 1 },
+    "methodology": { "type": "string", "minLength": 1 },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "evaluationUri": { "type": "string", "minLength": 1 }
+  }
+}

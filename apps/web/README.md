@@ -17,3 +17,14 @@ Open [http://localhost:3000](http://localhost:3000) to view the local app.
 
 The current page is only a foundation status screen. Product routes and data
 views arrive after the data and research pipeline are established.
+
+## Dated research APIs
+
+P6.2 exposes Node.js route handlers that read only normalized research outputs:
+
+- `GET /api/v1/scores?date=YYYY-MM-DD`
+- `GET /api/v1/scores/:securityId?date=YYYY-MM-DD`
+- `GET /api/v1/model-cards/:modelVersion`
+
+They require `DATABASE_URL` and return a clear `503` when research data is not
+configured. They never calculate scores or reshape provider responses.

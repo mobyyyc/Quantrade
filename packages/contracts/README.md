@@ -13,6 +13,7 @@ Python research service should emit payloads that conform to the JSON Schemas.
 | --- | --- | --- |
 | Security identity and listings | `security.schema.json` | `SecurityRecord`, `ListingRecord` |
 | Daily market bars | `market-data.schema.json` | `DailyPriceBar` |
+| Immutable model cards | `model-card.schema.json` | `ModelCard` |
 | SEC filings and facts | `filing.schema.json` | `FilingRecord`, `FilingFact` |
 | Versioned feature definitions | `feature.schema.json` | `FeatureDefinition` |
 | Dated model outputs | `score.schema.json` | `ScoreSnapshot` |
