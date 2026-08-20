@@ -234,3 +234,11 @@ P5.5 creates immutable model-card and rejected-hypothesis governance records.
 The repository includes the research-only baseline card in `MODEL_CARD_BASELINE.md`
 and pre-registered prohibited methods in `REJECTED_HYPOTHESES.md`. Neither file
 contains a fabricated evaluation outcome or an approval claim.
+
+## End-of-day score generation
+
+P6.1 generates score snapshots at exactly 8:00 p.m. America/Toronto from
+same-date baseline scores. Eligible scores receive deterministic ranks; the
+current uncalibrated V1 presentation signal remains `neutral`, while ineligible
+scores remain `unavailable` with their reason. PostgreSQL uniqueness makes an
+identical rerun idempotent and a changed rerun a hard conflict.
