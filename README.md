@@ -18,6 +18,7 @@ Planning and research setup. Application implementation has not started.
 - [Roadmap](ROADMAP.md)
 - [Research charter](RESEARCH_CHARTER.md)
 - [Experiment protocol](EXPERIMENT_PROTOCOL.md)
+- [Free-data provider audit](FREE_DATA_AUDIT.md)
 
 ## Initial V1 direction
 

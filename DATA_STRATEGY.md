@@ -45,3 +45,7 @@ Before adopting a provider, record its plan, date accessed, license/display righ
 - Reconcile a sample of prices, splits, dividends, and filing dates against primary sources.
 - Block scoring when coverage or freshness fails defined thresholds.
 - State the data capability tier on every research report and model card.
+
+## Audit record
+
+The first runtime feasibility audit is recorded in `FREE_DATA_AUDIT.md`. Provider documentation is not treated as runtime verification.
