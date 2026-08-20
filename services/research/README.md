@@ -124,3 +124,12 @@ inputs, direction, and availability rule; its SHA-256 hash makes a model's
 feature set reproducible. The database table is append-only, so a changed
 definition must use a new feature version. See the repository-root
 `FEATURE_DEFINITIONS.md` for the approved v1 definitions.
+
+## Momentum and relative strength
+
+P3.2 implements `momentum_12_1@v1` and `relative_strength_6m@v1` from
+split-adjusted regular-session closes. The calculator requires 253 price
+observations for 12–1 momentum and matching 127-session security/benchmark
+windows for relative strength. It rejects incomplete, duplicate, non-positive,
+or post-decision observations rather than quietly shortening or repairing a
+window.

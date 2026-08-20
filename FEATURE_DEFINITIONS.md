@@ -35,3 +35,8 @@ The executable registry lives in
 `services/research/src/quantrade_research/features.py`; its canonical JSON
 payload produces a SHA-256 definition hash. The normalized store records the
 same metadata and prevents definition updates or deletes.
+
+P3.2 implements the two momentum-family definitions in
+`services/research/src/quantrade_research/momentum.py`. They reject incomplete
+windows, duplicate dates, non-positive prices, bars unavailable by the decision
+timestamp, and non-matching security/benchmark session windows.
