@@ -26,3 +26,12 @@ Every candidate must pass all of the following:
 Failed gates are recorded with their measured values. A model cannot be approved
 by averaging away a failed integrity, coverage, holdout, cost, or data-capability
 gate.
+
+## Regularized linear comparisons
+
+Ridge and elastic-net candidates may be compared only after
+`baseline_equal_weight_v1` passes the private-beta approval gates. A comparison
+uses the same evaluation observation count and reports deltas from the approved
+baseline; it does not automatically promote a candidate. Unregularized linear
+models, tree models, neural networks, and sentiment models remain outside the
+V1 comparison scope.

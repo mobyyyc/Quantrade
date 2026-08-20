@@ -220,3 +220,10 @@ quality, coverage, walk-forward folds, locked-holdout performance under the
 20-bps sensitivity, and data capability. Tier B may pass for private beta but
 can never pass the policy for public performance claims; see
 `MODEL_APPROVAL_POLICY.md`.
+
+## Regularized linear comparisons
+
+P5.4 permits ridge and elastic-net candidate comparisons only after the
+transparent baseline has passed private-beta approval. The comparison requires
+the same number of evaluation observations and reports benchmark-relative-return
+and Sharpe deltas; it never promotes a candidate automatically.
