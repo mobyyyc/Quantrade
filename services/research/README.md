@@ -99,3 +99,11 @@ python -m quantrade_research.ingest_filings \
 
 This requires the SEC user-agent, storage, database, and security-master
 configuration described above.
+
+## Data-quality gates
+
+P2.5 supplies fail-closed checks for the next pipeline stage. A dated panel or
+score cannot proceed when required daily bars are missing or duplicated, OHLCV
+values are invalid, or any market or filing record has an `available_at` later
+than the decision timestamp. The gate reports every issue; it does not quietly
+filter records to manufacture coverage.
