@@ -64,3 +64,22 @@ python -m quantrade_research.ingest_universe \
 Only pass `--historical-membership-verified` after the provider audit confirms
 the file's point-in-time constituent coverage. This does not on its own
 upgrade the project-wide data-capability tier.
+
+## Alpaca daily bars and corporate actions
+
+P2.3 retrieves both raw (for next-open execution) and split-adjusted (for
+price features) daily bars, plus corporate actions with `data_quality=complete`.
+The adapter records retrieval time as `available_at`, preserves every response,
+and remains Tier B until the documented Alpaca audit reconciles adjustments,
+volume, and next-open behavior.
+
+```bash
+python -m quantrade_research.ingest_market_data \
+  --symbols AAPL,MSFT \
+  --start 2026-01-01 \
+  --end 2026-08-20 \
+  --code-revision <git-sha>
+```
+
+This requires paired local Alpaca credentials and an already-ingested security
+master. The command is intentionally not a license or data-quality approval.

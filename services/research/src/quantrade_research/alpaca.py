@@ -1,0 +1,155 @@
+"""Alpaca market-data adapter with explicit adjustment and availability metadata."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date, datetime, timezone
+from decimal import Decimal
+import json
+from typing import Any
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+
+ALPACA_BARS_URL = "https://data.alpaca.markets/v2/stocks/bars"
+ALPACA_CORPORATE_ACTIONS_URL = "https://data.alpaca.markets/v1/corporate-actions"
+
+
+class AlpacaError(ValueError):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class AlpacaDailyBar:
+    ticker: str
+    session_date: date
+    observed_at: datetime
+    open_price: Decimal
+    high_price: Decimal
+    low_price: Decimal
+    close_price: Decimal
+    volume: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class AlpacaCorporateAction:
+    provider_action_id: str
+    ticker: str
+    action_type: str
+    process_date: date
+    effective_date: date | None
+    cash_amount: Decimal | None
+    ratio_numerator: Decimal | None
+    ratio_denominator: Decimal | None
+    payload: dict[str, Any]
+
+
+def _parse_timestamp(value: object) -> datetime:
+    if not isinstance(value, str):
+        raise AlpacaError("bar timestamp is missing")
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+def _decimal(value: object, field: str) -> Decimal:
+    try:
+        return Decimal(str(value))
+    except Exception as error:
+        raise AlpacaError(f"invalid Alpaca {field}") from error
+
+
+def parse_daily_bars(payload: bytes) -> tuple[list[AlpacaDailyBar], str | None]:
+    try:
+        document = json.loads(payload)
+        bars_by_symbol = document["bars"]
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise AlpacaError("Alpaca bars response has an invalid shape") from error
+    if not isinstance(bars_by_symbol, dict):
+        raise AlpacaError("Alpaca bars payload is not grouped by symbol")
+    bars: list[AlpacaDailyBar] = []
+    for ticker, values in bars_by_symbol.items():
+        if not isinstance(ticker, str) or not isinstance(values, list):
+            raise AlpacaError("Alpaca bars payload contains an invalid symbol group")
+        for value in values:
+            if not isinstance(value, dict):
+                raise AlpacaError("Alpaca bars payload contains an invalid bar")
+            timestamp = _parse_timestamp(value.get("t"))
+            bars.append(
+                AlpacaDailyBar(
+                    ticker=ticker.upper(), session_date=timestamp.date(), observed_at=timestamp,
+                    open_price=_decimal(value.get("o"), "open"), high_price=_decimal(value.get("h"), "high"),
+                    low_price=_decimal(value.get("l"), "low"), close_price=_decimal(value.get("c"), "close"),
+                    volume=_decimal(value.get("v"), "volume"),
+                )
+            )
+    token = document.get("next_page_token")
+    if token is not None and not isinstance(token, str):
+        raise AlpacaError("Alpaca next_page_token is invalid")
+    return bars, token
+
+
+def parse_corporate_actions(payload: bytes) -> tuple[list[AlpacaCorporateAction], str | None]:
+    try:
+        document = json.loads(payload)
+    except json.JSONDecodeError as error:
+        raise AlpacaError("Alpaca corporate-actions response is not JSON") from error
+    if not isinstance(document, dict):
+        raise AlpacaError("Alpaca corporate-actions response has an invalid shape")
+    actions: list[AlpacaCorporateAction] = []
+    for action_type, values in document.items():
+        if action_type == "next_page_token":
+            continue
+        if not isinstance(values, list):
+            continue
+        for value in values:
+            if not isinstance(value, dict):
+                raise AlpacaError("Alpaca corporate-actions response contains an invalid action")
+            try:
+                action_id = str(value["id"])
+                ticker = str(value["symbol"]).upper()
+                process_date = date.fromisoformat(str(value["process_date"]))
+            except (KeyError, ValueError) as error:
+                raise AlpacaError("corporate action is missing id, symbol, or process_date") from error
+            effective = value.get("ex_date") or value.get("effective_date")
+            ratio = value.get("ratio") if isinstance(value.get("ratio"), dict) else {}
+            actions.append(
+                AlpacaCorporateAction(
+                    provider_action_id=action_id, ticker=ticker, action_type=action_type.rstrip("s"),
+                    process_date=process_date,
+                    effective_date=date.fromisoformat(str(effective)) if effective else None,
+                    cash_amount=_decimal(value["cash"], "cash") if value.get("cash") is not None else None,
+                    ratio_numerator=_decimal(ratio["numerator"], "ratio numerator") if ratio.get("numerator") is not None else None,
+                    ratio_denominator=_decimal(ratio["denominator"], "ratio denominator") if ratio.get("denominator") is not None else None,
+                    payload=value,
+                )
+            )
+    token = document.get("next_page_token")
+    if token is not None and not isinstance(token, str):
+        raise AlpacaError("Alpaca next_page_token is invalid")
+    return actions, token
+
+
+class AlpacaClient:
+    def __init__(self, key_id: str, secret_key: str, timeout_seconds: float = 30.0) -> None:
+        if not key_id or not secret_key:
+            raise AlpacaError("Alpaca credentials are required")
+        self._headers = {"APCA-API-KEY-ID": key_id, "APCA-API-SECRET-KEY": secret_key, "Accept": "application/json"}
+        self._timeout_seconds = timeout_seconds
+
+    def _fetch(self, url: str, parameters: dict[str, str]) -> bytes:
+        request = Request(f"{url}?{urlencode(parameters)}", headers=self._headers)
+        with urlopen(request, timeout=self._timeout_seconds) as response:
+            if response.status != 200:
+                raise AlpacaError(f"Alpaca returned HTTP {response.status}")
+            return response.read()
+
+    def fetch_daily_bars(self, symbols: list[str], start: date, end: date, adjustment: str, page_token: str | None = None) -> bytes:
+        parameters = {"symbols": ",".join(symbols), "timeframe": "1Day", "start": start.isoformat(), "end": end.isoformat(), "adjustment": adjustment, "feed": "iex"}
+        if page_token:
+            parameters["page_token"] = page_token
+        return self._fetch(ALPACA_BARS_URL, parameters)
+
+    def fetch_corporate_actions(self, symbols: list[str], start: date, end: date, page_token: str | None = None) -> bytes:
+        parameters = {"symbols": ",".join(symbols), "start": start.isoformat(), "end": end.isoformat(), "region": "us", "data_quality": "complete"}
+        if page_token:
+            parameters["page_token"] = page_token
+        return self._fetch(ALPACA_CORPORATE_ACTIONS_URL, parameters)

@@ -47,6 +47,13 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("as_of_date DATE NOT NULL", sql)
         self.assertIn("historical_membership_verified BOOLEAN NOT NULL", sql)
 
+    def test_corporate_actions_are_source_attributed(self) -> None:
+        migration = MIGRATION.with_name("0004_add_corporate_actions.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.corporate_actions", sql)
+        self.assertIn("raw_artifact_id UUID NOT NULL", sql)
+        self.assertIn("available_at TIMESTAMPTZ NOT NULL", sql)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -68,6 +68,10 @@ class Settings:
         if self.sec_user_agent is None:
             raise ConfigurationError("SEC_USER_AGENT is required for SEC EDGAR retrieval")
 
+    def require_alpaca_access(self) -> None:
+        if self.alpaca_key_id is None or self.alpaca_secret_key is None:
+            raise ConfigurationError("APCA_API_KEY_ID and APCA_API_SECRET_KEY are required for Alpaca retrieval")
+
     def redacted_summary(self) -> dict[str, object]:
         """Return operational state without values that could contain secrets."""
         return {

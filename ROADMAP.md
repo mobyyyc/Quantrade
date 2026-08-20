@@ -20,7 +20,7 @@ Each item is intended to fit a focused development session. A negative research 
 
 - [x] P2.1: ingest security master and ticker history.
 - [x] P2.2: ingest a date-specific universe when the source supports it.
-- P2.3: ingest daily bars and corporate actions.
+- [x] P2.3: ingest daily bars and corporate actions.
 - P2.4: ingest SEC filing metadata and facts.
 - P2.5: implement data-quality and as-of tests.
 - P2.6: build the point-in-time panel constructor.

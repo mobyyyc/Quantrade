@@ -21,3 +21,18 @@ export interface DailyPriceBar {
   availability: AvailabilityWindow;
   source: SourceAttribution;
 }
+
+export interface CorporateAction {
+  contractVersion: "v1";
+  providerActionId: string;
+  securityId: string;
+  actionType: string;
+  processDate: CalendarDate;
+  effectiveDate?: CalendarDate;
+  cashAmount?: DecimalString;
+  ratioNumerator?: DecimalString;
+  ratioDenominator?: DecimalString;
+  currency?: "USD";
+  availability: AvailabilityWindow;
+  source: SourceAttribution;
+}

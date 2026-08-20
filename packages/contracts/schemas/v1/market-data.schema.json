@@ -1,11 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://quantrade.local/contracts/v1/market-data.schema.json",
-  "title": "Quantrade daily price bar",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["contractVersion", "securityId", "sessionDate", "session", "currency", "open", "high", "low", "close", "volume", "adjustmentBasis", "availability", "source"],
-  "properties": {
+  "title": "Quantrade daily price bar or corporate action",
+  "oneOf": [{ "$ref": "#/$defs/dailyPriceBar" }, { "$ref": "#/$defs/corporateAction" }],
+  "$defs": {
+    "dailyPriceBar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "securityId", "sessionDate", "session", "currency", "open", "high", "low", "close", "volume", "adjustmentBasis", "availability", "source"],
+      "properties": {
     "contractVersion": { "const": "v1" },
     "securityId": { "type": "string", "minLength": 1 },
     "sessionDate": { "type": "string", "format": "date" },
@@ -18,9 +21,28 @@
     "volume": { "$ref": "#/$defs/decimal" },
     "adjustmentBasis": { "enum": ["unadjusted", "split_adjusted", "total_return_adjusted"] },
     "availability": { "$ref": "#/$defs/availability" },
-    "source": { "$ref": "#/$defs/source" }
-  },
-  "$defs": {
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "corporateAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "providerActionId", "securityId", "actionType", "processDate", "availability", "source"],
+      "properties": {
+        "contractVersion": { "const": "v1" },
+        "providerActionId": { "type": "string", "minLength": 1 },
+        "securityId": { "type": "string", "minLength": 1 },
+        "actionType": { "type": "string", "minLength": 1 },
+        "processDate": { "type": "string", "format": "date" },
+        "effectiveDate": { "type": "string", "format": "date" },
+        "cashAmount": { "$ref": "#/$defs/decimal" },
+        "ratioNumerator": { "$ref": "#/$defs/decimal" },
+        "ratioDenominator": { "$ref": "#/$defs/decimal" },
+        "currency": { "const": "USD" },
+        "availability": { "$ref": "#/$defs/availability" },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
     "decimal": { "type": "string", "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$" },
     "availability": {
       "type": "object",
