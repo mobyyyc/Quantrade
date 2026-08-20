@@ -7,7 +7,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Iterable
 
-from .features import FeatureDefinition, FeatureRegistry, baseline_feature_registry
+from .features import FeatureDefinition, FeatureRegistry, FeatureValue, baseline_feature_registry
 from .quality import DataQualityError, assert_available_as_of
 
 
@@ -21,16 +21,6 @@ class FeaturePriceObservation:
     close_price: Decimal
     adjustment_basis: str
     available_at: datetime
-
-
-@dataclass(frozen=True, slots=True)
-class FeatureValue:
-    security_id: str
-    formation_date: date
-    feature_key: str
-    feature_version: str
-    definition_hash: str
-    value: Decimal
 
 
 def _as_utc(value: datetime, label: str) -> datetime:

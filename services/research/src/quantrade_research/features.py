@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from datetime import date
+from decimal import Decimal
 from hashlib import sha256
 import json
 import re
@@ -62,6 +64,18 @@ class FeatureDefinition:
             self.canonical_payload(), separators=(",", ":"), sort_keys=True
         ).encode("utf-8")
         return sha256(payload).hexdigest()
+
+
+@dataclass(frozen=True, slots=True)
+class FeatureValue:
+    """A calculated, versioned feature value for one formation date."""
+
+    security_id: str
+    formation_date: date
+    feature_key: str
+    feature_version: str
+    definition_hash: str
+    value: Decimal
 
 
 class FeatureRegistry:

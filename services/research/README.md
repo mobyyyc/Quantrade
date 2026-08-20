@@ -133,3 +133,12 @@ observations for 12–1 momentum and matching 127-session security/benchmark
 windows for relative strength. It rejects incomplete, duplicate, non-positive,
 or post-decision observations rather than quietly shortening or repairing a
 window.
+
+## Value and profitability
+
+P3.3 calculates `earnings_yield_ttm@v1` and `return_on_assets_ttm@v1` from
+eligible SEC facts. The conservative v1 definition uses one reported annual
+net-income period (330–370 days); it does not reconstruct TTM income from
+quarters. Earnings yield requires a positive reported shares-outstanding fact
+and split-adjusted formation close. Return on assets additionally requires
+positive total-assets facts at the annual period's exact start and end.

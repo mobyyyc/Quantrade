@@ -40,3 +40,10 @@ P3.2 implements the two momentum-family definitions in
 `services/research/src/quantrade_research/momentum.py`. They reject incomplete
 windows, duplicate dates, non-positive prices, bars unavailable by the decision
 timestamp, and non-matching security/benchmark session windows.
+
+P3.3 implements `earnings_yield_ttm@v1` and `return_on_assets_ttm@v1` in
+`services/research/src/quantrade_research/fundamentals.py`. To avoid silently
+assembling unreported quarters, v1 TTM uses one eligible annual `NetIncomeLoss`
+fact whose duration is 330–370 days. Return on assets also requires eligible
+`Assets` facts exactly at that reported period's start and end; earnings yield
+requires an eligible positive shares-outstanding fact and formation close.
