@@ -227,3 +227,10 @@ P5.4 permits ridge and elastic-net candidate comparisons only after the
 transparent baseline has passed private-beta approval. The comparison requires
 the same number of evaluation observations and reports benchmark-relative-return
 and Sharpe deltas; it never promotes a candidate automatically.
+
+## Model cards and rejected hypotheses
+
+P5.5 creates immutable model-card and rejected-hypothesis governance records.
+The repository includes the research-only baseline card in `MODEL_CARD_BASELINE.md`
+and pre-registered prohibited methods in `REJECTED_HYPOTHESES.md`. Neither file
+contains a fabricated evaluation outcome or an approval claim.

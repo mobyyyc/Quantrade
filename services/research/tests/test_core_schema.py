@@ -79,6 +79,13 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("REFERENCES quantrade.holdout_periods", sql)
         self.assertIn("prevent_experiment_governance_mutation", sql)
 
+    def test_model_cards_and_rejected_hypotheses_are_immutable(self) -> None:
+        migration = MIGRATION.with_name("0008_add_governance_records.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.model_cards", sql)
+        self.assertIn("CREATE TABLE quantrade.rejected_hypotheses", sql)
+        self.assertIn("prevent_governance_record_mutation", sql)
+
 
 if __name__ == "__main__":
     unittest.main()

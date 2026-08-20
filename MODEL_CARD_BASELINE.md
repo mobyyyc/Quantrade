@@ -1,0 +1,33 @@
+# Model Card: `baseline_equal_weight_v1`
+
+## Status
+
+**Research-only.** This baseline has not been run against the locked final
+holdout and is not approved for public performance claims or investment use.
+
+## Purpose
+
+Provide a transparent reference model for ranking eligible US equities in the
+private beta. It is a research diagnostic, not investment advice, a probability,
+or a return forecast.
+
+## Methodology
+
+- Uses point-in-time, sector-aware percentiles for declared momentum, value,
+  profitability, risk, and liquidity features.
+- Averages every required available feature rank equally; a missing required rank
+  makes a security ineligible.
+- Forms scores after the regular-session close and evaluates execution at the
+  next eligible regular-session open.
+- Uses `EXPERIMENT_PROTOCOL.md` version `0.1` and the active feature registry.
+
+## Data capability and limitations
+
+- Current capability: **Tier B**. Historical constituent and delisting coverage
+  have not been verified, so no unbiased historical-performance claim is valid.
+- Free-provider market data and SEC facts must pass their point-in-time quality
+  checks; a failed check blocks the score rather than being repaired silently.
+- The model has no learned weights. Ridge and elastic-net candidates may only be
+  compared after this baseline passes the private-beta approval gates.
+- The locked final holdout is 2025-07-01 through 2026-06-30 and may be evaluated
+  once after pre-holdout model selection is finalized.
