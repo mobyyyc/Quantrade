@@ -189,3 +189,12 @@ an execution ledger at the next regular-session open. The ledger rejects
 same-close execution, missing opens, duplicate positions, short positions, or
 target weights that do not total one. It first closes the prior basket, then
 opens the target basket; P4.5 adds costs and liquidity constraints.
+
+## Costs, liquidity, and performance metrics
+
+P4.5 enforces the provisional USD 10M median-dollar-volume gate for every
+target, reports a 5-bps one-way cost baseline plus 1/10/20-bps sensitivities,
+and calculates dated portfolio-versus-benchmark diagnostics: cumulative and
+relative return, CAGR, annualized volatility, Sharpe, Sortino, maximum drawdown,
+and Calmar. The results remain Tier-B research diagnostics, not performance
+claims.

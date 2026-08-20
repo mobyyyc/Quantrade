@@ -88,3 +88,10 @@ highest eligible 20 baseline scores at equal weights, values every prior holding
 at the strictly later execution-session open, then sells the prior basket before
 buying the new one. Costs and liquidity constraints are deliberately added in
 P4.5, not assumed here.
+
+P4.5 adds the provisional research evaluation gates in
+`services/research/src/quantrade_research/evaluation.py`: every target needs a
+dated median dollar volume of at least USD 10 million, the baseline applies a
+5-bps one-way cost with 1/10/20-bps sensitivity reports, and dated portfolio
+NAVs are compared directly with benchmark NAVs. Metrics are research diagnostics
+only while the project remains Tier B.
