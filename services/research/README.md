@@ -45,3 +45,22 @@ The command requires `SEC_USER_AGENT`, writes the raw response before
 normalization, and records a completed run manifest. It only normalizes SEC
 exchange labels that map unambiguously to supported MICs; all other rows remain
 auditable in the raw snapshot and are reported as unmapped.
+
+## Dated universe membership
+
+Use a UTF-8 CSV with a `cik` column and record the source's explicit as-of
+date; the importer refuses a file without CIKs. A current constituent snapshot
+is not historical membership and therefore defaults to Tier B.
+
+```bash
+python -m quantrade_research.ingest_universe \
+  --input path/to/constituents.csv \
+  --universe-code sp500 \
+  --as-of-date 2026-08-20 \
+  --source-reference "source URL or record ID" \
+  --code-revision <git-sha>
+```
+
+Only pass `--historical-membership-verified` after the provider audit confirms
+the file's point-in-time constituent coverage. This does not on its own
+upgrade the project-wide data-capability tier.

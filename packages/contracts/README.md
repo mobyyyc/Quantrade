@@ -15,6 +15,7 @@ Python research service should emit payloads that conform to the JSON Schemas.
 | Daily market bars | `market-data.schema.json` | `DailyPriceBar` |
 | SEC filings and facts | `filing.schema.json` | `FilingRecord`, `FilingFact` |
 | Dated model outputs | `score.schema.json` | `ScoreSnapshot` |
+| Dated universe membership | `universe.schema.json` | `UniverseMembershipSnapshot` |
 
 ## Invariants
 

@@ -56,9 +56,11 @@ class FileRawArtifactStore:
             path = path[1:]
         self._base_path = Path(path)
 
-    def store(self, payload: bytes, retrieved_at: datetime) -> RawArtifact:
+    def store(self, payload: bytes, retrieved_at: datetime, category: str = "security-master") -> RawArtifact:
+        if not category or "/" in category or "\\" in category:
+            raise ValueError("artifact category must be a simple path segment")
         digest = sha256(payload).hexdigest()
-        relative = Path("security-master") / retrieved_at.strftime("%Y-%m-%d") / f"{digest}.json"
+        relative = Path(category) / retrieved_at.strftime("%Y-%m-%d") / f"{digest}.json"
         destination = self._base_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         if not destination.exists():

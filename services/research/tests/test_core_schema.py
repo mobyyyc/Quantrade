@@ -40,6 +40,13 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         migration = MIGRATION.with_name("0002_allow_unclassified_security_master.sql")
         self.assertIn("asset_class IN ('common_stock', 'unknown')", migration.read_text(encoding="utf-8"))
 
+    def test_universe_snapshots_require_an_explicit_as_of_date(self) -> None:
+        migration = MIGRATION.with_name("0003_add_universe_snapshots.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.universe_snapshots", sql)
+        self.assertIn("as_of_date DATE NOT NULL", sql)
+        self.assertIn("historical_membership_verified BOOLEAN NOT NULL", sql)
+
 
 if __name__ == "__main__":
     unittest.main()

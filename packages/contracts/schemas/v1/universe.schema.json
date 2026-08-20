@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantrade.local/contracts/v1/universe.schema.json",
+  "title": "Quantrade dated universe membership snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "universeCode", "asOfDate", "securityId", "historicalMembershipVerified", "dataCapabilityTier", "source", "ingestedAt"],
+  "properties": {
+    "contractVersion": { "const": "v1" },
+    "universeCode": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+    "asOfDate": { "type": "string", "format": "date" },
+    "securityId": { "type": "string", "minLength": 1 },
+    "historicalMembershipVerified": { "type": "boolean" },
+    "dataCapabilityTier": { "enum": ["A", "B", "C"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "sourceReference", "retrievedAt", "rawArtifactUri"],
+      "properties": {
+        "provider": { "enum": ["sec_edgar", "alpaca", "fred", "alfred", "manual"] },
+        "sourceReference": { "type": "string", "minLength": 1 },
+        "retrievedAt": { "type": "string", "format": "date-time" },
+        "rawArtifactUri": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ingestedAt": { "type": "string", "format": "date-time" }
+  }
+}
