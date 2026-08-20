@@ -115,3 +115,12 @@ daily-bar basis, and required filing facts. It requires membership to be dated
 no later than the requested session, runs the quality gate, and selects the
 latest fact that was available by the decision timestamp. Missing facts or bars
 stop the build rather than excluding securities invisibly.
+
+## Feature registry
+
+P3.1 records the canonical, versioned meaning of each research feature before
+any calculation is implemented. A definition includes its formula, required
+inputs, direction, and availability rule; its SHA-256 hash makes a model's
+feature set reproducible. The database table is append-only, so a changed
+definition must use a new feature version. See the repository-root
+`FEATURE_DEFINITIONS.md` for the approved v1 definitions.

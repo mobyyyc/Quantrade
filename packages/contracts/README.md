@@ -14,6 +14,7 @@ Python research service should emit payloads that conform to the JSON Schemas.
 | Security identity and listings | `security.schema.json` | `SecurityRecord`, `ListingRecord` |
 | Daily market bars | `market-data.schema.json` | `DailyPriceBar` |
 | SEC filings and facts | `filing.schema.json` | `FilingRecord`, `FilingFact` |
+| Versioned feature definitions | `feature.schema.json` | `FeatureDefinition` |
 | Dated model outputs | `score.schema.json` | `ScoreSnapshot` |
 | Dated universe membership | `universe.schema.json` | `UniverseMembershipSnapshot` |
 
@@ -28,6 +29,8 @@ Python research service should emit payloads that conform to the JSON Schemas.
   logic may only use records with `availableAt` at or before its decision time.
 - Score snapshots are immutable and always identify their model, feature,
   protocol, cutoff, and data-capability tier.
+- Feature definitions are immutable: a different formula, inputs, direction, or
+  as-of rule requires a new feature version and definition hash.
 
 Cross-record constraints—such as `high >= low`, a filing fact's matching
 security ID, and an unavailable score's reason—are enforced by P1.3 storage

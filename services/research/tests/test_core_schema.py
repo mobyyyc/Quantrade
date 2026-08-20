@@ -54,6 +54,15 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("raw_artifact_id UUID NOT NULL", sql)
         self.assertIn("available_at TIMESTAMPTZ NOT NULL", sql)
 
+    def test_feature_definitions_are_versioned_and_immutable(self) -> None:
+        migration = MIGRATION.with_name("0005_add_feature_definitions.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.feature_definitions", sql)
+        self.assertIn("UNIQUE (feature_key, feature_version)", sql)
+        self.assertIn("definition_hash CHAR(64) NOT NULL", sql)
+        self.assertIn("prevent_feature_definition_mutation", sql)
+        self.assertIn("BEFORE UPDATE OR DELETE ON quantrade.feature_definitions", sql)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,7 +27,7 @@ Each item is intended to fit a focused development session. A negative research 
 
 ## Phase 3: factor research
 
-- P3.1: implement the feature registry and definitions.
+- [x] P3.1: implement the feature registry and definitions.
 - P3.2: add momentum and relative-strength features.
 - P3.3: add value and profitability features.
 - P3.4: add risk and liquidity features.

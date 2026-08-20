@@ -1,0 +1,37 @@
+# Feature Definitions
+
+This registry is the product and research contract for every feature used by
+Quantrade. A feature is a dated input to a later model, not a trade signal or
+investment recommendation. Its key, version, formula, required inputs, and
+decision-time rule are immutable. A material change creates a new version.
+
+All features use the point-in-time panel: only facts and bars with
+`available_at <= decision_at` are eligible. A missing input makes the feature
+unavailable; it must never be silently imputed or substituted.
+
+| Key @ version | Family | Direction | Definition |
+| --- | --- | --- | --- |
+| `momentum_12_1@v1` | Momentum | Higher is better | Split-adjusted close at `t - 21` divided by close at `t - 252`, minus one. |
+| `relative_strength_6m@v1` | Momentum | Higher is better | Security six-month split-adjusted return less the benchmark return over the same 126 sessions. |
+| `earnings_yield_ttm@v1` | Value | Higher is better | TTM net income divided by split-adjusted market capitalization. |
+| `return_on_assets_ttm@v1` | Profitability | Higher is better | TTM net income divided by the average of beginning and ending total assets. |
+| `trailing_volatility_60d@v1` | Risk | Lower is better | Annualized standard deviation of 60 split-adjusted daily log returns. |
+| `median_dollar_volume_20d@v1` | Liquidity | Higher is better | Median unadjusted close multiplied by volume over 20 sessions. |
+
+## Input and time rules
+
+- Price features use completed regular sessions only. Momentum, relative
+  strength, and volatility use `split_adjusted` bars; dollar volume uses
+  `unadjusted` bars.
+- Benchmark observations for relative strength must satisfy the same
+  availability rule as the security observations.
+- Fundamental features use SEC filing facts only when the filing acceptance
+  time is available by the decision timestamp. A fiscal period end is not an
+  availability timestamp.
+- `t` is the formation session. No feature may use a bar, corporate action, or
+  filing fact that became available after the chosen decision timestamp.
+
+The executable registry lives in
+`services/research/src/quantrade_research/features.py`; its canonical JSON
+payload produces a SHA-256 definition hash. The normalized store records the
+same metadata and prevents definition updates or deletes.
