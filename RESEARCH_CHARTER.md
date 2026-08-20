@@ -30,7 +30,7 @@ The user-facing 0-100 score is a calibrated presentation layer. It must not be t
 
 ## Initial portfolio hypothesis
 
-The first portfolio diagnostic is a simple equal-weight long-only basket of the highest-ranked eligible securities, compared with SPY. Portfolio size, sector caps, transaction-cost parameters, and execution timing are specified in `EXPERIMENT_PROTOCOL.md` before the first run.
+The first portfolio diagnostic is a simple equal-weight long-only basket of the highest-ranked eligible securities, compared with SPY. Portfolio size, sector caps, transaction-cost parameters, and execution timing are fixed in `EXPERIMENT_PROTOCOL.md`.
 
 No optimization is permitted in the first baseline.
 
@@ -73,4 +73,4 @@ The project evaluates paid data only when a documented need blocks one of these 
 
 - This charter is committed before data ingestion or factor implementation.
 - The data capability tier is visible in all resulting research reports.
-- The execution protocol is written next and does not contradict this charter.
+- The execution protocol is committed and does not contradict this charter.

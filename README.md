@@ -17,6 +17,7 @@ Planning and research setup. Application implementation has not started.
 - [Data strategy](DATA_STRATEGY.md)
 - [Roadmap](ROADMAP.md)
 - [Research charter](RESEARCH_CHARTER.md)
+- [Experiment protocol](EXPERIMENT_PROTOCOL.md)
 
 ## Initial V1 direction
 

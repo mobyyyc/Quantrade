@@ -5,7 +5,7 @@ Each item is intended to fit a focused development session. A negative research 
 ## Phase 0: charter and data decision
 
 - [x] P0.1: record scope, audience, benchmark, target, costs, and exclusions.
-- P0.2: write the decision-time and next-open execution protocol.
+- [x] P0.2: write the decision-time and next-open execution protocol.
 - P0.3: implement and run a free-provider audit sample.
 - P0.4: record source limitations and capability tier.
 
