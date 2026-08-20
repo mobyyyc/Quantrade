@@ -74,3 +74,10 @@ P4.2 builds `baseline_equal_weight_v1` in
 required percentile ranks equally and presents that normalized value on a 0–100
 scale. It does not learn weights or substitute missing ranks: any unavailable
 required rank makes the composite explicitly ineligible.
+
+P4.3 turns every baseline rank into an explanation row in
+`services/research/src/quantrade_research/explanations.py`: it includes the
+sector percentile, fixed equal weight, and contribution (`percentile × weight`).
+Explanation rows for unavailable ranks retain their reason rather than a made-up
+contribution. Migration `0006_add_score_explanations.sql` stores these rows as
+immutable children of a score snapshot.

@@ -63,6 +63,14 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("prevent_feature_definition_mutation", sql)
         self.assertIn("BEFORE UPDATE OR DELETE ON quantrade.feature_definitions", sql)
 
+    def test_score_explanations_are_immutable_and_linked_to_scores(self) -> None:
+        migration = MIGRATION.with_name("0006_add_score_explanations.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.score_explanations", sql)
+        self.assertIn("REFERENCES quantrade.score_snapshots(score_snapshot_id)", sql)
+        self.assertIn("UNIQUE (score_snapshot_id, feature_key, feature_version)", sql)
+        self.assertIn("prevent_score_explanation_mutation", sql)
+
 
 if __name__ == "__main__":
     unittest.main()

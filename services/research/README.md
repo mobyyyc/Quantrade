@@ -173,3 +173,11 @@ P4.2 creates `baseline_equal_weight_v1`: the equally weighted mean of every
 required sector-aware percentile rank, shown on a 0–100 presentation scale. It
 records the feature-registry hash and makes a security ineligible when any
 required rank is unavailable. It has no learned weights or prediction claim.
+
+## Baseline explanations
+
+P4.3 emits one explanation row per required feature for each baseline score:
+the sector percentile, fixed equal weight, and contribution. Unavailable ranks
+preserve their reason and do not receive an invented contribution. The
+normalized store persists explanation rows as immutable children of score
+snapshots.
