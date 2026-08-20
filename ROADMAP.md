@@ -43,7 +43,7 @@ Each item is intended to fit a focused development session. A negative research 
 
 ## Phase 5: validation and governance
 
-- P5.1: implement expanding-window and walk-forward evaluation.
+- [x] P5.1: implement expanding-window and walk-forward evaluation.
 - P5.2: lock a final holdout period and experiment log.
 - P5.3: define model-approval gates.
 - P5.4: compare regularized linear models only against the approved baseline.

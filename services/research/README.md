@@ -198,3 +198,10 @@ and calculates dated portfolio-versus-benchmark diagnostics: cumulative and
 relative return, CAGR, annualized volatility, Sharpe, Sortino, maximum drawdown,
 and Calmar. The results remain Tier-B research diagnostics, not performance
 claims.
+
+## Walk-forward validation
+
+P5.1 creates chronological expanding-window plans before any model comparison.
+Each validation window is strictly later than its training history, and each
+later fold includes all preceding history. Duplicate dates, overlapping future
+windows, and non-expanding manual plans are rejected.
