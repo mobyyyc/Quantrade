@@ -7,7 +7,7 @@ Each item is intended to fit a focused development session. A negative research 
 - [x] P0.1: record scope, audience, benchmark, target, costs, and exclusions.
 - [x] P0.2: write the decision-time and next-open execution protocol.
 - [x] P0.3: implement and run a free-provider audit sample.
-- P0.4: record source limitations and capability tier.
+- [x] P0.4: record source limitations and capability tier.
 
 ## Phase 1: foundations
 

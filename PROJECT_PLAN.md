@@ -6,6 +6,8 @@ V1 is a private beta and future public-release candidate. It must feel product-q
 
 The initial data policy is free-first. The team will use free sources until a documented limitation blocks valid research or product quality, then evaluate paid providers using the criteria in `DATA_STRATEGY.md`.
 
+Planning status: Phase 0 is complete. The current data capability is Tier B, as formalized in `DATA_CAPABILITY_DECISION.md`.
+
 ## Product objective
 
 Help a user answer three questions for a US equity: what is happening, why, and what does the currently validated quantitative model suggest, including risk and uncertainty.

@@ -19,6 +19,7 @@ Planning and research setup. Application implementation has not started.
 - [Research charter](RESEARCH_CHARTER.md)
 - [Experiment protocol](EXPERIMENT_PROTOCOL.md)
 - [Free-data provider audit](FREE_DATA_AUDIT.md)
+- [Data capability decision](DATA_CAPABILITY_DECISION.md)
 
 ## Initial V1 direction
 
