@@ -166,3 +166,10 @@ dated sector cohorts. Every rank is oriented so higher means better, including
 inversion of lower-is-better features. Sector labels must be available by the
 decision timestamp, and sectors with fewer than two available peers produce an
 explicit unavailable rank instead of a cross-sector fallback.
+
+## Transparent composite baseline
+
+P4.2 creates `baseline_equal_weight_v1`: the equally weighted mean of every
+required sector-aware percentile rank, shown on a 0–100 presentation scale. It
+records the feature-registry hash and makes a security ineligible when any
+required rank is unavailable. It has no learned weights or prediction claim.

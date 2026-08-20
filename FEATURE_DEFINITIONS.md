@@ -68,3 +68,9 @@ and always oriented so `1` is better: lower-is-better features are inverted.
 Sector classifications must be known by the decision timestamp. A cohort with
 fewer than two available peers is explicitly unavailable rather than ranked
 against a different sector.
+
+P4.2 builds `baseline_equal_weight_v1` in
+`services/research/src/quantrade_research/baseline.py`. The model averages all
+required percentile ranks equally and presents that normalized value on a 0–100
+scale. It does not learn weights or substitute missing ranks: any unavailable
+required rank makes the composite explicitly ineligible.
