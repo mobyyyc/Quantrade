@@ -107,3 +107,11 @@ score cannot proceed when required daily bars are missing or duplicated, OHLCV
 values are invalid, or any market or filing record has an `available_at` later
 than the decision timestamp. The gate reports every issue; it does not quietly
 filter records to manufacture coverage.
+
+## Point-in-time panel
+
+P2.6 builds a complete, dated panel from explicit universe membership, one
+daily-bar basis, and required filing facts. It requires membership to be dated
+no later than the requested session, runs the quality gate, and selects the
+latest fact that was available by the decision timestamp. Missing facts or bars
+stop the build rather than excluding securities invisibly.
