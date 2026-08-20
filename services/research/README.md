@@ -212,3 +212,11 @@ P5.2 locks the completed twelve-month final holdout from 2025-07-01 through
 2026-06-30 for protocol `0.1`; see `HOLDOUT_POLICY.md`. Experiment records are
 append-only and may only validate data ending before 2025-07-01. Each records
 the protocol, model, feature-registry hash, dates, timestamp, and result URI.
+
+## Model approval gates
+
+P5.3 evaluates explicit gates for point-in-time integrity, unresolved data
+quality, coverage, walk-forward folds, locked-holdout performance under the
+20-bps sensitivity, and data capability. Tier B may pass for private beta but
+can never pass the policy for public performance claims; see
+`MODEL_APPROVAL_POLICY.md`.
