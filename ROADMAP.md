@@ -30,7 +30,7 @@ Each item is intended to fit a focused development session. A negative research 
 - [x] P3.1: implement the feature registry and definitions.
 - [x] P3.2: add momentum and relative-strength features.
 - [x] P3.3: add value and profitability features.
-- P3.4: add risk and liquidity features.
+- [x] P3.4: add risk and liquidity features.
 - P3.5: report coverage, correlation, turnover, and missingness.
 
 ## Phase 4: baseline model and simulation

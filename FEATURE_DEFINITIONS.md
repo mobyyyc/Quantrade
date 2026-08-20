@@ -47,3 +47,10 @@ assembling unreported quarters, v1 TTM uses one eligible annual `NetIncomeLoss`
 fact whose duration is 330–370 days. Return on assets also requires eligible
 `Assets` facts exactly at that reported period's start and end; earnings yield
 requires an eligible positive shares-outstanding fact and formation close.
+
+P3.4 implements `trailing_volatility_60d@v1` and
+`median_dollar_volume_20d@v1` in
+`services/research/src/quantrade_research/risk_liquidity.py`. Volatility uses
+60 daily log returns (and therefore 61 closes), sample standard deviation, and
+the square root of 252 annualization. Dollar volume uses unadjusted closes and
+volumes, requiring a complete 20-session window.

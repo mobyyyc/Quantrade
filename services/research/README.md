@@ -142,3 +142,11 @@ net-income period (330–370 days); it does not reconstruct TTM income from
 quarters. Earnings yield requires a positive reported shares-outstanding fact
 and split-adjusted formation close. Return on assets additionally requires
 positive total-assets facts at the annual period's exact start and end.
+
+## Risk and liquidity
+
+P3.4 calculates `trailing_volatility_60d@v1` from 60 split-adjusted daily log
+returns (61 closes) using sample standard deviation and `sqrt(252)`
+annualization. `median_dollar_volume_20d@v1` takes the median of unadjusted
+close multiplied by volume across 20 completed sessions. Both calculations are
+fail-closed on incomplete, duplicate, unavailable, or invalid observations.

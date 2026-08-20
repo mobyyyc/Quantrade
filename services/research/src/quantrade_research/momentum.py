@@ -21,6 +21,7 @@ class FeaturePriceObservation:
     close_price: Decimal
     adjustment_basis: str
     available_at: datetime
+    volume: Decimal | None = None
 
 
 def _as_utc(value: datetime, label: str) -> datetime:
@@ -37,7 +38,7 @@ def _definition(registry: FeatureRegistry | None, key: str) -> FeatureDefinition
     return definition
 
 
-def _history(
+def eligible_split_adjusted_history(
     observations: Iterable[FeaturePriceObservation],
     *,
     security_id: str,
@@ -72,7 +73,9 @@ def _history(
     return ordered
 
 
-def _window(history: list[FeaturePriceObservation], size: int, label: str) -> list[FeaturePriceObservation]:
+def require_price_window(
+    history: list[FeaturePriceObservation], size: int, label: str
+) -> list[FeaturePriceObservation]:
     if len(history) < size:
         raise DataQualityError(f"{label} requires {size} completed split-adjusted sessions")
     return history[-size:]
@@ -88,8 +91,8 @@ def calculate_momentum_12_1(
 ) -> FeatureValue:
     """Calculate C(t-21) / C(t-252) - 1 from an eligible 253-session window."""
     definition = _definition(registry, "momentum_12_1")
-    history = _window(
-        _history(
+    history = require_price_window(
+        eligible_split_adjusted_history(
             observations,
             security_id=security_id,
             formation_date=formation_date,
@@ -123,8 +126,8 @@ def calculate_relative_strength_6m(
     definition = _definition(registry, "relative_strength_6m")
     if "benchmark_price_bars:split_adjusted" not in definition.required_inputs:
         raise DataQualityError("relative_strength_6m@v1 lacks its approved benchmark input")
-    security_window = _window(
-        _history(
+    security_window = require_price_window(
+        eligible_split_adjusted_history(
             security_observations,
             security_id=security_id,
             formation_date=formation_date,
@@ -133,8 +136,8 @@ def calculate_relative_strength_6m(
         127,
         "relative_strength_6m security history",
     )
-    benchmark_window = _window(
-        _history(
+    benchmark_window = require_price_window(
+        eligible_split_adjusted_history(
             benchmark_observations,
             security_id=benchmark_security_id,
             formation_date=formation_date,
