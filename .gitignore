@@ -1,0 +1,21 @@
+# JavaScript / Next.js
+node_modules/
+.next/
+out/
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# Build artifacts
+dist/
+build/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example

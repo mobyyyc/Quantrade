@@ -1,0 +1,11 @@
+{
+  "name": "quantrade",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @quantrade/web dev",
+    "build:web": "pnpm --filter @quantrade/web build",
+    "lint:web": "pnpm --filter @quantrade/web lint"
+  }
+}

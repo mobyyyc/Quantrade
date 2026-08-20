@@ -11,7 +11,7 @@ Each item is intended to fit a focused development session. A negative research 
 
 ## Phase 1: foundations
 
-- P1.1: initialize web, research, and shared-contract boundaries.
+- [x] P1.1: initialize web, research, and shared-contract boundaries.
 - P1.2: define data contracts for securities, prices, filings, and scores.
 - P1.3: create the core schema and migrations.
 - P1.4: add configuration, secret handling, and run manifests.
