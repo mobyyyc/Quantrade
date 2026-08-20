@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantrade.local/contracts/v1/filing.schema.json",
+  "title": "Quantrade filing and filing fact records",
+  "oneOf": [
+    { "$ref": "#/$defs/filing" },
+    { "$ref": "#/$defs/fact" }
+  ],
+  "$defs": {
+    "availability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availableAt", "ingestedAt"],
+      "properties": {
+        "observedAt": { "type": "string", "format": "date-time" },
+        "publishedAt": { "type": "string", "format": "date-time" },
+        "availableAt": { "type": "string", "format": "date-time" },
+        "ingestedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "sourceReference", "retrievedAt", "rawArtifactUri"],
+      "properties": {
+        "provider": { "enum": ["sec_edgar", "alpaca", "fred", "alfred", "manual"] },
+        "sourceReference": { "type": "string", "minLength": 1 },
+        "retrievedAt": { "type": "string", "format": "date-time" },
+        "rawArtifactUri": { "type": "string", "minLength": 1 }
+      }
+    },
+    "filing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "filingId", "securityId", "accessionNumber", "form", "filedAt", "acceptedAt", "availability", "source"],
+      "properties": {
+        "contractVersion": { "const": "v1" },
+        "filingId": { "type": "string", "minLength": 1 },
+        "securityId": { "type": "string", "minLength": 1 },
+        "accessionNumber": { "type": "string", "pattern": "^[0-9]{10}-[0-9]{2}-[0-9]{6}$" },
+        "form": { "enum": ["10-K", "10-Q", "8-K", "20-F", "40-F", "other"] },
+        "filedAt": { "type": "string", "format": "date-time" },
+        "acceptedAt": { "type": "string", "format": "date-time" },
+        "periodEnd": { "type": "string", "format": "date" },
+        "availability": { "$ref": "#/$defs/availability" },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "factId", "filingId", "securityId", "taxonomy", "concept", "unit", "value", "periodEnd", "availability", "source"],
+      "properties": {
+        "contractVersion": { "const": "v1" },
+        "factId": { "type": "string", "minLength": 1 },
+        "filingId": { "type": "string", "minLength": 1 },
+        "securityId": { "type": "string", "minLength": 1 },
+        "taxonomy": { "type": "string", "minLength": 1 },
+        "concept": { "type": "string", "minLength": 1 },
+        "unit": { "type": "string", "minLength": 1 },
+        "value": { "$ref": "#/$defs/decimal" },
+        "periodStart": { "type": "string", "format": "date" },
+        "periodEnd": { "type": "string", "format": "date" },
+        "fiscalYear": { "type": "integer", "minimum": 1900 },
+        "fiscalPeriod": { "enum": ["FY", "Q1", "Q2", "Q3", "Q4"] },
+        "availability": { "$ref": "#/$defs/availability" },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "decimal": { "type": "string", "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$" }
+  }
+}

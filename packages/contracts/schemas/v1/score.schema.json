@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantrade.local/contracts/v1/score.schema.json",
+  "title": "Quantrade immutable score snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "scoreSnapshotId", "securityId", "scoreDate", "decisionAt", "score", "eligible", "signal", "modelVersion", "featureVersion", "protocolVersion", "dataCutoffAt", "dataCapabilityTier"],
+  "properties": {
+    "contractVersion": { "const": "v1" },
+    "scoreSnapshotId": { "type": "string", "minLength": 1 },
+    "securityId": { "type": "string", "minLength": 1 },
+    "scoreDate": { "type": "string", "format": "date" },
+    "decisionAt": { "type": "string", "format": "date-time" },
+    "publishedAt": { "type": "string", "format": "date-time" },
+    "score": { "type": "string", "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$" },
+    "rank": { "type": "integer", "minimum": 1 },
+    "eligible": { "type": "boolean" },
+    "signal": { "enum": ["positive", "neutral", "negative", "unavailable"] },
+    "modelVersion": { "type": "string", "minLength": 1 },
+    "featureVersion": { "type": "string", "minLength": 1 },
+    "protocolVersion": { "type": "string", "minLength": 1 },
+    "dataCutoffAt": { "type": "string", "format": "date-time" },
+    "dataCapabilityTier": { "enum": ["A", "B", "C"] },
+    "unavailableReason": { "type": "string", "minLength": 1 }
+  }
+}

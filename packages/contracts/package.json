@@ -4,6 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./schemas/v1/security": "./schemas/v1/security.schema.json",
+    "./schemas/v1/market-data": "./schemas/v1/market-data.schema.json",
+    "./schemas/v1/filing": "./schemas/v1/filing.schema.json",
+    "./schemas/v1/score": "./schemas/v1/score.schema.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5"
   }
 }

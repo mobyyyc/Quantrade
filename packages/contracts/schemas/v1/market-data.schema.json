@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantrade.local/contracts/v1/market-data.schema.json",
+  "title": "Quantrade daily price bar",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "securityId", "sessionDate", "session", "currency", "open", "high", "low", "close", "volume", "adjustmentBasis", "availability", "source"],
+  "properties": {
+    "contractVersion": { "const": "v1" },
+    "securityId": { "type": "string", "minLength": 1 },
+    "sessionDate": { "type": "string", "format": "date" },
+    "session": { "const": "regular" },
+    "currency": { "const": "USD" },
+    "open": { "$ref": "#/$defs/decimal" },
+    "high": { "$ref": "#/$defs/decimal" },
+    "low": { "$ref": "#/$defs/decimal" },
+    "close": { "$ref": "#/$defs/decimal" },
+    "volume": { "$ref": "#/$defs/decimal" },
+    "adjustmentBasis": { "enum": ["unadjusted", "split_adjusted", "total_return_adjusted"] },
+    "availability": { "$ref": "#/$defs/availability" },
+    "source": { "$ref": "#/$defs/source" }
+  },
+  "$defs": {
+    "decimal": { "type": "string", "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$" },
+    "availability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availableAt", "ingestedAt"],
+      "properties": {
+        "observedAt": { "type": "string", "format": "date-time" },
+        "publishedAt": { "type": "string", "format": "date-time" },
+        "availableAt": { "type": "string", "format": "date-time" },
+        "ingestedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "sourceReference", "retrievedAt", "rawArtifactUri"],
+      "properties": {
+        "provider": { "enum": ["sec_edgar", "alpaca", "fred", "alfred", "manual"] },
+        "sourceReference": { "type": "string", "minLength": 1 },
+        "retrievedAt": { "type": "string", "format": "date-time" },
+        "rawArtifactUri": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
