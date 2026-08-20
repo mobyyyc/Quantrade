@@ -36,6 +36,10 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("prevent_score_snapshot_mutation", self.sql)
         self.assertIn("BEFORE UPDATE OR DELETE ON quantrade.score_snapshots", self.sql)
 
+    def test_security_master_can_remain_unclassified(self) -> None:
+        migration = MIGRATION.with_name("0002_allow_unclassified_security_master.sql")
+        self.assertIn("asset_class IN ('common_stock', 'unknown')", migration.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

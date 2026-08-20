@@ -26,3 +26,22 @@ revision, source inputs and raw-artifact URIs, data-capability tier,
 configuration fingerprint, and—when relevant—decision timestamp. Manifests
 are JSON artifacts, not environment dumps, so no credential values belong in
 them.
+
+## SEC security master
+
+P2.1 ingests SEC's current ticker/exchange association file as a dated
+snapshot. Repeated snapshots create ticker-history intervals; they do not
+prove historical index membership or common-stock eligibility. SEC rows start
+as `unknown` asset class until a later universe gate verifies them.
+
+With a local PostgreSQL database and a `file://` raw-artifact location
+configured, run:
+
+```bash
+python -m quantrade_research.ingest_security_master --code-revision <git-sha>
+```
+
+The command requires `SEC_USER_AGENT`, writes the raw response before
+normalization, and records a completed run manifest. It only normalizes SEC
+exchange labels that map unambiguously to supported MICs; all other rows remain
+auditable in the raw snapshot and are reported as unmapped.

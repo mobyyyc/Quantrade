@@ -7,7 +7,7 @@ name = "quantrade-research"
 version = "0.1.0"
 description = "Quantitative research service for Quantrade"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["psycopg[binary]>=3.2,<4"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/quantrade_research"]

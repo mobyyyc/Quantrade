@@ -64,6 +64,10 @@ class Settings:
         if self.raw_artifacts_uri is None:
             raise ConfigurationError("RAW_ARTIFACTS_URI is required for reproducible runs")
 
+    def require_sec_access(self) -> None:
+        if self.sec_user_agent is None:
+            raise ConfigurationError("SEC_USER_AGENT is required for SEC EDGAR retrieval")
+
     def redacted_summary(self) -> dict[str, object]:
         """Return operational state without values that could contain secrets."""
         return {
