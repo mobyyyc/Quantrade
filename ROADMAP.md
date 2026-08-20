@@ -38,7 +38,7 @@ Each item is intended to fit a focused development session. A negative research 
 - [x] P4.1: create sector-aware percentile ranks.
 - [x] P4.2: create a transparent composite baseline.
 - [x] P4.3: persist explanation contributions.
-- P4.4: implement next-open rebalance ledger.
+- [x] P4.4: implement next-open rebalance ledger.
 - P4.5: add costs, liquidity constraints, benchmarks, and metrics.
 
 ## Phase 5: validation and governance

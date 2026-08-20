@@ -81,3 +81,10 @@ sector percentile, fixed equal weight, and contribution (`percentile × weight`)
 Explanation rows for unavailable ranks retain their reason rather than a made-up
 contribution. Migration `0006_add_score_explanations.sql` stores these rows as
 immutable children of a score snapshot.
+
+P4.4 implements the protocol's next-open portfolio handoff in
+`services/research/src/quantrade_research/rebalance.py`. It selects exactly the
+highest eligible 20 baseline scores at equal weights, values every prior holding
+at the strictly later execution-session open, then sells the prior basket before
+buying the new one. Costs and liquidity constraints are deliberately added in
+P4.5, not assumed here.

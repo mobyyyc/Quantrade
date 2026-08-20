@@ -181,3 +181,11 @@ the sector percentile, fixed equal weight, and contribution. Unavailable ranks
 preserve their reason and do not receive an invented contribution. The
 normalized store persists explanation rows as immutable children of score
 snapshots.
+
+## Next-open rebalance ledger
+
+P4.4 selects exactly 20 eligible baseline scores with equal weights and creates
+an execution ledger at the next regular-session open. The ledger rejects
+same-close execution, missing opens, duplicate positions, short positions, or
+target weights that do not total one. It first closes the prior basket, then
+opens the target basket; P4.5 adds costs and liquidity constraints.
