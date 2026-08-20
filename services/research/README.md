@@ -83,3 +83,19 @@ python -m quantrade_research.ingest_market_data \
 
 This requires paired local Alpaca credentials and an already-ingested security
 master. The command is intentionally not a license or data-quality approval.
+
+## SEC filings and XBRL facts
+
+P2.4 fetches a CIK's submissions metadata and company-facts payload, stores
+both raw responses, and only keeps facts linked to an ingested filing accession.
+The filing acceptance timestamp is the fact's `available_at` value; a fiscal
+period end alone can never make a fact eligible for a historical decision.
+
+```bash
+python -m quantrade_research.ingest_filings \
+  --cik 0000320193 \
+  --code-revision <git-sha>
+```
+
+This requires the SEC user-agent, storage, database, and security-master
+configuration described above.

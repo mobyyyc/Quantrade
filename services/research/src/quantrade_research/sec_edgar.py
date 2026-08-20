@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
+from decimal import Decimal
 import json
 from typing import Any
 from urllib.request import Request, urlopen
 
 
 COMPANY_TICKERS_EXCHANGE_URL = "https://www.sec.gov/files/company_tickers_exchange.json"
+SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
+COMPANY_FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
 
 EXCHANGE_MIC_BY_SEC_NAME = {
     "Nasdaq": "XNAS",
@@ -39,6 +42,29 @@ class SecurityMasterRow:
     ticker: str
     exchange_mic: str
     snapshot_date: date
+
+
+@dataclass(frozen=True, slots=True)
+class SecFilingMetadata:
+    accession_number: str
+    form: str
+    filed_at: datetime
+    accepted_at: datetime
+    period_end: date | None
+
+
+@dataclass(frozen=True, slots=True)
+class SecFilingFact:
+    accession_number: str
+    taxonomy: str
+    concept: str
+    unit: str
+    value: Decimal
+    period_start: date | None
+    period_end: date
+    fiscal_year: int | None
+    fiscal_period: str | None
+    filed_at: datetime
 
 
 def parse_company_tickers_exchange(payload: bytes) -> list[SecTickerAssociation]:
@@ -90,6 +116,67 @@ def normalize_security_master(
     return rows, unmapped
 
 
+def _timestamp(value: object) -> datetime:
+    if not isinstance(value, str):
+        raise SecEdgarError("SEC filing timestamp is missing")
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+def _optional_date(value: object) -> date | None:
+    return date.fromisoformat(value) if isinstance(value, str) and value else None
+
+
+def parse_submissions(payload: bytes) -> list[SecFilingMetadata]:
+    try:
+        recent = json.loads(payload)["filings"]["recent"]
+        forms, accessions, filed, accepted, reports = (
+            recent["form"], recent["accessionNumber"], recent["filingDate"],
+            recent["acceptanceDateTime"], recent["reportDate"],
+        )
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise SecEdgarError("SEC submissions payload has an invalid shape") from error
+    if not all(isinstance(column, list) for column in (forms, accessions, filed, accepted, reports)):
+        raise SecEdgarError("SEC submissions payload columns are invalid")
+    filings: list[SecFilingMetadata] = []
+    for form, accession, filing_date, acceptance, report_date in zip(forms, accessions, filed, accepted, reports, strict=True):
+        if not isinstance(accession, str) or not isinstance(form, str):
+            raise SecEdgarError("SEC submissions payload contains an invalid filing")
+        filings.append(SecFilingMetadata(accession, form if form in {"10-K", "10-Q", "8-K", "20-F", "40-F"} else "other", _timestamp(filing_date + "T00:00:00Z"), _timestamp(acceptance), _optional_date(report_date)))
+    return filings
+
+
+def parse_company_facts(payload: bytes, filings_by_accession: dict[str, SecFilingMetadata]) -> list[SecFilingFact]:
+    try:
+        taxonomies = json.loads(payload)["facts"]
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise SecEdgarError("SEC company-facts payload has an invalid shape") from error
+    facts: list[SecFilingFact] = []
+    if not isinstance(taxonomies, dict):
+        raise SecEdgarError("SEC company-facts taxonomy collection is invalid")
+    for taxonomy, concepts in taxonomies.items():
+        if not isinstance(concepts, dict):
+            continue
+        for concept, definition in concepts.items():
+            units = definition.get("units", {}) if isinstance(definition, dict) else {}
+            if not isinstance(units, dict):
+                continue
+            for unit, observations in units.items():
+                if not isinstance(observations, list):
+                    continue
+                for observation in observations:
+                    if not isinstance(observation, dict):
+                        continue
+                    accession = observation.get("accn")
+                    filing = filings_by_accession.get(accession) if isinstance(accession, str) else None
+                    if filing is None or not observation.get("end"):
+                        continue
+                    try:
+                        facts.append(SecFilingFact(accession, str(taxonomy), str(concept), str(unit), Decimal(str(observation["val"])), _optional_date(observation.get("start")), date.fromisoformat(str(observation["end"])), int(observation["fy"]) if observation.get("fy") is not None else None, str(observation["fp"]) if observation.get("fp") in {"FY", "Q1", "Q2", "Q3", "Q4"} else None, filing.filed_at))
+                    except (KeyError, ValueError, ArithmeticError) as error:
+                        raise SecEdgarError("SEC company-facts observation is invalid") from error
+    return facts
+
+
 class SecEdgarClient:
     def __init__(self, user_agent: str, timeout_seconds: float = 30.0) -> None:
         if not user_agent.strip():
@@ -98,10 +185,16 @@ class SecEdgarClient:
         self._timeout_seconds = timeout_seconds
 
     def fetch_company_tickers_exchange(self) -> bytes:
-        request = Request(
-            COMPANY_TICKERS_EXCHANGE_URL,
-            headers={"Accept": "application/json", "User-Agent": self._user_agent},
-        )
+        return self._fetch(COMPANY_TICKERS_EXCHANGE_URL)
+
+    def fetch_submissions(self, cik: str) -> bytes:
+        return self._fetch(SUBMISSIONS_URL.format(cik=cik.zfill(10)))
+
+    def fetch_company_facts(self, cik: str) -> bytes:
+        return self._fetch(COMPANY_FACTS_URL.format(cik=cik.zfill(10)))
+
+    def _fetch(self, url: str) -> bytes:
+        request = Request(url, headers={"Accept": "application/json", "User-Agent": self._user_agent})
         with urlopen(request, timeout=self._timeout_seconds) as response:
             if response.status != 200:
                 raise SecEdgarError(f"SEC returned HTTP {response.status}")
