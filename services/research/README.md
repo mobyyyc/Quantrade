@@ -205,3 +205,10 @@ P5.1 creates chronological expanding-window plans before any model comparison.
 Each validation window is strictly later than its training history, and each
 later fold includes all preceding history. Duplicate dates, overlapping future
 windows, and non-expanding manual plans are rejected.
+
+## Final holdout and experiment log
+
+P5.2 locks the completed twelve-month final holdout from 2025-07-01 through
+2026-06-30 for protocol `0.1`; see `HOLDOUT_POLICY.md`. Experiment records are
+append-only and may only validate data ending before 2025-07-01. Each records
+the protocol, model, feature-registry hash, dates, timestamp, and result URI.
