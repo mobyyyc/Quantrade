@@ -16,6 +16,7 @@ Planning and research setup. Application implementation has not started.
 - [Architecture](ARCHITECTURE.md)
 - [Data strategy](DATA_STRATEGY.md)
 - [Roadmap](ROADMAP.md)
+- [Research charter](RESEARCH_CHARTER.md)
 
 ## Initial V1 direction
 
