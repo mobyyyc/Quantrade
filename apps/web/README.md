@@ -28,3 +28,10 @@ P6.2 exposes Node.js route handlers that read only normalized research outputs:
 
 They require `DATABASE_URL` and return a clear `503` when research data is not
 configured. They never calculate scores or reshape provider responses.
+
+## Product design rules
+
+P6.3 defines the private-beta navigation and language before product screens
+are built. `INFORMATION_ARCHITECTURE.md` assigns one job to each route, and
+`UI_CONTENT_RULES.md` prevents trade language, dense screener controls, hidden
+freshness, or unsupported performance claims.
