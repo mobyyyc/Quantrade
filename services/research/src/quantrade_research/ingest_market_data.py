@@ -32,7 +32,10 @@ def main() -> None:
     parser.add_argument("--start", type=date.fromisoformat, required=True)
     parser.add_argument("--end", type=date.fromisoformat, required=True)
     parser.add_argument("--code-revision", required=True)
+    parser.add_argument("--batch-size", type=int, default=100)
     arguments = parser.parse_args()
+    if arguments.batch_size < 1:
+        parser.error("--batch-size must be positive")
 
     settings = Settings.from_environment()
     settings.require_runtime_storage()
@@ -49,11 +52,13 @@ def main() -> None:
     bar_count = 0
     action_count = 0
     try:
-        for adjustment in ("raw", "split"):
+        batches = [arguments.symbols[index:index + arguments.batch_size] for index in range(0, len(arguments.symbols), arguments.batch_size)]
+        for symbols in batches:
+          for adjustment in ("raw", "split"):
             token = None
             while True:
                 retrieved_at = datetime.now(timezone.utc)
-                payload = client.fetch_daily_bars(arguments.symbols, arguments.start, arguments.end, adjustment, token)
+                payload = client.fetch_daily_bars(symbols, arguments.start, arguments.end, adjustment, token)
                 bars, token = parse_daily_bars(payload)
                 artifact = artifact_store.store(payload, retrieved_at, category="market-data")
                 artifact_uris.append(artifact.storage_uri)
@@ -64,11 +69,10 @@ def main() -> None:
                 )
                 if token is None:
                     break
-
-        token = None
-        while True:
+          token = None
+          while True:
             retrieved_at = datetime.now(timezone.utc)
-            payload = client.fetch_corporate_actions(arguments.symbols, arguments.start, arguments.end, token)
+            payload = client.fetch_corporate_actions(symbols, arguments.start, arguments.end, token)
             actions, token = parse_corporate_actions(payload)
             artifact = artifact_store.store(payload, retrieved_at, category="corporate-actions")
             artifact_uris.append(artifact.storage_uri)
