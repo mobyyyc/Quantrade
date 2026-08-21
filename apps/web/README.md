@@ -15,8 +15,9 @@ pnpm dev:web
 
 Open [http://localhost:3000](http://localhost:3000) to view the local app.
 
-The current page is only a foundation status screen. Product routes and data
-views arrive after the data and research pipeline are established.
+The private-beta routes render from dated research outputs when a normalized
+research database is connected. Without it, they state the unavailable reason
+instead of showing invented market examples.
 
 ## Dated research APIs
 
@@ -48,3 +49,11 @@ P6.4 implements the product routes described by the information architecture:
 
 When normalized research data is not connected, the app renders an explicit,
 useful unavailable state rather than invented sample scores or price charts.
+
+## Private-beta safeguards
+
+The scored routes include a clear research-only context notice, keyboard skip
+navigation, visible focus states, and a reduced-motion fallback. See
+[`ACCESSIBILITY_REVIEW.md`](../../ACCESSIBILITY_REVIEW.md) and
+[`UNCERTAINTY_AND_DISCLAIMER_REVIEW.md`](../../UNCERTAINTY_AND_DISCLAIMER_REVIEW.md)
+for the implemented review and the checks required before an external beta.

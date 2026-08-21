@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { ResearchNotice } from "@/components/research-notice";
 import { ScoreList } from "@/components/score-list";
 import { formatResearchDate, formatScore } from "@/lib/format";
 import { getLatestDatedScores, ResearchReadModelError } from "@/lib/research-read-model";
@@ -44,6 +45,7 @@ export default async function Home() {
           <Link href="/research" className="primary-link">Read methodology</Link>
         </section>
       )}
+      <ResearchNotice />
     </AppShell>
   );
 }

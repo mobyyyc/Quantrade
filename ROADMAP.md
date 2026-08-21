@@ -55,7 +55,7 @@ Each item is intended to fit a focused development session. A negative research 
 - [x] P6.2: expose dated score, ranking, and model-card APIs.
 - [x] P6.3: define product information architecture and UI content rules.
 - [x] P6.4: build rankings, search, stock detail, and research dashboard.
-- P6.5: add uncertainty, accessibility, and disclaimer reviews.
+- [x] P6.5: add uncertainty, accessibility, and disclaimer reviews.
 
 ## Phase 7: operations and expansion
 

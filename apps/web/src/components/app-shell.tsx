@@ -11,6 +11,7 @@ const navigation = [
 export function AppShell({ children, current }: { children: ReactNode; current: string }) {
   return (
     <div className="app-frame">
+      <a className="skip-link" href="#main-content">Skip to research content</a>
       <header className="topbar">
         <Link href="/" className="brand" aria-label="Quantrade, Today">
           <span className="brand-mark">Q</span>
@@ -30,7 +31,7 @@ export function AppShell({ children, current }: { children: ReactNode; current: 
         </nav>
         <Link href="/search" className="search-link">Search companies</Link>
       </header>
-      <main className="app-main">{children}</main>
+      <main id="main-content" className="app-main" tabIndex={-1}>{children}</main>
       <nav className="mobile-nav" aria-label="Primary navigation">
         {navigation.map((item) => (
           <Link

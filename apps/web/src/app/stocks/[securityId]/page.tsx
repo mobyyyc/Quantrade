@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { ResearchNotice } from "@/components/research-notice";
 import { formatPercentile, formatResearchDate, formatScore } from "@/lib/format";
 import { getDatedScore, getLatestDatedScores, getScoreExplanations, getSecurityIdentity, ResearchReadModelError, type DatedScore, type ScoreExplanation, type SecuritySearchResult } from "@/lib/research-read-model";
 
@@ -27,5 +28,6 @@ export default async function StockDetailPage({ params, searchParams }: { params
       <section className="content-section split-note"><div><p className="eyebrow">WHAT TO VERIFY</p><h2>Risk and freshness matter.</h2></div><p>Review data freshness, Tier B limitations, and the underlying methodology before using this research as a starting point for further investigation.</p></section>
       <section className="content-section chart-placeholder"><div><p className="eyebrow">PRICE CONTEXT</p><h2>Price context is not published yet.</h2></div><p>A dated chart will appear only when normalized price history is available through the product read model. No illustrative price line is substituted.</p></section>
     </> : <section className="empty-state"><p className="eyebrow">RESEARCH STATUS</p><h2>{unavailable ? "Research data is not connected." : "No dated score is available for this company."}</h2><p>{unavailable ? "Connect the normalized research database to load company identity, score evidence, and model context." : "Try another published score date from Rankings, or return to Search."}</p><Link href="/search" className="primary-link">Search companies</Link></section>}
+    <ResearchNotice />
   </AppShell>;
 }
