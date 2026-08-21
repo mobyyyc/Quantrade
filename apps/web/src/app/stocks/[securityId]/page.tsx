@@ -22,9 +22,8 @@ export default async function StockDetailPage({ params, searchParams }: { params
       if (score) explanations = await getScoreExplanations(securityId, scoreDate);
     }
   } catch (error) { unavailable = error instanceof ResearchReadModelError; }
-  const title = identity ? `${identity.ticker} · ${identity.issuerName}` : "Research detail";
   return <AppShell current="">
-    <section className="detail-header"><Link href="/search" className="back-link">← Search</Link><p className="eyebrow">STOCK DETAIL</p><h1>{title}</h1>{score ? <p className="lede">Research score for {formatResearchDate(score.scoreDate)}. It is a dated research view, not a trade instruction.</p> : <p className="lede">Real daily price history is available. A full research score will publish only after every required input passes its data-quality gate.</p>}</section>
+    <section className="detail-header"><Link href="/search" className="back-link">← Search</Link><p className="eyebrow">STOCK DETAIL</p>{identity ? <h1 className="stock-identity"><span className="stock-ticker">{identity.ticker}</span><span className="stock-company-name">{identity.issuerName}</span></h1> : <h1>Research detail</h1>}{score ? <p className="lede">Research score for {formatResearchDate(score.scoreDate)}. It is a dated research view, not a trade instruction.</p> : <p className="lede">Real daily price history is available. A full research score will publish only after every required input passes its data-quality gate.</p>}</section>
     {identity && <PriceChart points={priceHistory} ticker={identity.ticker} />}
     {score ? <>
       <section className="detail-score"><div><p className="eyebrow">RESEARCH SCORE</p><p className="anchor-score">{formatScore(score.score)}<span>/100</span></p><p className="quiet-copy">Rank {score.rank ?? "Unavailable"} · {score.signal} · Tier {score.dataCapabilityTier}</p></div><div className="detail-context"><span>Data cutoff</span><strong>{new Date(score.dataCutoffAt).toLocaleString("en-CA", { timeZone: "America/Toronto" })}</strong><span>Model</span><strong>{score.modelVersion}</strong></div></section>

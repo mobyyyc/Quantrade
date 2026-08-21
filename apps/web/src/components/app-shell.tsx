@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 const navigation = [
   { href: "/", label: "Today" },
   { href: "/rankings", label: "Rankings" },
-  { href: "/search", label: "Search" },
   { href: "/research", label: "Research" },
 ];
 
@@ -29,7 +28,16 @@ export function AppShell({ children, current }: { children: ReactNode; current: 
             </Link>
           ))}
         </nav>
-        <Link href="/search" className="search-link">Search companies</Link>
+        <form className="header-search" action="/search" role="search">
+          <label className="sr-only" htmlFor="header-search-query">Search companies</label>
+          <input
+            id="header-search-query"
+            name="query"
+            type="search"
+            placeholder="Search ticker or company"
+            autoComplete="off"
+          />
+        </form>
       </header>
       <main id="main-content" className="app-main" tabIndex={-1}>{children}</main>
       <nav className="mobile-nav" aria-label="Primary navigation">
