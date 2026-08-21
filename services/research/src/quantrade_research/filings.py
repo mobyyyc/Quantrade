@@ -69,7 +69,7 @@ class PostgresFilingRepository:
                         raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference
                        RETURNING filing_id""",
                     (security_id, filing.accession_number, filing.form, filing.filed_at, filing.accepted_at,
-                     filing.period_end, filing.filed_at, filing.accepted_at, ingested_at, raw_artifact_id, source_reference),
+                     filing.period_end, None, filing.accepted_at, ingested_at, raw_artifact_id, source_reference),
                 )
                 identifiers[filing.accession_number] = str(cursor.fetchone()[0])
         self._connection.commit()
@@ -91,7 +91,7 @@ class PostgresFilingRepository:
                     """,
                     (filing_ids[fact.accession_number], security_id, fact.taxonomy, fact.concept, fact.unit,
                      fact.value, fact.period_start, fact.period_end, fact.fiscal_year, fact.fiscal_period,
-                     fact.filed_at, filing.accepted_at, ingested_at, raw_artifact_id, source_reference),
+                     None, filing.accepted_at, ingested_at, raw_artifact_id, source_reference),
                 )
         self._connection.commit()
         return len(facts)

@@ -102,7 +102,8 @@ CREATE TABLE quantrade.filings (
     source_reference TEXT NOT NULL CHECK (length(source_reference) > 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (available_at >= accepted_at),
-    CHECK (filed_at >= accepted_at)
+    -- EDGAR filingDate is a filing-day label, not a timestamp that can be
+    -- ordered against acceptanceDateTime across time zones or midnight.
 );
 
 CREATE TABLE quantrade.filing_facts (
