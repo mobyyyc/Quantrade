@@ -47,6 +47,20 @@ class PostgresMarketDataRepository:
         )
         row = cursor.fetchone()
         if row is None:
+            # The Tier-B master represents the current universe, so its validity
+            # start is the ingestion date rather than the listing's historical
+            # start. Allow a current active listing to receive a historical
+            # backfill while retaining the dated lookup as the primary path.
+            cursor.execute(
+                """
+                SELECT security_id FROM quantrade.listings
+                WHERE ticker = %s AND valid_to IS NULL
+                ORDER BY valid_from DESC LIMIT 1
+                """,
+                (ticker,),
+            )
+            row = cursor.fetchone()
+        if row is None:
             raise ValueError(f"no active security-master listing for {ticker} on {on_date}")
         return row[0]
 
