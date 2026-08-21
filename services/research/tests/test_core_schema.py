@@ -71,6 +71,12 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("UNIQUE (score_snapshot_id, feature_key, feature_version)", sql)
         self.assertIn("prevent_score_explanation_mutation", sql)
 
+    def test_benchmark_bars_are_separate_from_common_stock_securities(self) -> None:
+        migration = MIGRATION.with_name("0011_add_benchmark_price_bars.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.benchmark_daily_price_bars", sql)
+        self.assertIn("PRIMARY KEY (benchmark_ticker, session_date, session, adjustment_basis)", sql)
+
     def test_holdout_and_experiment_governance_are_immutable(self) -> None:
         migration = MIGRATION.with_name("0007_add_experiment_governance.sql")
         sql = migration.read_text(encoding="utf-8")
