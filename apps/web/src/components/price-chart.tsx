@@ -79,9 +79,10 @@ export function PriceChart({ points, ticker }: PriceChartProps) {
         </defs>
         <path d={areaPath} fill={`url(#${gradientId})`} />
         <polyline points={path} fill="none" vectorEffect="non-scaling-stroke" />
-        {activePoint && <><line className="price-chart-guide" x1={activePoint.x} x2={activePoint.x} y1={inset} y2={height - inset} vectorEffect="non-scaling-stroke" /><circle className="price-chart-active-point" cx={activePoint.x} cy={activePoint.y} r="4.5" vectorEffect="non-scaling-stroke" /></>}
+        {activePoint && <line className="price-chart-guide" x1={activePoint.x} x2={activePoint.x} y1={inset} y2={height - inset} vectorEffect="non-scaling-stroke" />}
         <circle cx={lastPoint?.x} cy={lastPoint?.y} r="3.5" vectorEffect="non-scaling-stroke" />
       </svg>
+      {activePoint && <span className={`price-chart-active-dot ${direction}`} aria-hidden="true" style={{ left: `${(activePoint.x / width) * 100}%`, top: `${(activePoint.y / height) * 100}%` }} />}
       {activePoint && activePrice !== null && activeDate && <output className="price-chart-tooltip" style={{ left: `${(activePoint.x / width) * 100}%`, top: `${(activePoint.y / height) * 100}%` }}><strong>{formatPrice(activePrice)}</strong><span>{activeDate}</span></output>}
     </div>
     <div className="price-chart-range"><span>{start}</span><span>{end}</span></div>
