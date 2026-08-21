@@ -171,7 +171,10 @@ def parse_company_facts(payload: bytes, filings_by_accession: dict[str, SecFilin
                     if filing is None or not observation.get("end"):
                         continue
                     try:
-                        facts.append(SecFilingFact(accession, str(taxonomy), str(concept), str(unit), Decimal(str(observation["val"])), _optional_date(observation.get("start")), date.fromisoformat(str(observation["end"])), int(observation["fy"]) if observation.get("fy") is not None else None, str(observation["fp"]) if observation.get("fp") in {"FY", "Q1", "Q2", "Q3", "Q4"} else None, filing.filed_at))
+                        fiscal_year = int(observation["fy"]) if observation.get("fy") is not None else None
+                        if fiscal_year is not None and fiscal_year < 1900:
+                            fiscal_year = None
+                        facts.append(SecFilingFact(accession, str(taxonomy), str(concept), str(unit), Decimal(str(observation["val"])), _optional_date(observation.get("start")), date.fromisoformat(str(observation["end"])), fiscal_year, str(observation["fp"]) if observation.get("fp") in {"FY", "Q1", "Q2", "Q3", "Q4"} else None, filing.filed_at))
                     except (KeyError, ValueError, ArithmeticError) as error:
                         raise SecEdgarError("SEC company-facts observation is invalid") from error
     return facts
