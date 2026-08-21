@@ -24,7 +24,7 @@ The system rejects complicated stock screeners, generic trading terminals, crypt
 
 ## Colors
 
-The palette is restrained: dark warm neutrals carry the interface, while a single positive accent is reserved for meaningful movement and approved primary actions. Exact tokens are [to be resolved during implementation].
+The palette is nearly monochrome: an `#080808` canvas, neutral charcoal surfaces, quiet gray labels, and crisp white text create the working field. Green and red are reserved for actual positive and negative market movement; they are never decorative UI accents. Primary actions are white pills with black text. Surface separation uses `#111111`, `#161616`, and `#1C1C1C` with soft neutral borders, never blue or purple tints.
 
 **The Evidence-First Color Rule.** Color is never decoration or the sole carrier of meaning. Positive, negative, selected, warning, and neutral states always include text, symbols, or position as a second cue.
 
@@ -60,7 +60,7 @@ Components will be extracted after the first implementation. The initial compone
 
 ### Buttons
 
-- **Shape:** Confidently rounded, generous touch targets, and familiar text or icon labels.
+- **Shape:** Interactive controls use full-pill geometry, generous touch targets, and familiar text or icon labels. Major panels use 16 to 24 pixel radii.
 - **Primary:** Reserved for one clear action in a local context.
 - **Hover / Focus:** Immediate visible feedback and a strong keyboard focus indicator. Motion respects reduced-motion preferences.
 - **Secondary / Ghost:** Used for navigation, time ranges, and reversible secondary actions.
