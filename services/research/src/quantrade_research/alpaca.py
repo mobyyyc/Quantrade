@@ -8,6 +8,7 @@ from decimal import Decimal
 import json
 from typing import Any
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
@@ -17,6 +18,16 @@ ALPACA_CORPORATE_ACTIONS_URL = "https://data.alpaca.markets/v1/corporate-actions
 
 class AlpacaError(ValueError):
     pass
+
+
+def _alpaca_symbol(ticker: str) -> str:
+    """Translate the security-master share-class separator to Alpaca's notation."""
+    return ticker.upper().replace("-", ".")
+
+
+def _security_master_ticker(ticker: str) -> str:
+    """Translate Alpaca's share-class separator back to the master notation."""
+    return ticker.upper().replace(".", "-")
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,7 +86,7 @@ def parse_daily_bars(payload: bytes) -> tuple[list[AlpacaDailyBar], str | None]:
             timestamp = _parse_timestamp(value.get("t"))
             bars.append(
                 AlpacaDailyBar(
-                    ticker=ticker.upper(), session_date=timestamp.date(), observed_at=timestamp,
+                    ticker=_security_master_ticker(ticker), session_date=timestamp.date(), observed_at=timestamp,
                     open_price=_decimal(value.get("o"), "open"), high_price=_decimal(value.get("h"), "high"),
                     low_price=_decimal(value.get("l"), "low"), close_price=_decimal(value.get("c"), "close"),
                     volume=_decimal(value.get("v"), "volume"),
@@ -105,7 +116,7 @@ def parse_corporate_actions(payload: bytes) -> tuple[list[AlpacaCorporateAction]
                 raise AlpacaError("Alpaca corporate-actions response contains an invalid action")
             try:
                 action_id = str(value["id"])
-                ticker = str(value["symbol"]).upper()
+                ticker = _security_master_ticker(str(value["symbol"]))
                 process_date = date.fromisoformat(str(value["process_date"]))
             except (KeyError, ValueError) as error:
                 raise AlpacaError("corporate action is missing id, symbol, or process_date") from error
@@ -137,19 +148,23 @@ class AlpacaClient:
 
     def _fetch(self, url: str, parameters: dict[str, str]) -> bytes:
         request = Request(f"{url}?{urlencode(parameters)}", headers=self._headers)
-        with urlopen(request, timeout=self._timeout_seconds) as response:
-            if response.status != 200:
-                raise AlpacaError(f"Alpaca returned HTTP {response.status}")
-            return response.read()
+        try:
+            with urlopen(request, timeout=self._timeout_seconds) as response:
+                if response.status != 200:
+                    raise AlpacaError(f"Alpaca returned HTTP {response.status}")
+                return response.read()
+        except HTTPError as error:
+            detail = error.read().decode("utf-8", "replace").strip()
+            raise AlpacaError(f"Alpaca returned HTTP {error.code}: {detail[:500]}") from error
 
     def fetch_daily_bars(self, symbols: list[str], start: date, end: date, adjustment: str, page_token: str | None = None) -> bytes:
-        parameters = {"symbols": ",".join(symbols), "timeframe": "1Day", "start": start.isoformat(), "end": end.isoformat(), "adjustment": adjustment, "feed": "iex"}
+        parameters = {"symbols": ",".join(_alpaca_symbol(symbol) for symbol in symbols), "timeframe": "1Day", "start": start.isoformat(), "end": end.isoformat(), "adjustment": adjustment, "feed": "iex"}
         if page_token:
             parameters["page_token"] = page_token
         return self._fetch(ALPACA_BARS_URL, parameters)
 
     def fetch_corporate_actions(self, symbols: list[str], start: date, end: date, page_token: str | None = None) -> bytes:
-        parameters = {"symbols": ",".join(symbols), "start": start.isoformat(), "end": end.isoformat(), "region": "us", "data_quality": "complete"}
+        parameters = {"symbols": ",".join(_alpaca_symbol(symbol) for symbol in symbols), "start": start.isoformat(), "end": end.isoformat(), "region": "us", "data_quality": "complete"}
         if page_token:
             parameters["page_token"] = page_token
         return self._fetch(ALPACA_CORPORATE_ACTIONS_URL, parameters)

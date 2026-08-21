@@ -19,6 +19,12 @@ class AlpacaAdapterTests(unittest.TestCase):
         self.assertEqual(bars[0].session_date, date(2026, 8, 20))
         self.assertEqual(str(bars[0].close_price), "227.5")
 
+    def test_normalizes_alpaca_share_class_symbol(self) -> None:
+        payload = b'{"bars":{"BRK.B":[{"t":"2026-08-20T00:00:00Z","o":450,"h":455,"l":449,"c":454,"v":12345}]}}'
+        bars, token = parse_daily_bars(payload)
+        self.assertIsNone(token)
+        self.assertEqual(bars[0].ticker, "BRK-B")
+
     def test_parses_dividend_and_split_actions(self) -> None:
         payload = b'{"cash_dividends":[{"id":"div-1","symbol":"AAPL","process_date":"2026-08-20","ex_date":"2026-08-19","cash":"0.25"}],"forward_splits":[{"id":"split-1","symbol":"AAPL","process_date":"2026-08-20","ex_date":"2026-08-19","ratio":{"numerator":4,"denominator":1}}],"next_page_token":null}'
         actions, token = parse_corporate_actions(payload)
