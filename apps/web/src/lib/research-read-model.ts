@@ -31,6 +31,23 @@ export type ModelCard = {
   evaluationUri?: string;
 };
 
+export type SecuritySearchResult = {
+  securityId: string;
+  issuerName: string;
+  ticker: string;
+};
+
+export type ScoreExplanation = {
+  featureKey: string;
+  featureVersion: string;
+  sectorCode: string;
+  percentile?: string;
+  weight: string;
+  contribution?: string;
+  unavailableReason?: string;
+  displayName?: string;
+};
+
 export class ResearchReadModelError extends Error {
   constructor(
     message: string,
@@ -132,4 +149,87 @@ export async function getModelCard(modelVersion: string): Promise<ModelCard | nu
     limitations,
     ...(row.evaluation_uri ? { evaluationUri: String(row.evaluation_uri) } : {}),
   };
+}
+
+export async function getLatestDatedScores(): Promise<{
+  scoreDate: string;
+  scores: DatedScore[];
+} | null> {
+  const result = await databasePool().query<{ score_date: string }>(
+    "SELECT MAX(score_date)::text AS score_date FROM quantrade.score_snapshots",
+  );
+  const scoreDate = result.rows[0]?.score_date;
+  return scoreDate ? { scoreDate, scores: await listDatedScores(scoreDate) } : null;
+}
+
+export async function searchSecurities(query: string): Promise<SecuritySearchResult[]> {
+  const term = query.trim();
+  if (!term) {
+    return [];
+  }
+  const result = await databasePool().query(
+    `SELECT s.security_id, s.issuer_name, l.ticker
+     FROM quantrade.securities s
+     JOIN quantrade.listings l ON l.security_id = s.security_id
+     WHERE l.valid_to IS NULL
+       AND (l.ticker ILIKE $1 OR s.issuer_name ILIKE $1)
+     ORDER BY CASE WHEN l.ticker ILIKE $2 THEN 0 ELSE 1 END, l.ticker ASC
+     LIMIT 12`,
+    [`%${term}%`, `${term}%`],
+  );
+  return result.rows.map((row) => ({
+    securityId: String(row.security_id),
+    issuerName: String(row.issuer_name),
+    ticker: String(row.ticker),
+  }));
+}
+
+export async function getSecurityIdentity(securityId: string): Promise<SecuritySearchResult | null> {
+  const result = await databasePool().query(
+    `SELECT s.security_id, s.issuer_name, l.ticker
+     FROM quantrade.securities s
+     JOIN quantrade.listings l ON l.security_id = s.security_id
+     WHERE s.security_id = $1 AND l.valid_to IS NULL
+     ORDER BY l.valid_from DESC
+     LIMIT 1`,
+    [securityId],
+  );
+  if (result.rowCount === 0) {
+    return null;
+  }
+  const row = result.rows[0] as Record<string, unknown>;
+  return {
+    securityId: String(row.security_id),
+    issuerName: String(row.issuer_name),
+    ticker: String(row.ticker),
+  };
+}
+
+export async function getScoreExplanations(
+  securityId: string,
+  scoreDate: string,
+): Promise<ScoreExplanation[]> {
+  const result = await databasePool().query(
+    `SELECT e.feature_key, e.feature_version, e.sector_code, e.percentile, e.feature_weight,
+            e.contribution, e.unavailable_reason, d.display_name
+     FROM quantrade.score_explanations e
+     JOIN quantrade.score_snapshots s ON s.score_snapshot_id = e.score_snapshot_id
+     LEFT JOIN quantrade.feature_definitions d
+       ON d.feature_key = e.feature_key
+      AND d.feature_version = e.feature_version
+      AND d.definition_hash = e.definition_hash
+     WHERE s.security_id = $1 AND s.score_date = $2
+     ORDER BY e.contribution DESC NULLS LAST, e.feature_key ASC`,
+    [securityId, scoreDate],
+  );
+  return result.rows.map((row) => ({
+    featureKey: String(row.feature_key),
+    featureVersion: String(row.feature_version),
+    sectorCode: String(row.sector_code),
+    ...(row.percentile === null ? {} : { percentile: String(row.percentile) }),
+    weight: String(row.feature_weight),
+    ...(row.contribution === null ? {} : { contribution: String(row.contribution) }),
+    ...(row.unavailable_reason ? { unavailableReason: String(row.unavailable_reason) } : {}),
+    ...(row.display_name ? { displayName: String(row.display_name) } : {}),
+  }));
 }

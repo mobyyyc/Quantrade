@@ -35,3 +35,16 @@ P6.3 defines the private-beta navigation and language before product screens
 are built. `INFORMATION_ARCHITECTURE.md` assigns one job to each route, and
 `UI_CONTENT_RULES.md` prevents trade language, dense screener controls, hidden
 freshness, or unsupported performance claims.
+
+## Private-beta research views
+
+P6.4 implements the product routes described by the information architecture:
+
+- `/` for the latest research run and a concise shortlist
+- `/rankings?date=YYYY-MM-DD` for a dated list
+- `/search?query=...` for ticker or company discovery
+- `/stocks/:securityId?date=YYYY-MM-DD` for score evidence and limits
+- `/research` for methodology and model context
+
+When normalized research data is not connected, the app renders an explicit,
+useful unavailable state rather than invented sample scores or price charts.
