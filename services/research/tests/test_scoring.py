@@ -52,6 +52,16 @@ class EndOfDayScoreTests(unittest.TestCase):
                 changed, repository, score_date=SCORE_DATE, decision_at=DECISION, published_at=DECISION,
                 data_cutoff_at=DECISION, data_capability_tier="B",
             )
+
+    def test_allows_a_private_manual_run_after_market_close(self) -> None:
+        snapshots = generate_end_of_day_scores(
+            scores(), InMemoryScoreSnapshotRepository(), score_date=SCORE_DATE,
+            decision_at=datetime(2026, 8, 20, 20, 6, tzinfo=TORONTO),
+            published_at=datetime(2026, 8, 20, 20, 6, tzinfo=TORONTO),
+            data_cutoff_at=datetime(2026, 8, 20, 20, 6, tzinfo=TORONTO),
+            data_capability_tier="B", manual=True,
+        )
+        self.assertEqual(len(snapshots), 3)
         with self.assertRaisesRegex(DataQualityError, "8:00"):
             generate_end_of_day_scores(
                 scores(), InMemoryScoreSnapshotRepository(), score_date=SCORE_DATE,

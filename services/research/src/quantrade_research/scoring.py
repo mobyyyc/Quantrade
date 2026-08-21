@@ -113,14 +113,19 @@ class PostgresScoreSnapshotRepository:
         return inserted
 
 
-def _validate_schedule(score_date: date, decision_at: datetime, data_cutoff_at: datetime) -> None:
+def _validate_schedule(score_date: date, decision_at: datetime, data_cutoff_at: datetime, manual: bool) -> None:
     if decision_at.tzinfo is None or decision_at.utcoffset() is None:
         raise DataQualityError("decision timestamp must include a UTC offset")
     if data_cutoff_at.tzinfo is None or data_cutoff_at.utcoffset() is None:
         raise DataQualityError("data cutoff timestamp must include a UTC offset")
     local_decision = decision_at.astimezone(TORONTO)
-    if local_decision.date() != score_date or (local_decision.hour, local_decision.minute) != (20, 0):
-        raise DataQualityError("end-of-day scores must be generated at 8:00 p.m. America/Toronto")
+    if local_decision.date() != score_date:
+        raise DataQualityError("score decision timestamp must be on the score date in America/Toronto")
+    if manual:
+        if local_decision.hour < 16:
+            raise DataQualityError("manual end-of-day scores can run only after the regular market close")
+    elif (local_decision.hour, local_decision.minute) != (20, 0):
+        raise DataQualityError("scheduled end-of-day scores must be generated at 8:00 p.m. America/Toronto")
     if data_cutoff_at > decision_at:
         raise DataQualityError("data cutoff cannot be after the score decision timestamp")
 
@@ -135,9 +140,10 @@ def generate_end_of_day_scores(
     data_cutoff_at: datetime,
     data_capability_tier: str,
     protocol_version: str = PROTOCOL_VERSION,
+    manual: bool = False,
 ) -> tuple[GeneratedScoreSnapshot, ...]:
     """Generate idempotent score snapshots or reject conflicting repeats."""
-    _validate_schedule(score_date, decision_at, data_cutoff_at)
+    _validate_schedule(score_date, decision_at, data_cutoff_at, manual)
     if data_capability_tier not in ("A", "B", "C"):
         raise DataQualityError("data capability tier must be A, B, or C")
     if published_at.tzinfo is None or published_at.utcoffset() is None:

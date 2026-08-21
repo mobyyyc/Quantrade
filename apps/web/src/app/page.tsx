@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ResearchNotice } from "@/components/research-notice";
 import { ScoreList } from "@/components/score-list";
+import { DailyUpdateControl } from "@/components/daily-update-control";
 import { formatResearchDate, formatScore } from "@/lib/format";
 import { getLatestDatedScores, ResearchReadModelError } from "@/lib/research-read-model";
 
@@ -21,6 +22,7 @@ export default async function Home() {
         <h1>One calm place to start your research.</h1>
         <p className="lede">Review the latest dated score run, then open the evidence behind a name.</p>
       </section>
+      <DailyUpdateControl />
       {lead && latest ? (
         <>
           <section className="quant-view" aria-labelledby="quant-view-title">
