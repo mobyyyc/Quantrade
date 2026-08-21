@@ -37,6 +37,11 @@ export type SecuritySearchResult = {
   ticker: string;
 };
 
+export type DailyPricePoint = {
+  sessionDate: string;
+  closePrice: string;
+};
+
 export type ScoreExplanation = {
   featureKey: string;
   featureVersion: string;
@@ -203,6 +208,30 @@ export async function getSecurityIdentity(securityId: string): Promise<SecurityS
     issuerName: String(row.issuer_name),
     ticker: String(row.ticker),
   };
+}
+
+export async function getDailyPriceHistory(
+  securityId: string,
+  limit = 180,
+): Promise<DailyPricePoint[]> {
+  const result = await databasePool().query(
+    `SELECT session_date::text, close_price
+     FROM (
+       SELECT session_date, close_price
+       FROM quantrade.daily_price_bars
+       WHERE security_id = $1
+         AND adjustment_basis = 'split_adjusted'
+         AND session = 'regular'
+       ORDER BY session_date DESC
+       LIMIT $2
+     ) recent
+     ORDER BY session_date ASC`,
+    [securityId, limit],
+  );
+  return result.rows.map((row) => ({
+    sessionDate: String(row.session_date),
+    closePrice: String(row.close_price),
+  }));
 }
 
 export async function getScoreExplanations(
