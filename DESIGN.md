@@ -1,4 +1,3 @@
-<!-- SEED: re-run $impeccable document once there's code to capture the actual tokens and components. -->
 ---
 name: Quantrade
 description: A calm, evidence-led quantitative equity research companion.
@@ -16,7 +15,7 @@ The system rejects complicated stock screeners, generic trading terminals, crypt
 
 **Key Characteristics:**
 
-- Warm dark restraint, not generic navy-and-gold finance styling.
+- Near-black neutral restraint, not generic navy-and-gold finance styling.
 - One clear decision or insight per viewport.
 - Chart-led exploration with compact, touch-friendly time ranges.
 - Evidence and uncertainty shown together.
@@ -28,13 +27,16 @@ The palette is nearly monochrome: an `#080808` canvas, neutral charcoal surfaces
 
 **The Evidence-First Color Rule.** Color is never decoration or the sole carrier of meaning. Positive, negative, selected, warning, and neutral states always include text, symbols, or position as a second cue.
 
-**The One Accent Rule.** Green is rare and earned. It marks positive movement, approved opportunity, or the primary action. It must not flood a screen or make uncertain forecasts look assured.
+**The Directional Color Rule.** Green and red are rare and earned. They mark
+real positive or negative market movement only. Primary actions, navigation,
+headings, labels, and generic UI state use neutral tones.
 
 ## Typography
 
-**Display Font:** Single humanist or system sans [to be selected during implementation]
-**Body Font:** Same family [to be selected during implementation]
-**Label/Mono Font:** Tabular numerals and mono treatment only where numeric comparison benefits from it [to be selected during implementation]
+**Display Font:** Inter, then the operating-system sans-serif stack
+**Body Font:** Inter, then the operating-system sans-serif stack
+**Label/Mono Font:** Tabular numerals are enabled globally; the system mono
+stack is available where a code-like treatment is genuinely useful.
 
 **Character:** Large figures are calm anchors, not promotional hero metrics. Labels, supporting statistics, and explanation text remain practical, high-contrast, and easy to scan.
 
@@ -50,19 +52,38 @@ The palette is nearly monochrome: an `#080808` canvas, neutral charcoal surfaces
 
 ## Elevation
 
-Depth comes from tonal layering, crisp borders, and spatial separation, not floating glass surfaces. Surfaces are flat at rest. Elevation appears only where it clarifies an active control, a temporary sheet, or a focused comparison.
+Depth comes from tonal layering, crisp borders, and spatial separation, not
+glass surfaces. Elevation appears only where it clarifies an interactive
+control or a bounded modular surface.
 
-**The Calm Layer Rule.** If a panel needs a heavy shadow, blur, or glow to be recognizable, its hierarchy is wrong.
+**The Calm Layer Rule.** If a panel needs a heavy shadow, blur, or glow to be
+recognizable, its hierarchy is wrong.
+
+- **Primary white pill:** `0 4px 14px rgb(255 255 255 / .12)` plus a deep
+  occlusion shadow. Hover increases the aura only; it never moves the control.
+- **Dark pill:** an inset one-pixel white highlight and a restrained black
+  occlusion shadow. Selected navigation adds a subtle perimeter border.
+- **Surface panel:** `0 10px 30px -10px rgb(0 0 0 / .8)` with a faint inset
+  white highlight. This applies to grouped rows, forms, empty states, and
+  modular detail panels.
 
 ## Components
 
-Components will be extracted after the first implementation. The initial component vocabulary is intentionally small: primary and quiet buttons, search, segmented time ranges, score/risk status labels, data rows, chart tooltips, watchlist rows, and progressive-disclosure sections.
+The component vocabulary is intentionally small: primary and quiet buttons,
+search, score/risk status labels, grouped data rows, and
+progressive-disclosure sections.
 
 ### Buttons
 
 - **Shape:** Interactive controls use full-pill geometry, generous touch targets, and familiar text or icon labels. Major panels use 16 to 24 pixel radii.
 - **Primary:** Reserved for one clear action in a local context.
-- **Hover / Focus:** Immediate visible feedback and a strong keyboard focus indicator. Motion respects reduced-motion preferences.
+- **Hover / Focus:** Hover may change color, border luminance, or shadow only.
+  It never translates, scales, or changes text geometry. Keyboard focus uses a
+  two-pixel translucent white outline with a three-pixel offset.
+- **Pressed:** Pressed controls reduce only their shadow. They never scale,
+  preventing text or layout jitter while a pointer button is held.
+- **Cursor:** Links and buttons always use the pointer cursor. Text fields
+  retain the native text cursor.
 - **Secondary / Ghost:** Used for navigation, time ranges, and reversible secondary actions.
 
 ### Cards / Containers
@@ -75,7 +96,10 @@ Components will be extracted after the first implementation. The initial compone
 
 - Standard, predictable routes for Home, Search, Watchlist, and Research.
 - Mobile navigation is thumb-friendly. Desktop navigation favors directness and does not imitate a mobile bottom bar literally.
-- Current location is visible through more than color alone.
+- Current location is visible through more than color alone: white text,
+  a neutral selected surface, and a subtle perimeter border.
+- Unselected navigation items are plain text controls without pill frames;
+  the pill treatment is reserved for the selected route.
 
 ### Signature Component
 
