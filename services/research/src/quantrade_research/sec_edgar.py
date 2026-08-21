@@ -83,13 +83,13 @@ def parse_company_tickers_exchange(payload: bytes) -> list[SecTickerAssociation]
         if not isinstance(row, list) or len(row) != 4:
             raise SecEdgarError("SEC ticker/exchange payload contains an invalid row")
         cik, name, ticker, exchange = row
-        if not all(isinstance(value, (str, int)) for value in row):
+        if not all(isinstance(value, (str, int)) for value in (cik, name, ticker)) or exchange is not None and not isinstance(exchange, (str, int)):
             raise SecEdgarError("SEC ticker/exchange payload contains a non-scalar value")
         cik_text = str(cik).zfill(10)
         if not cik_text.isdigit() or not str(name).strip() or not str(ticker).strip():
             raise SecEdgarError("SEC ticker/exchange payload contains an invalid association")
         associations.append(
-            SecTickerAssociation(cik_text, str(name).strip(), str(ticker).strip(), str(exchange).strip())
+            SecTickerAssociation(cik_text, str(name).strip(), str(ticker).strip(), str(exchange or "").strip())
         )
     return associations
 

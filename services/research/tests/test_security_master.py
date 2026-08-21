@@ -52,6 +52,12 @@ class SecurityMasterTests(unittest.TestCase):
         with self.assertRaises(SecEdgarError):
             parse_company_tickers_exchange(b'{"fields":["cik"],"data":[]}')
 
+    def test_allows_a_missing_exchange_as_an_unmapped_row(self) -> None:
+        associations = parse_company_tickers_exchange(b'{"fields":["cik","name","ticker","exchange"],"data":[[320193,"APPLE INC","AAPL",null]]}')
+        rows, unmapped = normalize_security_master(associations, date(2026, 8, 20))
+        self.assertFalse(rows)
+        self.assertEqual(unmapped[0].ticker, "AAPL")
+
     def test_persists_snapshot_with_auditable_report(self) -> None:
         payload = b'{"fields":["cik","name","ticker","exchange"],"data":[[320193,"APPLE INC","AAPL","Nasdaq"]]}'
         rows, unmapped = normalize_security_master(
