@@ -37,6 +37,7 @@ export function PriceChart({ points, ticker }: PriceChartProps) {
   const firstPoint = coordinates[0];
   const change = ((last - first) / first) * 100;
   const direction = change >= 0 ? "positive-change" : "negative-change";
+  const directionColor = change >= 0 ? "#22c55e" : "#ef4444";
   const gradientId = `price-gradient-${ticker.replaceAll(/[^a-z0-9]/gi, "-").toLowerCase()}`;
   const areaPath = `M ${coordinates.map(({ x, y }) => `${x} ${y}`).join(" L ")} L ${lastPoint?.x} ${height - inset} L ${firstPoint.x} ${height - inset} Z`;
   const start = new Date(`${points[0].sessionDate}T00:00:00Z`).toLocaleDateString("en-CA", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -49,9 +50,9 @@ export function PriceChart({ points, ticker }: PriceChartProps) {
     </div>
     <svg className={`price-chart ${direction}`} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${ticker} moved from ${formatPrice(first)} to ${formatPrice(last)} between ${start} and ${end}, a ${change >= 0 ? "gain" : "loss"} of ${Math.abs(change).toFixed(2)} percent.`} preserveAspectRatio="none">
       <defs>
-        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" className="price-chart-gradient-start" />
-          <stop offset="100%" className="price-chart-gradient-end" />
+        <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1="0" x2="0" y1={inset} y2={height - inset}>
+          <stop offset="0%" stopColor={directionColor} stopOpacity="0.24" />
+          <stop offset="100%" stopColor={directionColor} stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={areaPath} fill={`url(#${gradientId})`} />
