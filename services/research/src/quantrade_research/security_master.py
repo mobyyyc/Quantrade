@@ -138,29 +138,14 @@ class PostgresSecurityMasterRepository:
 
             cursor.execute(
                 """
-                SELECT listing_id, ticker, exchange_mic, valid_from FROM quantrade.listings
-                WHERE security_id = %s AND valid_to IS NULL
-                ORDER BY valid_from DESC LIMIT 1
+                SELECT listing_id FROM quantrade.listings
+                WHERE security_id = %s AND ticker = %s AND exchange_mic = %s AND valid_to IS NULL
+                LIMIT 1
                 """,
-                (security_id,),
+                (security_id, row.ticker, row.exchange_mic),
             )
             current = cursor.fetchone()
             if current is None:
-                self._insert_listing(cursor, security_id, row, raw_artifact_id, source_reference, ingested_at)
-            elif current[1] == row.ticker and current[2] == row.exchange_mic:
-                pass
-            elif current[3] == row.snapshot_date:
-                cursor.execute(
-                    """
-                    UPDATE quantrade.listings
-                    SET ticker = %s, exchange_mic = %s, raw_artifact_id = %s,
-                        source_reference = %s, ingested_at = %s
-                    WHERE listing_id = %s
-                    """,
-                    (row.ticker, row.exchange_mic, raw_artifact_id, source_reference, ingested_at, current[0]),
-                )
-            else:
-                cursor.execute("UPDATE quantrade.listings SET valid_to = %s WHERE listing_id = %s", (row.snapshot_date, current[0]))
                 self._insert_listing(cursor, security_id, row, raw_artifact_id, source_reference, ingested_at)
         self._connection.commit()
 
