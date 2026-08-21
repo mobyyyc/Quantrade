@@ -6,7 +6,10 @@ It is a research and decision-support tool. It does not provide personalized inv
 
 ## Status
 
-Planning and research setup. Application implementation has not started.
+Private-beta application, research pipeline, and operational safeguards are
+implemented. Real-data operation still requires a configured PostgreSQL
+database, durable artifact storage, and the free-provider credentials described
+in `.env.example`.
 
 ## Guiding documents
 
@@ -20,6 +23,9 @@ Planning and research setup. Application implementation has not started.
 - [Experiment protocol](EXPERIMENT_PROTOCOL.md)
 - [Free-data provider audit](FREE_DATA_AUDIT.md)
 - [Data capability decision](DATA_CAPABILITY_DECISION.md)
+- [Operational monitoring](OPERATIONAL_MONITORING.md)
+- [Recovery runbook](RECOVERY_RUNBOOK.md)
+- [Release runbook](RELEASE_RUNBOOK.md)
 
 ## Initial V1 direction
 

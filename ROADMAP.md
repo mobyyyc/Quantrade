@@ -60,6 +60,6 @@ Each item is intended to fit a focused development session. A negative research 
 ## Phase 7: operations and expansion
 
 - [x] P7.1: monitor data freshness, failures, and score anomalies.
-- P7.2: write recovery and release runbooks.
+- [x] P7.2: write recovery and release runbooks.
 - P7.3: add private watchlists and paper portfolio only after V1 stability.
 - P7.4: research sentiment or paid data as isolated, gated additions.
