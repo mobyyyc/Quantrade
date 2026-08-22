@@ -74,6 +74,26 @@ class FundamentalFeatureTests(unittest.TestCase):
                 security_id="security-a", formation_date=FORMATION, decision_at=DECISION,
             )
 
+    def test_aligns_beginning_assets_to_the_preceding_reported_balance_sheet_date(self) -> None:
+        facts = inputs()[0:2] + [
+            fact("us-gaap", "Assets", "1000", PERIOD_START - timedelta(days=1)),
+            inputs()[-1],
+        ]
+        roa = calculate_return_on_assets_ttm(
+            facts, security_id="security-a", formation_date=FORMATION, decision_at=DECISION
+        )
+        self.assertEqual(roa.value, Decimal("120") / Decimal("1200"))
+
+    def test_rejects_beginning_assets_outside_the_fiscal_calendar_alignment_tolerance(self) -> None:
+        facts = inputs()[0:2] + [
+            fact("us-gaap", "Assets", "1000", PERIOD_START - timedelta(days=8)),
+            inputs()[-1],
+        ]
+        with self.assertRaisesRegex(DataQualityError, "annual-period start"):
+            calculate_return_on_assets_ttm(
+                facts, security_id="security-a", formation_date=FORMATION, decision_at=DECISION
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

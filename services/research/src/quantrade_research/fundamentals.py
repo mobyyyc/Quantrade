@@ -14,6 +14,7 @@ from .quality import DataQualityError, assert_available_as_of
 
 ANNUAL_MIN_DAYS = 330
 ANNUAL_MAX_DAYS = 370
+ASSET_PERIOD_ALIGNMENT_TOLERANCE_DAYS = 7
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,7 +202,11 @@ def calculate_return_on_assets_ttm(
         unit="USD",
     )
     beginning_assets = _latest(
-        (fact for fact in assets if fact.period_end == net_income.period_start),
+        (
+            fact
+            for fact in assets
+            if 0 <= (net_income.period_start - fact.period_end).days <= ASSET_PERIOD_ALIGNMENT_TOLERANCE_DAYS
+        ),
         label="total assets at annual-period start",
     )
     ending_assets = _latest(
