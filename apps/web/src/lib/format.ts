@@ -21,3 +21,25 @@ export function formatScore(value: string): string {
 export function formatPercentile(value?: string): string {
   return value ? `${Math.round(Number(value) * 100)}th percentile` : "Unavailable";
 }
+
+export function formatUsdPrice(value: string | number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+}
+
+export function formatPriceChange(closePrice: string, previousClosePrice?: string): { amount: string; percent: string; direction: "positive" | "negative" } | null {
+  if (!previousClosePrice) return null;
+  const close = Number(closePrice);
+  const previous = Number(previousClosePrice);
+  if (!Number.isFinite(close) || !Number.isFinite(previous) || previous === 0) return null;
+  const change = close - previous;
+  const percent = (change / previous) * 100;
+  return {
+    amount: `${change >= 0 ? "+" : "−"}${formatUsdPrice(Math.abs(change))}`,
+    percent: `${change >= 0 ? "+" : "−"}${Math.abs(percent).toFixed(2)}%`,
+    direction: change >= 0 ? "positive" : "negative",
+  };
+}

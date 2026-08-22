@@ -6,6 +6,8 @@ import { WatchlistPreview } from "@/components/watchlist-preview";
 import { formatResearchDate, formatScore } from "@/lib/format";
 import { getLatestDatedScores, ResearchReadModelError } from "@/lib/research-read-model";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   let latest: Awaited<ReturnType<typeof getLatestDatedScores>> = null;
   let unavailable = false;

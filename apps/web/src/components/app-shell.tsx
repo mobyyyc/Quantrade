@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { GlobalSearch } from "@/components/global-search";
 import { MobileSidebarNav } from "@/components/mobile-sidebar-nav";
 
 const navigation = [
@@ -33,16 +34,7 @@ export function AppShell({ children, current }: { children: ReactNode; current: 
             </Link>
           ))}
         </nav>
-        <form className="header-search" action="/search" role="search">
-          <label className="sr-only" htmlFor="header-search-query">Search companies</label>
-          <input
-            id="header-search-query"
-            name="query"
-            type="search"
-            placeholder="Search ticker or company"
-            autoComplete="off"
-          />
-        </form>
+        <GlobalSearch />
       </header>
       <main id="main-content" className="app-main" tabIndex={-1}>{children}</main>
     </div>

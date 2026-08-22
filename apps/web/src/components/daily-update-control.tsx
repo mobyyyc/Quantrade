@@ -9,7 +9,7 @@ export function DailyUpdateControl() {
   const [message, setMessage] = useState("");
   async function runUpdate() {
     setStatus("running");
-    setMessage("Fetching prices and calculating today’s research scores. This can take a few minutes.");
+    setMessage("Update in progress: current prices are being checked, then eligible scores will be published.");
     try {
       const response = await fetch("/api/v1/operations/daily-update", { method: "POST" });
       const body = await response.json() as { message?: string; error?: string };
@@ -22,8 +22,8 @@ export function DailyUpdateControl() {
       setMessage(error instanceof Error ? error.message : "The daily update did not complete.");
     }
   }
-  return <section className="daily-update-control" aria-labelledby="daily-update-title">
-    <div><p className="eyebrow">PRIVATE OPERATIONS</p><h2 id="daily-update-title">Refresh today’s research</h2><p>After market close, fetch current prices and calculate the latest evidence-backed scores.</p></div>
+  return <section className="daily-update-control" aria-labelledby="daily-update-title" aria-busy={status === "running"}>
+    <div><p className="eyebrow">PRIVATE OPERATIONS</p><h2 id="daily-update-title">Refresh today’s research</h2><p>After market close, validate current prices, calculate eligible scores, then publish the dated result.</p></div>
     <div className="daily-update-action"><button type="button" className="primary-link" onClick={runUpdate} disabled={status === "running"}>{status === "running" ? "Updating…" : "Run daily update"}</button>{status !== "idle" && <p className={`daily-update-message ${status}`} role="status">{message}</p>}</div>
   </section>;
 }

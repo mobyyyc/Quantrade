@@ -46,6 +46,19 @@ export type DailyPricePoint = {
   closePrice: string;
 };
 
+export type LatestPriceSummary = {
+  securityId: string;
+  sessionDate: string;
+  closePrice: string;
+  previousClosePrice?: string;
+};
+
+export type ScoreRunSummary = {
+  scoreDate: string;
+  publishedAt?: string;
+  eligibleCount: number;
+};
+
 export type ScoreExplanation = {
   featureKey: string;
   featureVersion: string;
@@ -193,6 +206,23 @@ export async function getLatestDatedScores(): Promise<{
   return scoreDate ? { scoreDate, scores: await listDatedScores(scoreDate) } : null;
 }
 
+export async function getRecentScoreRuns(limit = 5): Promise<ScoreRunSummary[]> {
+  const result = await databasePool().query(
+    `SELECT score_date::text AS score_date, MAX(published_at) AS published_at,
+            COUNT(*) FILTER (WHERE eligible) AS eligible_count
+     FROM quantrade.score_snapshots
+     GROUP BY score_date
+     ORDER BY score_date DESC
+     LIMIT $1`,
+    [limit],
+  );
+  return result.rows.map((row) => ({
+    scoreDate: String(row.score_date),
+    ...(row.published_at ? { publishedAt: new Date(String(row.published_at)).toISOString() } : {}),
+    eligibleCount: Number(row.eligible_count),
+  }));
+}
+
 export async function getLatestPaperPortfolio(): Promise<PaperPortfolio | null> {
   const result = await databasePool().query("SELECT paper_portfolio_run_id, score_date::text, execution_date::text, starting_nav FROM quantrade.paper_portfolio_runs ORDER BY score_date DESC LIMIT 1");
   if (!result.rowCount) return null;
@@ -270,6 +300,35 @@ export async function getDailyPriceHistory(
   return result.rows.map((row) => ({
     sessionDate: String(row.session_date),
     closePrice: String(row.close_price),
+  }));
+}
+
+export async function getLatestPriceSummaries(securityIds: string[]): Promise<LatestPriceSummary[]> {
+  if (!securityIds.length) return [];
+  const result = await databasePool().query(
+    `WITH recent_prices AS (
+       SELECT security_id, session_date, close_price,
+              ROW_NUMBER() OVER (PARTITION BY security_id ORDER BY session_date DESC) AS position
+       FROM quantrade.daily_price_bars
+       WHERE security_id = ANY($1::uuid[])
+         AND adjustment_basis = 'split_adjusted'
+         AND session = 'regular'
+     )
+     SELECT security_id,
+            MAX(session_date) FILTER (WHERE position = 1)::text AS session_date,
+            MAX(close_price) FILTER (WHERE position = 1) AS close_price,
+            MAX(close_price) FILTER (WHERE position = 2) AS previous_close_price
+     FROM recent_prices
+     WHERE position <= 2
+     GROUP BY security_id
+     ORDER BY security_id`,
+    [securityIds],
+  );
+  return result.rows.map((row) => ({
+    securityId: String(row.security_id),
+    sessionDate: String(row.session_date),
+    closePrice: String(row.close_price),
+    ...(row.previous_close_price === null ? {} : { previousClosePrice: String(row.previous_close_price) }),
   }));
 }
 

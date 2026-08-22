@@ -53,6 +53,9 @@
   users save a company from its stock detail.
 - Use a contextual overflow menu for destructive watchlist actions. Removal must
   offer a visible Undo path and cannot be the dominant row action.
+- Watchlist rows may show the latest regular-session close and one-session
+  dollar/percentage change when the normalized market-data record is available.
+  If it is unavailable, state that plainly rather than inferring an intraday price.
 - Do not repeat the complete research disclaimer on every page. Put dated score
   context next to the score, and retain the full limitations discussion on
   Research.
