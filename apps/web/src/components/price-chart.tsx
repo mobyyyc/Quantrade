@@ -59,7 +59,6 @@ export function PriceChart({ points, ticker }: PriceChartProps) {
         </defs>
         <path d={areaPath} fill={`url(#${gradientId})`} />
         <polyline points={path} fill="none" vectorEffect="non-scaling-stroke" />
-        <circle cx={lastPoint?.x} cy={lastPoint?.y} r="3.5" vectorEffect="non-scaling-stroke" />
       </svg>
     </div>
     <div className="price-chart-range"><span>{start}</span><span>{end}</span></div>
