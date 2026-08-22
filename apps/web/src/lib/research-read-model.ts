@@ -39,6 +39,8 @@ export type SecuritySearchResult = {
   ticker: string;
 };
 
+export type PaperPortfolio = { scoreDate: string; executionDate: string; startingNav: string; positions: Array<{ securityId: string; ticker: string; issuerName: string; quantity: string }> };
+
 export type DailyPricePoint = {
   sessionDate: string;
   closePrice: string;
@@ -189,6 +191,14 @@ export async function getLatestDatedScores(): Promise<{
   );
   const scoreDate = result.rows[0]?.score_date;
   return scoreDate ? { scoreDate, scores: await listDatedScores(scoreDate) } : null;
+}
+
+export async function getLatestPaperPortfolio(): Promise<PaperPortfolio | null> {
+  const result = await databasePool().query("SELECT paper_portfolio_run_id, score_date::text, execution_date::text, starting_nav FROM quantrade.paper_portfolio_runs ORDER BY score_date DESC LIMIT 1");
+  if (!result.rowCount) return null;
+  const row = result.rows[0] as Record<string, unknown>;
+  const positions = await databasePool().query("SELECT p.security_id, p.quantity, s.issuer_name, l.ticker FROM quantrade.paper_portfolio_positions p JOIN quantrade.securities s ON s.security_id = p.security_id LEFT JOIN LATERAL (SELECT ticker FROM quantrade.listings WHERE security_id = p.security_id AND valid_to IS NULL ORDER BY valid_from DESC LIMIT 1) l ON TRUE WHERE p.paper_portfolio_run_id = $1 ORDER BY l.ticker", [row.paper_portfolio_run_id]);
+  return { scoreDate: String(row.score_date), executionDate: String(row.execution_date), startingNav: String(row.starting_nav), positions: positions.rows.map((item) => ({ securityId: String(item.security_id), ticker: item.ticker ? String(item.ticker) : "Unavailable", issuerName: String(item.issuer_name), quantity: String(item.quantity) })) };
 }
 
 export async function searchSecurities(query: string): Promise<SecuritySearchResult[]> {
