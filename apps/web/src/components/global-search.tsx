@@ -23,7 +23,8 @@ export function GlobalSearch() {
       id="header-search-query"
       name="query"
       type="search"
-      placeholder="Search ticker or company"
+      placeholder="Search companies · Ctrl/⌘ K"
+      aria-label="Search companies. Press Control or Command K to focus search."
       autoComplete="off"
       enterKeyHint="search"
     />
