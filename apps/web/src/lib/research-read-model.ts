@@ -197,11 +197,16 @@ export async function searchSecurities(query: string): Promise<SecuritySearchRes
     return [];
   }
   const result = await databasePool().query(
-    `SELECT s.security_id, s.issuer_name, l.ticker
+    `WITH current_listings AS (
+       SELECT DISTINCT ON (security_id) security_id, ticker
+       FROM quantrade.listings
+       WHERE valid_to IS NULL
+       ORDER BY security_id, valid_from DESC
+     )
+     SELECT s.security_id, s.issuer_name, l.ticker
      FROM quantrade.securities s
-     JOIN quantrade.listings l ON l.security_id = s.security_id
-     WHERE l.valid_to IS NULL
-       AND (l.ticker ILIKE $1 OR s.issuer_name ILIKE $1)
+     JOIN current_listings l ON l.security_id = s.security_id
+     WHERE l.ticker ILIKE $1 OR s.issuer_name ILIKE $1
      ORDER BY CASE WHEN l.ticker ILIKE $2 THEN 0 ELSE 1 END, l.ticker ASC
      LIMIT 12`,
     [`%${term}%`, `${term}%`],
