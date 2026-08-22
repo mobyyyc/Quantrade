@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { DatedScore } from "@/lib/research-read-model";
 import { formatScore } from "@/lib/format";
 
-export function ScoreList({ scores, limit }: { scores: DatedScore[]; limit?: number }) {
+export function ScoreList({ scores, limit, from = "rankings" }: { scores: DatedScore[]; limit?: number; from?: "today" | "rankings" }) {
   const rows = limit ? scores.slice(0, limit) : scores;
   if (!rows.length) {
     return <p className="quiet-copy">No eligible research scores were published for this date.</p>;
@@ -14,7 +14,7 @@ export function ScoreList({ scores, limit }: { scores: DatedScore[]; limit?: num
           <span className="rank-number">{score.rank ?? "Unavailable"}</span>
           <div className="score-row-main">
             <Link
-              href={`/stocks/${score.securityId}?date=${score.scoreDate}`}
+              href={`/stocks/${score.securityId}?date=${score.scoreDate}&from=${from}`}
               className="score-row-link"
               aria-label={`Open research detail for ${score.ticker}`}
             >

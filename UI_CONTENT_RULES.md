@@ -49,6 +49,13 @@
   as `View evidence`, `Open research`, and `Read methodology`.
 - Use consistent labels across views: `Research score`, `Why it appears`,
   `What to verify`, `Data freshness`, and `Methodology`.
+- Keep company search global. Watchlist does not duplicate a second search field;
+  users save a company from its stock detail.
+- Use a contextual overflow menu for destructive watchlist actions. Removal must
+  offer a visible Undo path and cannot be the dominant row action.
+- Do not repeat the complete research disclaimer on every page. Put dated score
+  context next to the score, and retain the full limitations discussion on
+  Research.
 
 ## Accessibility and presentation
 

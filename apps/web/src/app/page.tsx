@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { ResearchNotice } from "@/components/research-notice";
 import { ScoreList } from "@/components/score-list";
 import { DailyUpdateControl } from "@/components/daily-update-control";
+import { WatchlistPreview } from "@/components/watchlist-preview";
 import { formatResearchDate, formatScore } from "@/lib/format";
 import { getLatestDatedScores, ResearchReadModelError } from "@/lib/research-read-model";
 
@@ -19,25 +19,27 @@ export default async function Home() {
     <AppShell current="/">
       <section className="page-intro">
         <p className="eyebrow">TODAY</p>
-        <h1>One calm place to start your research.</h1>
-        <p className="lede">Review the latest dated score run, then open the evidence behind a name.</p>
+        <h1>{latest ? `Research for ${formatResearchDate(latest.scoreDate)}.` : "Your research is waiting."}</h1>
+        <p className="lede">{latest ? "Published research context, ready for inspection." : "Start with the current evidence when the next dated run is published."}</p>
       </section>
-      <DailyUpdateControl />
       {lead && latest ? (
         <>
           <section className="quant-view" aria-labelledby="quant-view-title">
             <div>
-              <p className="eyebrow">PUBLISHED {formatResearchDate(latest.scoreDate)}</p>
-              <h2 id="quant-view-title">Research score</h2>
+              <p className="eyebrow">LEAD RESEARCH CANDIDATE</p>
+              <h2 id="quant-view-title">{lead.ticker}</h2>
               <p className="anchor-score">{formatScore(lead.score)}<span>/100</span></p>
-              <p className="quiet-copy">Rank {lead.rank} of {latest.scores.filter((score) => score.eligible).length} eligible names. Tier {lead.dataCapabilityTier} research data.</p>
+              <p className="quiet-copy">Rank {lead.rank} of {latest.scores.filter((score) => score.eligible).length} eligible names. {lead.signal} research score, Tier {lead.dataCapabilityTier} data.</p>
             </div>
-            <Link href={`/stocks/${lead.securityId}?date=${lead.scoreDate}`} className="primary-link">View evidence</Link>
+            <Link href={`/stocks/${lead.securityId}?date=${lead.scoreDate}&from=today`} className="primary-link">View evidence</Link>
           </section>
-          <section className="content-section">
-            <div className="section-heading"><div><p className="eyebrow">SHORTLIST</p><h2>Research candidates</h2></div><Link href={`/rankings?date=${latest.scoreDate}`} className="text-link">View all rankings</Link></div>
-            <ScoreList scores={latest.scores.filter((score) => score.eligible)} limit={5} />
-          </section>
+          <div className="today-grid">
+            <section className="content-section today-candidates">
+              <div className="section-heading"><div><p className="eyebrow">SHORTLIST</p><h2>Research candidates</h2></div><Link href={`/rankings?date=${latest.scoreDate}`} className="text-link">View rankings</Link></div>
+              <ScoreList scores={latest.scores.filter((score) => score.eligible)} limit={5} from="today" />
+            </section>
+            <WatchlistPreview scores={latest.scores} scoreDate={latest.scoreDate} />
+          </div>
         </>
       ) : (
         <section className="empty-state">
@@ -47,7 +49,7 @@ export default async function Home() {
           <Link href="/research" className="primary-link">Read methodology</Link>
         </section>
       )}
-      <ResearchNotice />
+      <DailyUpdateControl />
     </AppShell>
   );
 }

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { MobileSidebarNav } from "@/components/mobile-sidebar-nav";
 
 const navigation = [
   { href: "/", label: "Today" },
   { href: "/rankings", label: "Rankings" },
-  { href: "/portfolio", label: "Portfolio" },
+  { href: "/watchlist", label: "Watchlist" },
   { href: "/research", label: "Research" },
 ];
 
@@ -13,10 +14,13 @@ export function AppShell({ children, current }: { children: ReactNode; current: 
     <div className="app-frame">
       <a className="skip-link" href="#main-content">Skip to research content</a>
       <header className="topbar">
-        <Link href="/" className="brand" aria-label="Quantrade, Today">
-          <span className="brand-mark">Q</span>
-          <span>Quantrade</span>
-        </Link>
+        <div className="topbar-brand">
+          <MobileSidebarNav navigation={navigation} current={current} />
+          <Link href="/" className="brand" aria-label="Quantrade, Today">
+            <span className="brand-mark">Q</span>
+            <span>Quantrade</span>
+          </Link>
+        </div>
         <nav className="desktop-nav" aria-label="Primary navigation">
           {navigation.map((item) => (
             <Link
@@ -41,18 +45,6 @@ export function AppShell({ children, current }: { children: ReactNode; current: 
         </form>
       </header>
       <main id="main-content" className="app-main" tabIndex={-1}>{children}</main>
-      <nav className="mobile-nav" aria-label="Primary navigation">
-        {navigation.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={current === item.href ? "page" : undefined}
-            className={current === item.href ? "mobile-nav-link mobile-nav-link-active" : "mobile-nav-link"}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
     </div>
   );
 }

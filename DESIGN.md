@@ -94,8 +94,11 @@ progressive-disclosure sections.
 
 ### Navigation
 
-- Standard, predictable routes for Home, Search, Watchlist, and Research.
-- Mobile navigation is thumb-friendly. Desktop navigation favors directness and does not imitate a mobile bottom bar literally.
+- Standard, predictable routes for Today, Rankings, Watchlist, and Research.
+  Search is a persistent affordance, not a primary destination.
+- Mobile navigation uses a left-side drawer, preserving enough room for future
+  destinations without compressing a bottom bar. Desktop navigation favors
+  directness.
 - Current location is visible through more than color alone: white text,
   a neutral selected surface, and a subtle perimeter border.
 - Unselected navigation items are plain text controls without pill frames;
