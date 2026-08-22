@@ -99,7 +99,7 @@ function scoreFromRow(row: Record<string, unknown>): DatedScore {
 
 export async function listDatedScores(scoreDate: string): Promise<DatedScore[]> {
   const result = await databasePool().query(
-    `SELECT score_snapshot_id, security_id, score_date, decision_at, published_at, score, rank,
+    `SELECT score_snapshot_id, security_id, score_date::text AS score_date, decision_at, published_at, score, rank,
             eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at,
             data_capability_tier, unavailable_reason
      FROM quantrade.score_snapshots
@@ -115,7 +115,7 @@ export async function getDatedScore(
   scoreDate: string,
 ): Promise<DatedScore | null> {
   const result = await databasePool().query(
-    `SELECT score_snapshot_id, security_id, score_date, decision_at, published_at, score, rank,
+    `SELECT score_snapshot_id, security_id, score_date::text AS score_date, decision_at, published_at, score, rank,
             eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at,
             data_capability_tier, unavailable_reason
      FROM quantrade.score_snapshots

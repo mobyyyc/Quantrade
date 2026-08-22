@@ -1,10 +1,17 @@
 export function formatResearchDate(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return "Unavailable";
+  }
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) {
+    return "Unavailable";
+  }
   return new Intl.DateTimeFormat("en-CA", {
     month: "short",
     day: "numeric",
     year: "numeric",
     timeZone: "UTC",
-  }).format(new Date(`${value}T00:00:00Z`));
+  }).format(date);
 }
 
 export function formatScore(value: string): string {
