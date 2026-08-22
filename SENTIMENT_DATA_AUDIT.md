@@ -33,4 +33,3 @@ Re-open this audit only when a source provides all of the following:
 
 - Stocktwits, [developer status](https://api.stocktwits.com/developers).
 - Reddit, [Data API Terms](https://redditinc.com/policies/data-api-terms) and [developer API documentation](https://www.reddit.com/dev/api/).
-
