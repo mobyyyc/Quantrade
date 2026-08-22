@@ -17,6 +17,7 @@ export default async function Home() {
     unavailable = error instanceof ResearchReadModelError;
   }
   const lead = latest?.scores.find((score) => score.eligible);
+  const eligibleScores = latest?.scores.filter((score) => score.eligible) ?? [];
   return (
     <AppShell current="/">
       <section className="page-intro">
@@ -24,21 +25,25 @@ export default async function Home() {
         <h1>{latest ? `Research for ${formatResearchDate(latest.scoreDate)}.` : "Your research is waiting."}</h1>
         <p className="lede">{latest ? "Published research context, ready for inspection." : "Start with the current evidence when the next dated run is published."}</p>
       </section>
-      {lead && latest ? (
+      {latest ? (
         <>
-          <section className="quant-view" aria-labelledby="quant-view-title">
-            <div>
-              <p className="eyebrow">LEAD RESEARCH CANDIDATE</p>
-              <h2 id="quant-view-title">{lead.ticker}</h2>
-              <p className="anchor-score">{formatScore(lead.score)}<span>/100</span></p>
-              <p className="quiet-copy">Rank {lead.rank} of {latest.scores.filter((score) => score.eligible).length} eligible names. {lead.signal} research score, Tier {lead.dataCapabilityTier} data.</p>
-            </div>
-            <Link href={`/stocks/${lead.securityId}?date=${lead.scoreDate}&from=today`} className="primary-link">View evidence</Link>
-          </section>
+          {lead ? <section className="quant-view" aria-labelledby="quant-view-title">
+              <div>
+                <p className="eyebrow">LEAD RESEARCH CANDIDATE</p>
+                <h2 id="quant-view-title">{lead.ticker}</h2>
+                <p className="anchor-score">{formatScore(lead.score)}<span>/100</span></p>
+                <p className="quiet-copy">Rank {lead.rank} of {eligibleScores.length} eligible names. {lead.signal} research score, Tier {lead.dataCapabilityTier} data.</p>
+              </div>
+              <Link href={`/stocks/${lead.securityId}?date=${lead.scoreDate}&from=today`} className="primary-link">View evidence</Link>
+            </section> : <section className="today-run-state" aria-labelledby="today-run-state-title">
+              <div><p className="eyebrow">DAILY UPDATE COMPLETE</p><h2 id="today-run-state-title">No eligible scores in this run.</h2></div>
+              <p>A dated score snapshot was created, but no company passed every required market, filing, and sector-data quality gate. Quantrade does not estimate a score when an input is missing.</p>
+              <Link href="/research" className="text-link">Review research limits</Link>
+            </section>}
           <div className="today-grid">
             <section className="content-section today-candidates">
-              <div className="section-heading"><div><p className="eyebrow">SHORTLIST</p><h2>Research candidates</h2></div><Link href={`/rankings?date=${latest.scoreDate}`} className="text-link">View rankings</Link></div>
-              <ScoreList scores={latest.scores.filter((score) => score.eligible)} limit={5} from="today" />
+              <div className="section-heading"><div><p className="eyebrow">SHORTLIST</p><h2>Research candidates</h2></div>{lead && <Link href={`/rankings?date=${latest.scoreDate}`} className="text-link">View rankings</Link>}</div>
+              {lead ? <ScoreList scores={eligibleScores} limit={5} from="today" /> : <p className="empty-inline">No companies met every required quality condition on {formatResearchDate(latest.scoreDate)}.</p>}
             </section>
             <WatchlistPreview scores={latest.scores} scoreDate={latest.scoreDate} />
           </div>

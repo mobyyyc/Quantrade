@@ -13,15 +13,14 @@ export function WatchlistPreview({ scores, scoreDate }: { scores: DatedScore[]; 
     const timer = window.setTimeout(() => setWatchlist(readWatchlist()), 0);
     return () => window.clearTimeout(timer);
   }, []);
-  if (!watchlist.length) return null;
 
   return <section className="watchlist-preview" aria-labelledby="watchlist-preview-title">
     <div className="section-heading"><div><p className="eyebrow">YOUR LIST</p><h2 id="watchlist-preview-title">Watchlist</h2></div><Link className="text-link" href="/watchlist">View all</Link></div>
-    <ul className="compact-company-list">
+    {watchlist.length ? <ul className="compact-company-list">
       {watchlist.slice(0, 3).map((company) => {
         const score = scoresBySecurity.get(company.securityId);
         return <li key={company.securityId}><Link href={`/stocks/${company.securityId}${scoreDate ? `?date=${scoreDate}&from=watchlist` : "?from=watchlist"}`}><strong>{company.ticker}</strong><span>{score?.eligible ? `Score ${formatScore(score.score)} · Rank ${score.rank}` : "No published score"}</span></Link></li>;
       })}
-    </ul>
+    </ul> : <p className="watchlist-preview-empty">Save companies from search or a stock detail page to keep them in view here.</p>}
   </section>;
 }
