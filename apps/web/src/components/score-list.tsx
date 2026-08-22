@@ -16,11 +16,12 @@ export function ScoreList({ scores, limit }: { scores: DatedScore[]; limit?: num
             <Link
               href={`/stocks/${score.securityId}?date=${score.scoreDate}`}
               className="score-row-link"
-              aria-label={`Open research detail for security ${score.securityId}`}
+              aria-label={`Open research detail for ${score.ticker}`}
             >
-              Open research detail
+              <strong>{score.ticker}</strong>
+              <span>{score.issuerName}</span>
             </Link>
-            <span className="row-meta">{score.securityId.slice(0, 8)} · {score.signal}</span>
+            <span className="row-meta">{score.signal} research score</span>
           </div>
           <div className="score-row-value">
             <strong>{formatScore(score.score)}</strong>

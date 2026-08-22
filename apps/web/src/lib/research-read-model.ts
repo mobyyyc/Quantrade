@@ -3,6 +3,8 @@ import { Pool } from "pg";
 export type DatedScore = {
   scoreSnapshotId: string;
   securityId: string;
+  issuerName: string;
+  ticker: string;
   scoreDate: string;
   decisionAt: string;
   publishedAt?: string;
@@ -77,6 +79,8 @@ function scoreFromRow(row: Record<string, unknown>): DatedScore {
   return {
     scoreSnapshotId: String(row.score_snapshot_id),
     securityId: String(row.security_id),
+    issuerName: row.issuer_name ? String(row.issuer_name) : "Unknown company",
+    ticker: row.ticker ? String(row.ticker) : "Unavailable",
     scoreDate: String(row.score_date),
     decisionAt: new Date(String(row.decision_at)).toISOString(),
     ...(row.published_at
@@ -99,12 +103,22 @@ function scoreFromRow(row: Record<string, unknown>): DatedScore {
 
 export async function listDatedScores(scoreDate: string): Promise<DatedScore[]> {
   const result = await databasePool().query(
-    `SELECT score_snapshot_id, security_id, score_date::text AS score_date, decision_at, published_at, score, rank,
+    `SELECT ss.score_snapshot_id, ss.security_id, s.issuer_name, l.ticker, ss.score_date::text AS score_date, ss.decision_at, ss.published_at, ss.score, ss.rank,
             eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at,
             data_capability_tier, unavailable_reason
-     FROM quantrade.score_snapshots
-     WHERE score_date = $1
-     ORDER BY eligible DESC, rank ASC NULLS LAST, security_id ASC`,
+     FROM quantrade.score_snapshots ss
+     LEFT JOIN quantrade.securities s ON s.security_id = ss.security_id
+     LEFT JOIN LATERAL (
+       SELECT ticker
+       FROM quantrade.listings
+       WHERE security_id = ss.security_id
+         AND valid_from <= ss.score_date
+         AND (valid_to IS NULL OR valid_to > ss.score_date)
+       ORDER BY valid_from DESC
+       LIMIT 1
+     ) l ON TRUE
+     WHERE ss.score_date = $1
+     ORDER BY ss.eligible DESC, ss.rank ASC NULLS LAST, ss.security_id ASC`,
     [scoreDate],
   );
   return result.rows.map(scoreFromRow);
@@ -115,12 +129,22 @@ export async function getDatedScore(
   scoreDate: string,
 ): Promise<DatedScore | null> {
   const result = await databasePool().query(
-    `SELECT score_snapshot_id, security_id, score_date::text AS score_date, decision_at, published_at, score, rank,
+    `SELECT ss.score_snapshot_id, ss.security_id, s.issuer_name, l.ticker, ss.score_date::text AS score_date, ss.decision_at, ss.published_at, ss.score, ss.rank,
             eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at,
             data_capability_tier, unavailable_reason
-     FROM quantrade.score_snapshots
-     WHERE security_id = $1 AND score_date = $2
-     ORDER BY decision_at DESC
+     FROM quantrade.score_snapshots ss
+     LEFT JOIN quantrade.securities s ON s.security_id = ss.security_id
+     LEFT JOIN LATERAL (
+       SELECT ticker
+       FROM quantrade.listings
+       WHERE security_id = ss.security_id
+         AND valid_from <= ss.score_date
+         AND (valid_to IS NULL OR valid_to > ss.score_date)
+       ORDER BY valid_from DESC
+       LIMIT 1
+     ) l ON TRUE
+     WHERE ss.security_id = $1 AND ss.score_date = $2
+     ORDER BY ss.decision_at DESC
      LIMIT 1`,
     [securityId, scoreDate],
   );
