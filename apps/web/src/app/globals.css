@@ -181,6 +181,15 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .detail-score { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-top: 3.25rem; padding: 2.35rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .detail-context { display: grid; gap: .35rem; text-align: right; font-size: .86rem; }
 .detail-context strong { color: var(--foreground); font-weight: 650; }
+.stock-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 2.7rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.stock-overview-item { display: grid; align-content: start; gap: .32rem; min-height: 7.5rem; padding: 1.25rem 1.35rem; border-right: 1px solid var(--line-soft); }
+.stock-overview-item:first-child { padding-left: 0; }
+.stock-overview-item:last-child { border-right: 0; padding-right: 0; }
+.stock-overview-item > span { color: var(--subtle); font-size: .72rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+.stock-overview-item strong { color: var(--foreground); font-size: 1.35rem; letter-spacing: -.04em; }
+.stock-overview-item small { color: var(--muted); font-size: .78rem; line-height: 1.4; }
+.stock-overview-item small.positive-change { color: var(--positive); }
+.stock-overview-item small.negative-change { color: var(--negative); }
 .evidence-list li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(13rem, .8fr); gap: 1rem; padding: 1.15rem; border-bottom: 1px solid var(--line-soft); }
 .evidence-list strong, .evidence-list span { display: block; }
 .evidence-list span, .evidence-list p, .plain-list li, .split-note p { color: var(--muted); line-height: 1.55; }
@@ -265,6 +274,12 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .stock-identity { gap: .35rem .7rem; }
   .stock-company-name { flex-basis: 100%; font-size: .52em; }
   .detail-score { margin-top: 2.75rem; padding: 1.75rem 0; }
+  .stock-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 2.25rem; }
+  .stock-overview-item { min-height: 6.7rem; padding: 1rem; border-bottom: 1px solid var(--line-soft); }
+  .stock-overview-item:first-child { padding-left: 0; }
+  .stock-overview-item:nth-child(2) { border-right: 0; padding-right: 0; }
+  .stock-overview-item:nth-last-child(-n + 2) { border-bottom: 0; }
+  .stock-overview-item:last-child { padding-right: 0; }
   .detail-context { grid-template-columns: auto 1fr; column-gap: 1rem; text-align: left; }
   .evidence-list li, .split-note, .methodology { grid-template-columns: 1fr; gap: .5rem; }
   .methodology dl { grid-template-columns: 1fr; }

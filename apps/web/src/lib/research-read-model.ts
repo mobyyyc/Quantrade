@@ -53,6 +53,14 @@ export type LatestPriceSummary = {
   previousClosePrice?: string;
 };
 
+export type StockAtAGlance = {
+  sessionDate: string;
+  closePrice: string;
+  previousClosePrice?: string;
+  marketValue?: string;
+  sharesReportedFor?: string;
+};
+
 export type ScoreRunSummary = {
   scoreDate: string;
   publishedAt?: string;
@@ -330,6 +338,50 @@ export async function getLatestPriceSummaries(securityIds: string[]): Promise<La
     closePrice: String(row.close_price),
     ...(row.previous_close_price === null ? {} : { previousClosePrice: String(row.previous_close_price) }),
   }));
+}
+
+export async function getStockAtAGlance(securityId: string): Promise<StockAtAGlance | null> {
+  const result = await databasePool().query(
+    `WITH recent_prices AS (
+       SELECT session_date, close_price,
+              ROW_NUMBER() OVER (ORDER BY session_date DESC) AS position
+       FROM quantrade.daily_price_bars
+       WHERE security_id = $1
+         AND adjustment_basis = 'split_adjusted'
+         AND session = 'regular'
+     ), latest_price AS (
+       SELECT session_date, close_price FROM recent_prices WHERE position = 1
+     ), previous_price AS (
+       SELECT close_price FROM recent_prices WHERE position = 2
+     )
+     SELECT latest_price.session_date::text AS session_date,
+            latest_price.close_price,
+            previous_price.close_price AS previous_close_price,
+            latest_price.close_price * shares.fact_value AS market_value,
+            shares.period_end::text AS shares_reported_for
+     FROM latest_price
+     LEFT JOIN previous_price ON TRUE
+     LEFT JOIN LATERAL (
+       SELECT fact_value, period_end
+       FROM quantrade.filing_facts
+       WHERE security_id = $1
+         AND taxonomy = 'dei'
+         AND concept = 'EntityCommonStockSharesOutstanding'
+         AND unit = 'shares'
+       ORDER BY period_end DESC, available_at DESC
+       LIMIT 1
+     ) shares ON TRUE`,
+    [securityId],
+  );
+  if (!result.rowCount) return null;
+  const row = result.rows[0] as Record<string, unknown>;
+  return {
+    sessionDate: String(row.session_date),
+    closePrice: String(row.close_price),
+    ...(row.previous_close_price === null ? {} : { previousClosePrice: String(row.previous_close_price) }),
+    ...(row.market_value === null ? {} : { marketValue: String(row.market_value) }),
+    ...(row.shares_reported_for === null ? {} : { sharesReportedFor: String(row.shares_reported_for) }),
+  };
 }
 
 export async function getScoreExplanations(

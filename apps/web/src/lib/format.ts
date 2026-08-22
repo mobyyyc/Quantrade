@@ -30,6 +30,15 @@ export function formatUsdPrice(value: string | number): string {
   }).format(Number(value));
 }
 
+export function formatCompactUsd(value: string | number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value));
+}
+
 export function formatPriceChange(closePrice: string, previousClosePrice?: string): { amount: string; percent: string; direction: "positive" | "negative" } | null {
   if (!previousClosePrice) return null;
   const close = Number(closePrice);

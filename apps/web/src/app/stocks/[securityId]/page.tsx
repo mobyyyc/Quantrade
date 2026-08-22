@@ -2,8 +2,8 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { PriceChart } from "@/components/price-chart";
 import { WatchlistButton } from "@/components/watchlist-button";
-import { formatPercentile, formatResearchDate, formatScore } from "@/lib/format";
-import { getDailyPriceHistory, getDatedScore, getLatestDatedScores, getScoreExplanations, getSecurityIdentity, ResearchReadModelError, type DailyPricePoint, type DatedScore, type ScoreExplanation, type SecuritySearchResult } from "@/lib/research-read-model";
+import { formatCompactUsd, formatPercentile, formatPriceChange, formatResearchDate, formatScore, formatUsdPrice } from "@/lib/format";
+import { getDailyPriceHistory, getDatedScore, getLatestDatedScores, getScoreExplanations, getSecurityIdentity, getStockAtAGlance, ResearchReadModelError, type DailyPricePoint, type DatedScore, type ScoreExplanation, type SecuritySearchResult, type StockAtAGlance } from "@/lib/research-read-model";
 
 export default async function StockDetailPage({ params, searchParams }: { params: Promise<{ securityId: string }>; searchParams: Promise<{ date?: string; from?: string }> }) {
   const { securityId } = await params;
@@ -12,10 +12,11 @@ export default async function StockDetailPage({ params, searchParams }: { params
   let score: DatedScore | null = null;
   let explanations: ScoreExplanation[] = [];
   let priceHistory: DailyPricePoint[] = [];
+  let marketSnapshot: StockAtAGlance | null = null;
   let unavailable = false;
   try {
     identity = await getSecurityIdentity(securityId);
-    if (identity) priceHistory = await getDailyPriceHistory(securityId);
+    if (identity) [priceHistory, marketSnapshot] = await Promise.all([getDailyPriceHistory(securityId), getStockAtAGlance(securityId)]);
     const scoreDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : (await getLatestDatedScores())?.scoreDate;
     if (scoreDate) {
       score = await getDatedScore(securityId, scoreDate);
@@ -32,8 +33,10 @@ export default async function StockDetailPage({ params, searchParams }: { params
     trailing_volatility_60d: "Recent price variability, where lower risk ranks better.",
     median_dollar_volume_20d: "Typical recent trading liquidity.",
   };
+  const priceChange = marketSnapshot ? formatPriceChange(marketSnapshot.closePrice, marketSnapshot.previousClosePrice) : null;
   return <AppShell current="">
     <section className="detail-header"><Link href={returnTo} className="back-link">← {returnLabel}</Link><div className="detail-heading-row"><div><p className="eyebrow">STOCK DETAIL</p>{identity ? <h1 className="stock-identity"><span className="stock-ticker">{identity.ticker}</span><span className="stock-company-name">{identity.issuerName}</span></h1> : <h1>Research detail</h1>}</div>{identity && <WatchlistButton company={identity} />}</div>{score ? <p className="lede">Research score for {formatResearchDate(score.scoreDate)}. It is a dated research view, not a trade instruction.</p> : <p className="lede">Real daily price history is available. A full research score will publish only after every required input passes its data-quality gate.</p>}</section>
+    {marketSnapshot && <section className="stock-overview" aria-label="At a glance"><div className="stock-overview-item"><span>Latest close</span><strong>{formatUsdPrice(marketSnapshot.closePrice)}</strong>{priceChange ? <small className={priceChange.direction === "positive" ? "positive-change" : "negative-change"}>{priceChange.percent} since prior close</small> : <small>{formatResearchDate(marketSnapshot.sessionDate)} close</small>}</div><div className="stock-overview-item"><span>Research score</span><strong>{score ? `${formatScore(score.score)}/100` : "Not published"}</strong><small>{score ? `Published ${formatResearchDate(score.scoreDate)}` : "Awaiting eligible inputs"}</small></div><div className="stock-overview-item"><span>Market value</span><strong>{marketSnapshot.marketValue ? formatCompactUsd(marketSnapshot.marketValue) : "Unavailable"}</strong><small>{marketSnapshot.sharesReportedFor ? `Latest reported shares, ${formatResearchDate(marketSnapshot.sharesReportedFor)}` : "Reported share count unavailable"}</small></div><div className="stock-overview-item"><span>Market data</span><strong>{formatResearchDate(marketSnapshot.sessionDate)}</strong><small>Latest regular-session close</small></div></section>}
     {identity && <PriceChart points={priceHistory} ticker={identity.ticker} />}
     {score ? <>
       <section className="detail-score"><div><p className="eyebrow">RESEARCH SCORE</p><p className="anchor-score">{formatScore(score.score)}<span>/100</span></p><p className="quiet-copy">Rank {score.rank ?? "Unavailable"} · {score.signal} · Tier {score.dataCapabilityTier}</p></div><div className="detail-context"><span>Data cutoff</span><strong>{new Date(score.dataCutoffAt).toLocaleString("en-CA", { timeZone: "America/Toronto" })}</strong><span>Model</span><strong>{score.modelVersion}</strong></div></section>
