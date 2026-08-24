@@ -51,6 +51,22 @@ class FundamentalFeatureTests(unittest.TestCase):
         self.assertEqual(roa.value, Decimal("120") / Decimal("1200"))
         self.assertEqual(roa.feature_key, "return_on_assets_ttm")
 
+    def test_uses_standard_profit_loss_when_net_income_loss_is_not_reported(self) -> None:
+        facts = [
+            fact("us-gaap", "ProfitLoss", "120", PERIOD_END, period_start=PERIOD_START),
+            *inputs()[1:],
+        ]
+        earnings_yield = calculate_earnings_yield_ttm(
+            facts, [price()], security_id="security-a", formation_date=FORMATION, decision_at=DECISION
+        )
+        roa = calculate_return_on_assets_ttm(
+            facts, security_id="security-a", formation_date=FORMATION, decision_at=DECISION
+        )
+        self.assertEqual(earnings_yield.value, Decimal("120") / Decimal("200"))
+        self.assertEqual(earnings_yield.feature_version, "v2")
+        self.assertEqual(roa.value, Decimal("120") / Decimal("1200"))
+        self.assertEqual(roa.feature_version, "v2")
+
     def test_rejects_future_facts_and_missing_annual_or_asset_endpoints(self) -> None:
         with self.assertRaisesRegex(DataQualityError, "unavailable"):
             calculate_earnings_yield_ttm(

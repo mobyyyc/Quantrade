@@ -13,8 +13,10 @@ unavailable; it must never be silently imputed or substituted.
 | --- | --- | --- | --- |
 | `momentum_12_1@v1` | Momentum | Higher is better | Split-adjusted close at `t - 21` divided by close at `t - 252`, minus one. |
 | `relative_strength_6m@v1` | Momentum | Higher is better | Security six-month split-adjusted return less the benchmark return over the same 126 sessions. |
-| `earnings_yield_ttm@v1` | Value | Higher is better | TTM net income divided by split-adjusted market capitalization. |
-| `return_on_assets_ttm@v1` | Profitability | Higher is better | TTM net income divided by the average of beginning and ending total assets. |
+| `earnings_yield_ttm@v1` | Value | Higher is better | Historical definition: TTM `NetIncomeLoss` divided by split-adjusted market capitalization. |
+| `earnings_yield_ttm@v2` | Value | Higher is better | TTM `NetIncomeLoss`, falling back only to SEC standard `ProfitLoss`, divided by split-adjusted market capitalization. |
+| `return_on_assets_ttm@v1` | Profitability | Higher is better | Historical definition: TTM `NetIncomeLoss` divided by the average of beginning and ending total assets. |
+| `return_on_assets_ttm@v2` | Profitability | Higher is better | TTM `NetIncomeLoss`, falling back only to SEC standard `ProfitLoss`, divided by the average of beginning and ending total assets. |
 | `trailing_volatility_60d@v1` | Risk | Lower is better | Annualized standard deviation of 60 split-adjusted daily log returns. |
 | `median_dollar_volume_20d@v1` | Liquidity | Higher is better | Median unadjusted close multiplied by volume over 20 sessions. |
 
@@ -41,10 +43,11 @@ P3.2 implements the two momentum-family definitions in
 windows, duplicate dates, non-positive prices, bars unavailable by the decision
 timestamp, and non-matching security/benchmark session windows.
 
-P3.3 implements `earnings_yield_ttm@v1` and `return_on_assets_ttm@v1` in
+P3.3 implements `earnings_yield_ttm@v2` and `return_on_assets_ttm@v2` in
 `services/research/src/quantrade_research/fundamentals.py`. To avoid silently
-assembling unreported quarters, v1 TTM uses one eligible annual `NetIncomeLoss`
-fact whose duration is 330–370 days. Return on assets also requires eligible
+assembling unreported quarters, v2 uses one eligible annual `NetIncomeLoss`
+fact, falling back only to the SEC standard `ProfitLoss` fact, whose duration
+is 330–370 days. Return on assets also requires eligible
 `Assets` facts exactly at that reported period's start and end; earnings yield
 requires an eligible positive shares-outstanding fact and formation close.
 

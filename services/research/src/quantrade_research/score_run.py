@@ -72,7 +72,10 @@ def _outcome(
     feature_key: str,
     calculator: Callable[[], object],
 ) -> FeatureOutcome:
-    definition = registry.get(feature_key, "v1")
+    definitions = [definition for definition in registry.definitions() if definition.key == feature_key]
+    if len(definitions) != 1:
+        raise DataQualityError(f"baseline registry must contain exactly one active definition for {feature_key}")
+    definition = definitions[0]
     try:
         value = calculator()
     except (DataQualityError, ArithmeticError, ValueError) as error:
@@ -134,6 +137,7 @@ def _load_facts(connection, security_ids: Iterable[str], formation_date: date, d
                WHERE security_id = ANY(%s::uuid[]) AND period_end <= %s AND available_at <= %s
                  AND (taxonomy, concept, unit) IN (
                     ('us-gaap', 'NetIncomeLoss', 'USD'),
+                    ('us-gaap', 'ProfitLoss', 'USD'),
                     ('us-gaap', 'Assets', 'USD'),
                     ('dei', 'EntityCommonStockSharesOutstanding', 'shares')
                  )

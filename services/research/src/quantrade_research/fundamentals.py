@@ -15,6 +15,8 @@ from .quality import DataQualityError, assert_available_as_of
 ANNUAL_MIN_DAYS = 330
 ANNUAL_MAX_DAYS = 370
 ASSET_PERIOD_ALIGNMENT_TOLERANCE_DAYS = 7
+FUNDAMENTAL_FEATURE_VERSION = "v2"
+NET_INCOME_CONCEPTS = ("NetIncomeLoss", "ProfitLoss")
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +39,7 @@ def _as_utc(value: datetime, label: str) -> datetime:
 
 
 def _definition(registry: FeatureRegistry | None, key: str) -> FeatureDefinition:
-    return (registry or baseline_feature_registry()).get(key, "v1")
+    return (registry or baseline_feature_registry()).get(key, FUNDAMENTAL_FEATURE_VERSION)
 
 
 def _eligible_facts(
@@ -85,22 +87,27 @@ def _annual_net_income(
     formation_date: date,
     decision_at: datetime,
 ) -> FundamentalFactObservation:
-    facts = _eligible_facts(
-        observations,
-        security_id=security_id,
-        formation_date=formation_date,
-        decision_at=decision_at,
-        taxonomy="us-gaap",
-        concept="NetIncomeLoss",
-        unit="USD",
-    )
-    annual = [
-        fact
-        for fact in facts
-        if fact.period_start is not None
-        and ANNUAL_MIN_DAYS <= (fact.period_end - fact.period_start).days <= ANNUAL_MAX_DAYS
-    ]
-    return _latest(annual, label="eligible annual NetIncomeLoss fact")
+    decision = _as_utc(decision_at, "decision_at")
+    for concept in NET_INCOME_CONCEPTS:
+        facts = [
+            fact
+            for fact in observations
+            if fact.security_id == security_id
+            and fact.taxonomy == "us-gaap"
+            and fact.concept == concept
+            and fact.unit == "USD"
+            and fact.period_end <= formation_date
+        ]
+        assert_available_as_of(facts, decision, f"us-gaap:{concept} facts")
+        annual = [
+            fact
+            for fact in facts
+            if fact.period_start is not None
+            and ANNUAL_MIN_DAYS <= (fact.period_end - fact.period_start).days <= ANNUAL_MAX_DAYS
+        ]
+        if annual:
+            return _latest(annual, label=f"eligible annual {concept} fact")
+    raise DataQualityError("missing eligible annual NetIncomeLoss or ProfitLoss fact")
 
 
 def _formation_close(
