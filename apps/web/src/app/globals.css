@@ -175,7 +175,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .search-results-multiple { display: grid; gap: .7rem; }
 .search-results-multiple li { overflow: hidden; border: 1px solid var(--line); border-radius: 1.15rem; background: var(--surface); box-shadow: var(--surface-shadow); transition: background-color 150ms var(--ease), border-color 150ms var(--ease); }
 
-.watchlist-list { max-width: 56rem; }
+.watchlist-list { display: grid; max-width: 56rem; gap: .65rem; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.watchlist-list .watchlist-row { border: 1px solid var(--line); border-radius: 1.3rem; background: var(--surface); box-shadow: var(--surface-shadow); }
+.watchlist-list .watchlist-row:last-child { border-bottom: 1px solid var(--line); }
 .watchlist-toolbar { display: flex; align-items: center; justify-content: space-between; max-width: 56rem; margin-bottom: .8rem; color: var(--muted); font-size: .82rem; }
 .segmented-control { display: inline-flex; gap: .15rem; padding: .2rem; border: 1px solid var(--line); border-radius: 9999px; background: var(--surface); box-shadow: var(--control-shadow); }
 .segmented-control button { min-height: 2rem; border: 1px solid transparent; border-radius: 9999px; padding: 0 .7rem; background: transparent; color: var(--subtle); font-size: .76rem; font-weight: 700; transition: color 150ms var(--ease), background-color 150ms var(--ease), border-color 150ms var(--ease); }
