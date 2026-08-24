@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
+import { getLatestDatedScores } from "@/lib/research-read-model";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,5 +33,15 @@ export async function POST() {
   if (result.code !== 0) {
     return Response.json({ error: userFacingError(result.output) }, { status: 500 });
   }
-  return Response.json({ message: "Daily update completed. Scores are ready to view." });
+  try {
+    const latest = await getLatestDatedScores();
+    const eligibleCount = latest?.scores.filter((score) => score.eligible).length ?? 0;
+    const totalCount = latest?.scores.length ?? 0;
+    return Response.json({
+      message: "Daily update completed. Scores are ready to view.",
+      result: latest ? { scoreDate: latest.scoreDate, eligibleCount, totalCount } : undefined,
+    });
+  } catch {
+    return Response.json({ message: "Daily update completed. Scores are ready to view." });
+  }
 }

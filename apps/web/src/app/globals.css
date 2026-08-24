@@ -129,6 +129,14 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .daily-update-message { margin: 0; font-size: .82rem; text-align: right; }
 .daily-update-message.success { color: var(--positive) !important; }
 .daily-update-message.error { color: var(--negative) !important; }
+.daily-update-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 1.5rem 2.5rem; align-items: end; padding: 1.35rem 0; border-bottom: 1px solid var(--line-soft); }
+.daily-update-summary .eyebrow { margin-bottom: .45rem; }
+.daily-update-summary h3 { margin: 0 0 .35rem; color: var(--foreground); font-size: 1.1rem; letter-spacing: -.03em; }
+.daily-update-summary p:not(.eyebrow) { max-width: 33rem; margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.5; }
+.daily-update-summary dl { display: grid; grid-template-columns: repeat(3, auto); gap: 1.15rem; margin: 0; }
+.daily-update-summary dt { color: var(--subtle); font-size: .7rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+.daily-update-summary dd { margin: .22rem 0 0; color: var(--foreground); font-size: 1.05rem; font-weight: 720; letter-spacing: -.04em; }
+.daily-update-summary > .text-link { margin-left: -.85rem; white-space: nowrap; }
 
 .empty-state { max-width: 42rem; padding: 2rem; border: 1px solid var(--line); border-radius: 1.45rem; background: var(--surface); box-shadow: var(--surface-shadow); }
 .empty-state h2 { font-size: 1.5rem; }
@@ -322,6 +330,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .anchor-score { font-size: 4.6rem; }
   .daily-update-action { width: 100%; justify-items: start; }
   .daily-update-message { text-align: left; }
+  .daily-update-summary { grid-template-columns: 1fr; gap: 1.1rem; }
+  .daily-update-summary dl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+  .daily-update-summary > .text-link { margin-left: -.85rem; }
   .date-form { flex-direction: column; align-items: stretch; }
   .date-form label, .date-form input { width: 100%; }
   .detail-heading-row { align-items: start; }
