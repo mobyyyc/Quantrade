@@ -103,6 +103,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .watchlist-preview { margin-top: 3.5rem; }
 .compact-company-list li { border-bottom: 1px solid var(--line-soft); }
 .compact-company-list li:last-child { border-bottom: 0; }
+.watchlist-preview .compact-company-list { display: grid; gap: .65rem; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.watchlist-preview .compact-company-list li { overflow: hidden; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface); box-shadow: var(--surface-shadow); }
+.watchlist-preview .compact-company-list li:last-child { border-bottom: 1px solid var(--line); }
 .compact-company-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .45rem .7rem; padding: .95rem 1.1rem; }
 .compact-company-identity, .compact-company-market, .compact-company-score { display: grid; gap: .14rem; }
 .compact-company-identity { min-width: 0; }
