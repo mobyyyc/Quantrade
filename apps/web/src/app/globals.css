@@ -258,6 +258,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .methodology dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-top: 1.4rem; }
 .methodology dt { color: var(--subtle); font-size: .78rem; }
 .methodology dd { margin: .25rem 0 0; color: var(--foreground); text-transform: capitalize; }
+.research-freshness-note { margin: 1.15rem 0 0; padding-top: 1.05rem; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: .86rem; line-height: 1.55; }
 .coverage-health { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 2rem; }
 .coverage-health > div > p:not(.eyebrow) { color: var(--muted); line-height: 1.6; }
 .coverage-date { margin-bottom: 1rem; color: var(--subtle) !important; font-size: .82rem; }
