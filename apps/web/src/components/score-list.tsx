@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { DatedScore } from "@/lib/research-read-model";
-import { formatScore } from "@/lib/format";
+import { formatIssuerName, formatScore } from "@/lib/format";
 
 export function ScoreList({ scores, limit, from = "rankings" }: { scores: DatedScore[]; limit?: number; from?: "today" | "rankings" }) {
   const rows = limit ? scores.slice(0, limit) : scores;
@@ -19,7 +19,7 @@ export function ScoreList({ scores, limit, from = "rankings" }: { scores: DatedS
             <span className="rank-number">{score.rank ?? "Unavailable"}</span>
             <div className="score-row-main">
               <strong>{score.ticker}</strong>
-              <span>{score.issuerName}</span>
+              <span>{formatIssuerName(score.issuerName)}</span>
             </div>
             <div className="score-row-value"><span className="score-unit"><strong>{formatScore(score.score)}</strong><span>/100</span></span></div>
           </Link>

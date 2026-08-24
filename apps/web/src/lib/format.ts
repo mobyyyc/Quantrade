@@ -33,6 +33,27 @@ export function formatScore(value: string): string {
   return Number(value).toFixed(0);
 }
 
+export function formatIssuerName(value: string): string {
+  if (value !== value.toLocaleUpperCase("en-US")) {
+    return value;
+  }
+  return value.toLocaleLowerCase("en-US").replace(/(^|[\s&.-])([a-z])/g, (_, prefix: string, letter: string) => `${prefix}${letter.toLocaleUpperCase("en-US")}`);
+}
+
+export function formatPublicationTime(value?: string): string {
+  if (!value) return "Unavailable";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unavailable";
+  return new Intl.DateTimeFormat("en-CA", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Toronto",
+    timeZoneName: "short",
+  }).format(date);
+}
+
 export function formatPercentile(value?: string): string {
   return value ? `${Math.round(Number(value) * 100)}th percentile` : "Unavailable";
 }

@@ -140,13 +140,27 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .research-notice p:not(.eyebrow) { max-width: 38rem; color: var(--muted); line-height: 1.6; }
 .research-notice .text-link { display: inline-flex; margin: .2rem 0 0 -.85rem; }
 
-.rankings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 14rem; gap: 3rem; align-items: start; }
+.rankings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 2.25rem; align-items: start; }
 .rankings-results { grid-column: 1; grid-row: 1; }
 .rankings-context { position: sticky; top: 1.5rem; grid-column: 2; grid-row: 1; padding: 1.2rem 0 1.25rem; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
 .rankings-context .eyebrow { margin-bottom: .5rem; }
-.rankings-context strong { display: block; color: var(--foreground); font-size: 2rem; letter-spacing: -.06em; }
-.rankings-context > span { color: var(--muted); font-size: .84rem; }
-.rankings-context > p:not(.eyebrow) { margin: 1.4rem 0 0; color: var(--muted); font-size: .86rem; line-height: 1.55; }
+.ranking-coverage { display: flex; align-items: baseline; gap: .4rem; }
+.ranking-coverage strong { display: block; color: var(--foreground); font-size: 2rem; letter-spacing: -.06em; }
+.ranking-coverage span { color: var(--muted); font-size: .84rem; }
+.ranking-run-facts { display: grid; gap: .7rem; margin: 1.35rem 0 0; padding: 1rem 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+.ranking-run-facts div { display: flex; justify-content: space-between; gap: 1rem; }
+.ranking-run-facts dt { color: var(--subtle); font-size: .76rem; }
+.ranking-run-facts dd { margin: 0; color: var(--foreground); font-size: .78rem; text-align: right; }
+.rankings-context > p:not(.eyebrow) { margin: 1.2rem 0 0; color: var(--muted); font-size: .82rem; line-height: 1.55; }
+.rankings-date-form { display: grid; gap: .55rem; margin-top: 1.2rem; }
+.rankings-date-form label { display: grid; gap: .4rem; color: var(--muted); font-size: .78rem; }
+.rankings-date-form input { width: 100%; min-height: 2.45rem; border: 1px solid var(--line); border-radius: 9999px; padding: 0 .8rem; background: var(--surface); color: var(--foreground); box-shadow: var(--control-shadow); }
+.rankings-date-form button { min-height: 2.45rem; border: 1px solid var(--foreground); border-radius: 9999px; padding: .55rem .85rem; background: var(--foreground); color: var(--canvas); font-weight: 730; box-shadow: 0 4px 14px rgb(255 255 255 / .12), 0 1px 3px rgb(0 0 0 / .8); }
+.ranking-column-labels { display: grid; grid-template-columns: 2.7rem minmax(0, 1fr) auto; gap: 1rem; padding: 0 1.15rem .65rem; color: var(--subtle); font-size: .7rem; font-weight: 740; letter-spacing: .1em; text-transform: uppercase; }
+.ranking-column-labels span:last-child { text-align: right; }
+.rankings-results .score-row, .rankings-results .score-row-link { min-height: 4.3rem; }
+.rankings-show-more { display: flex; width: 100%; justify-content: center; gap: .35rem; margin-top: 1rem; }
+.rankings-show-more span { color: var(--subtle); font-weight: 560; }
 .date-form { display: flex; align-items: end; gap: .75rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1.3rem; background: var(--surface); box-shadow: var(--surface-shadow); }
 .date-form label { display: grid; flex: 1; gap: .4rem; color: var(--muted); font-size: .8rem; }
 .date-form-secondary { max-width: 26rem; margin-top: 3rem; border-color: var(--line-soft); box-shadow: none; }
@@ -265,10 +279,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .watchlist-preview { margin-top: 3.5rem; }
   .rankings-layout { grid-template-columns: 1fr; gap: 2.5rem; }
   .rankings-results, .rankings-context { grid-column: 1; grid-row: auto; }
-  .rankings-context { position: static; display: grid; grid-template-columns: auto 1fr; column-gap: .7rem; align-items: baseline; padding: 1rem 0; }
-  .rankings-context .eyebrow { grid-column: 1 / -1; }
-  .rankings-context strong { font-size: 1.5rem; }
-  .rankings-context > p:not(.eyebrow) { grid-column: 1 / -1; margin-top: .7rem; }
+  .rankings-context { position: static; padding: 1rem 0; }
 }
 
 @media (max-width: 700px) {
