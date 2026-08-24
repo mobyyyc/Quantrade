@@ -88,23 +88,34 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .status-label { color: var(--muted); border: 1px solid var(--line); border-radius: 9999px; padding: .4rem .65rem; font-size: .78rem; box-shadow: var(--control-shadow); }
 
 .grouped-list, .score-list, .evidence-list, .compact-company-list { margin: 0; padding: 0; list-style: none; overflow: hidden; border: 1px solid var(--line); border-radius: 1.3rem; background: var(--surface); box-shadow: var(--surface-shadow); }
-.score-row { display: grid; grid-template-columns: 2.7rem minmax(0, 1fr) auto; gap: 1rem; align-items: center; min-height: 5.35rem; padding: 0 1.15rem; border-bottom: 1px solid var(--line-soft); transition: background-color 150ms var(--ease); }
+.score-row { min-height: 4.8rem; border-bottom: 1px solid var(--line-soft); transition: background-color 150ms var(--ease); }
 .score-row:last-child, .watchlist-row:last-child, .evidence-list li:last-child { border-bottom: 0; }
 .rank-number { color: var(--subtle); font-size: .86rem; }
-.score-row-main, .score-row-value { display: grid; gap: .22rem; }
-.score-row-link { width: fit-content; color: var(--foreground); font-weight: 680; }
+.score-row-main { display: flex; align-items: baseline; gap: .42rem; min-width: 0; }
+.score-row-link { display: grid; grid-template-columns: 2.7rem minmax(0, 1fr) auto; gap: 1rem; align-items: center; min-height: 4.8rem; padding: 0 1.15rem; color: var(--foreground); font-weight: 680; }
 .score-row-link strong { font-size: 1.03rem; letter-spacing: -.02em; }
-.score-row-link span { color: var(--muted); font-size: .84rem; font-weight: 500; }
-.row-meta, .score-row-value span { color: var(--subtle); font-size: .8rem; }
-.score-row-value { justify-items: end; }
-.score-row-value strong { color: var(--foreground); font-size: 1.27rem; letter-spacing: -.035em; }
+.score-row-main > span { overflow: hidden; color: var(--muted); font-size: .84rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.score-row-value { justify-self: end; }
+.score-unit { display: inline-flex; align-items: baseline; gap: .18rem; white-space: nowrap; }
+.score-unit strong { color: var(--foreground); font-size: 1.27rem; letter-spacing: -.035em; }
+.score-unit > span { color: var(--subtle); font-size: .78rem; font-weight: 620; }
 
 .watchlist-preview { margin-top: 3.5rem; }
 .compact-company-list li { border-bottom: 1px solid var(--line-soft); }
 .compact-company-list li:last-child { border-bottom: 0; }
-.compact-company-list a { display: grid; gap: .2rem; padding: 1rem 1.1rem; }
-.compact-company-list strong { color: var(--foreground); letter-spacing: -.02em; }
-.compact-company-list span { color: var(--muted); font-size: .82rem; }
+.compact-company-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .45rem .7rem; padding: .95rem 1.1rem; }
+.compact-company-identity, .compact-company-market, .compact-company-score { display: grid; gap: .14rem; }
+.compact-company-identity { min-width: 0; }
+.compact-company-identity strong, .compact-company-market strong { color: var(--foreground); letter-spacing: -.02em; }
+.compact-company-identity > span { overflow: hidden; color: var(--muted); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.compact-company-market { justify-items: end; text-align: right; }
+.compact-company-market > span { color: var(--subtle); font-size: .76rem; white-space: nowrap; }
+.compact-company-market > span.positive-change { color: var(--positive); }
+.compact-company-market > span.negative-change { color: var(--negative); }
+.compact-company-score { grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: baseline; padding-top: .2rem; border-top: 1px solid var(--line-soft); }
+.compact-company-score small { justify-self: end; color: var(--subtle); font-size: .73rem; }
+.compact-company-unavailable { display: block; }
+.compact-company-unavailable small { display: block; text-align: left; }
 .watchlist-preview-empty { max-width: 25rem; margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.6; }
 
 .daily-update-control { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-top: 4.5rem; padding: 1.35rem 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }

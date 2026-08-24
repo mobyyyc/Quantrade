@@ -42,7 +42,7 @@ export default async function Home() {
             </section>}
           <div className="today-grid">
             <section className="content-section today-candidates">
-              <div className="section-heading"><div><p className="eyebrow">SHORTLIST</p><h2>Research candidates</h2></div>{lead && <Link href={`/rankings?date=${latest.scoreDate}`} className="text-link">View rankings</Link>}</div>
+              <div className="section-heading"><div><p className="eyebrow">TOP RANKED</p><h2>Highest scores</h2></div>{lead && <Link href={`/rankings?date=${latest.scoreDate}`} className="text-link">View rankings</Link>}</div>
               {lead ? <ScoreList scores={eligibleScores} limit={5} from="today" /> : <p className="empty-inline">No companies met every required quality condition on {formatResearchDate(latest.scoreDate)}.</p>}
             </section>
             <WatchlistPreview scores={latest.scores} scoreDate={latest.scoreDate} />

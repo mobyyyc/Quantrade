@@ -11,22 +11,18 @@ export function ScoreList({ scores, limit, from = "rankings" }: { scores: DatedS
     <ol className="score-list">
       {rows.map((score) => (
         <li key={score.scoreSnapshotId} className="score-row">
-          <span className="rank-number">{score.rank ?? "Unavailable"}</span>
-          <div className="score-row-main">
-            <Link
-              href={`/stocks/${score.securityId}?date=${score.scoreDate}&from=${from}`}
-              className="score-row-link"
-              aria-label={`Open research detail for ${score.ticker}`}
-            >
+          <Link
+            href={`/stocks/${score.securityId}?date=${score.scoreDate}&from=${from}`}
+            className="score-row-link"
+            aria-label={`Open research detail for ${score.ticker}, score ${formatScore(score.score)} out of 100`}
+          >
+            <span className="rank-number">{score.rank ?? "Unavailable"}</span>
+            <div className="score-row-main">
               <strong>{score.ticker}</strong>
               <span>{score.issuerName}</span>
-            </Link>
-            <span className="row-meta">{score.signal} research score</span>
-          </div>
-          <div className="score-row-value">
-            <strong>{formatScore(score.score)}</strong>
-            <span>of 100</span>
-          </div>
+            </div>
+            <div className="score-row-value"><span className="score-unit"><strong>{formatScore(score.score)}</strong><span>/100</span></span></div>
+          </Link>
         </li>
       ))}
     </ol>
