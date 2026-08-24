@@ -67,6 +67,12 @@ export type ScoreRunSummary = {
   eligibleCount: number;
 };
 
+export type ScoreHistoryPoint = {
+  scoreDate: string;
+  score: string;
+  rank?: number;
+};
+
 export type ScoreExplanation = {
   featureKey: string;
   featureVersion: string;
@@ -172,6 +178,32 @@ export async function getDatedScore(
     [securityId, scoreDate],
   );
   return result.rowCount === 0 ? null : scoreFromRow(result.rows[0]);
+}
+
+export async function getScoreHistory(
+  securityId: string,
+  throughDate: string,
+  limit = 8,
+): Promise<ScoreHistoryPoint[]> {
+  const result = await databasePool().query(
+    `SELECT score_date::text AS score_date, score, rank
+     FROM (
+       SELECT score_date, score, rank
+       FROM quantrade.score_snapshots
+       WHERE security_id = $1
+         AND score_date <= $2
+         AND eligible
+       ORDER BY score_date DESC
+       LIMIT $3
+     ) recent
+     ORDER BY score_date ASC`,
+    [securityId, throughDate, limit],
+  );
+  return result.rows.map((row) => ({
+    scoreDate: String(row.score_date),
+    score: String(row.score),
+    ...(row.rank === null ? {} : { rank: Number(row.rank) }),
+  }));
 }
 
 export async function getModelCard(modelVersion: string): Promise<ModelCard | null> {

@@ -224,6 +224,15 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .detail-score { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-top: 3.25rem; padding: 2.35rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .detail-context { display: grid; gap: .35rem; text-align: right; font-size: .86rem; }
 .detail-context strong { color: var(--foreground); font-weight: 650; }
+.score-history .section-heading { align-items: start; }
+.score-history-change { flex: 0 0 auto; color: var(--muted); border: 1px solid var(--line); border-radius: 9999px; padding: .4rem .65rem; font-size: .76rem; font-weight: 670; box-shadow: var(--control-shadow); }
+.score-history-change.up, .score-history-change.down { color: var(--foreground); }
+.score-history-context { max-width: 40rem; margin: 0 0 1.1rem; color: var(--muted); font-size: .9rem; line-height: 1.55; }
+.score-history-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-soft); }
+.score-history-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(6rem, .55fr); gap: 1rem; align-items: baseline; min-height: 3.6rem; padding: .8rem 0; border-bottom: 1px solid var(--line-soft); }
+.score-history-list time { color: var(--muted); font-size: .86rem; }
+.score-history-list .score-unit { justify-self: end; }
+.score-history-list small { color: var(--subtle); font-size: .78rem; text-align: right; }
 .unavailable-score { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.25rem 3rem; margin-top: 3.25rem; padding: 2.1rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .unavailable-score h2 { margin-bottom: .55rem; font-size: 1.5rem; }
 .unavailable-score p:not(.eyebrow) { max-width: 37rem; margin: 0; color: var(--muted); line-height: 1.6; }
@@ -340,6 +349,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .stock-identity { gap: .35rem .7rem; }
   .stock-company-name { flex-basis: 100%; font-size: .52em; }
   .detail-score { margin-top: 2.75rem; padding: 1.75rem 0; }
+  .score-history .section-heading { align-items: end; }
+  .score-history-list li { grid-template-columns: minmax(0, 1fr) auto; gap: .65rem; }
+  .score-history-list small { grid-column: 1 / -1; justify-self: start; text-align: left; }
   .unavailable-score { grid-template-columns: 1fr; gap: 1.5rem; margin-top: 2.75rem; padding: 1.75rem 0; }
   .unavailable-score dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
   .unavailable-score dl div:last-child { grid-column: 1 / -1; }

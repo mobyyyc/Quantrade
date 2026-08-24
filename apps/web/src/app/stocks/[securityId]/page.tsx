@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { PriceChart } from "@/components/price-chart";
+import { ScoreHistory } from "@/components/score-history";
 import { WatchlistButton } from "@/components/watchlist-button";
 import { formatCompactUsd, formatPercentile, formatPriceChange, formatResearchDate, formatScore, formatUsdPrice } from "@/lib/format";
-import { getDailyPriceHistory, getDatedScore, getLatestDatedScores, getScoreExplanations, getSecurityIdentity, getStockAtAGlance, ResearchReadModelError, type DailyPricePoint, type DatedScore, type ScoreExplanation, type SecuritySearchResult, type StockAtAGlance } from "@/lib/research-read-model";
+import { getDailyPriceHistory, getDatedScore, getLatestDatedScores, getScoreExplanations, getScoreHistory, getSecurityIdentity, getStockAtAGlance, ResearchReadModelError, type DailyPricePoint, type DatedScore, type ScoreExplanation, type ScoreHistoryPoint, type SecuritySearchResult, type StockAtAGlance } from "@/lib/research-read-model";
 
 function unavailableScoreSummary(reason?: string) {
   if (reason?.includes("EntityCommonStockSharesOutstanding")) return "A current SEC-reported share count is unavailable.";
@@ -19,6 +20,7 @@ export default async function StockDetailPage({ params, searchParams }: { params
   let identity: SecuritySearchResult | null = null;
   let score: DatedScore | null = null;
   let explanations: ScoreExplanation[] = [];
+  let scoreHistory: ScoreHistoryPoint[] = [];
   let priceHistory: DailyPricePoint[] = [];
   let marketSnapshot: StockAtAGlance | null = null;
   let unavailable = false;
@@ -27,7 +29,7 @@ export default async function StockDetailPage({ params, searchParams }: { params
     if (identity) [priceHistory, marketSnapshot] = await Promise.all([getDailyPriceHistory(securityId), getStockAtAGlance(securityId)]);
     const scoreDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : (await getLatestDatedScores())?.scoreDate;
     if (scoreDate) {
-      score = await getDatedScore(securityId, scoreDate);
+      [score, scoreHistory] = await Promise.all([getDatedScore(securityId, scoreDate), getScoreHistory(securityId, scoreDate)]);
       if (score) explanations = await getScoreExplanations(securityId, scoreDate);
     }
   } catch (error) { unavailable = error instanceof ResearchReadModelError; }
@@ -49,6 +51,7 @@ export default async function StockDetailPage({ params, searchParams }: { params
     {identity && <PriceChart points={priceHistory} ticker={identity.ticker} />}
     {eligibleScore ? <>
       <section className="detail-score"><div><p className="eyebrow">RESEARCH SCORE</p><p className="anchor-score">{formatScore(eligibleScore.score)}<span>/100</span></p><p className="quiet-copy">Rank {eligibleScore.rank ?? "Unavailable"} · {eligibleScore.signal} · Tier {eligibleScore.dataCapabilityTier}</p></div><div className="detail-context"><span>Data cutoff</span><strong>{new Date(eligibleScore.dataCutoffAt).toLocaleString("en-CA", { timeZone: "America/Toronto" })}</strong><span>Model</span><strong>{eligibleScore.modelVersion}</strong></div></section>
+      <ScoreHistory points={scoreHistory} />
       <section className="content-section"><div className="section-heading"><div><p className="eyebrow">WHY IT APPEARS</p><h2>Feature evidence</h2></div><span className="status-label">{explanations.length} inputs</span></div>{explanations.length ? <ul className="evidence-list">{explanations.slice(0, 3).map((item) => <li key={`${item.featureKey}-${item.featureVersion}`}><div><strong>{item.displayName ?? item.featureKey}</strong><span>{formatPercentile(item.percentile)} in {item.sectorCode}</span></div><p>{item.contribution ? <>{factorContext[item.featureKey] ?? "A dated model input."} {Math.round(Number(item.contribution) * 100)} score points from the fixed equal weight.</> : `Not available: ${item.unavailableReason ?? "missing research input"}`}</p></li>)}</ul> : <p className="empty-inline">Feature explanations are not available for this dated score.</p>}</section>
       <section className="content-section split-note"><div><p className="eyebrow">WHAT TO VERIFY</p><h2>Risk and freshness matter.</h2></div><p>Review data freshness, Tier B limitations, and the underlying methodology before using this research as a starting point for further investigation.</p></section>
     </> : score ? <section className="unavailable-score"><div><p className="eyebrow">RESEARCH STATUS</p><h2>A score is not available for this run.</h2><p>{unavailableScoreSummary(score.unavailableReason)} Quantrade does not estimate a score when source data is incomplete.</p></div><dl><div><dt>Checked</dt><dd>{formatResearchDate(score.scoreDate)}</dd></div><div><dt>Model</dt><dd>{score.modelVersion}</dd></div><div><dt>Result</dt><dd>Withheld</dd></div></dl><Link href="/research" className="text-link">Read methodology</Link></section> : <section className="empty-state small"><p className="eyebrow">RESEARCH STATUS</p><h2>{unavailable ? "Research data is not connected." : "No dated score is available yet."}</h2><p>{unavailable ? "Connect the normalized research database to load company identity, price history, score evidence, and model context." : "The score pipeline will publish only when market, fundamental, and sector inputs are complete. The chart above uses the real normalized daily price history already available."}</p><Link href="/search" className="primary-link">Search another company</Link></section>}
