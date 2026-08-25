@@ -15,6 +15,7 @@ from .forward_outcomes import materialize_due_forward_score_outcomes
 from .paper_portfolio import publish_due_paper_portfolios
 from .portfolio_outcomes import materialize_due_paper_portfolio_outcomes
 from .score_run import TORONTO, _dotenv_values, _settings
+from .universe_symbols import canonical_ticker
 
 
 _LOCK_KEY = 7_136_202_600_824
@@ -23,12 +24,15 @@ _LOCK_KEY = 7_136_202_600_824
 def _symbols(database_url: str, score_date: date) -> list[str]:
     import psycopg
     with psycopg.connect(database_url) as connection, connection.cursor() as cursor:
-        cursor.execute("""SELECT l.ticker FROM quantrade.universe_snapshots u
+        cursor.execute("""SELECT m.security_id::text, l.ticker FROM quantrade.universe_snapshots u
                           JOIN quantrade.universe_memberships m ON m.universe_snapshot_id = u.universe_snapshot_id
                           JOIN quantrade.listings l ON l.security_id = m.security_id
                           WHERE u.universe_code = 'sp500' AND u.as_of_date <= %s AND l.valid_to IS NULL
-                          ORDER BY u.as_of_date DESC, l.ticker""", (score_date,))
-        return sorted(set(str(row[0]) for row in cursor.fetchall()))
+                          ORDER BY u.as_of_date DESC, m.security_id, l.ticker""", (score_date,))
+        candidates: dict[str, list[str]] = {}
+        for security_id, ticker in cursor.fetchall():
+            candidates.setdefault(str(security_id), []).append(str(ticker))
+    return sorted(canonical_ticker(tickers) for tickers in candidates.values())
 
 
 def _ciks(database_url: str, score_date: date) -> list[str]:

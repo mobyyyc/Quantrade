@@ -14,6 +14,7 @@ from .alpaca import ALPACA_BARS_URL, AlpacaClient, AlpacaDailyBar, parse_daily_b
 from .historical_cohorts import CURRENT_SURVIVORS_COHORT, HistoricalCohortError
 from .market_data import PostgresMarketDataRepository
 from .security_master import FileRawArtifactStore
+from .universe_symbols import canonical_ticker
 
 
 TORONTO = ZoneInfo("America/Toronto")
@@ -119,20 +120,20 @@ class HistoricalMarketBackfillRepository:
     def cohort_symbols(self, cohort_code: str) -> tuple[str, ...]:
         with self._connection.cursor() as cursor:
             cursor.execute(
-                """SELECT listing.ticker
+                """SELECT membership.security_id::text, listing.ticker
                    FROM quantrade.research_cohorts AS cohort
                    JOIN quantrade.research_cohort_memberships AS membership
                      ON membership.research_cohort_id = cohort.research_cohort_id
-                   JOIN LATERAL (
-                     SELECT ticker FROM quantrade.listings
-                     WHERE security_id = membership.security_id AND valid_to IS NULL
-                     ORDER BY valid_from DESC LIMIT 1
-                   ) AS listing ON true
+                   JOIN quantrade.listings AS listing
+                     ON listing.security_id = membership.security_id AND listing.valid_to IS NULL
                    WHERE cohort.cohort_code = %s
-                   ORDER BY listing.ticker""",
+                   ORDER BY membership.security_id, listing.ticker""",
                 (cohort_code,),
             )
-            symbols = tuple(str(row[0]) for row in cursor.fetchall())
+            candidates: dict[str, list[str]] = {}
+            for security_id, ticker in cursor.fetchall():
+                candidates.setdefault(str(security_id), []).append(str(ticker))
+            symbols = tuple(sorted(canonical_ticker(tickers) for tickers in candidates.values()))
         if len(symbols) != 500:
             raise HistoricalCohortError(f"{cohort_code} must resolve exactly 500 active listings; found {len(symbols)}")
         return symbols
