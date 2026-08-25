@@ -143,17 +143,18 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .scroll-fade-region:focus-visible { outline-offset: 4px; }
 .today-ranking-scroll .scroll-fade-region { max-height: min(58vh, 37rem); }
 .score-list-today { overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.score-list-today .score-row { position: relative; min-height: 5.35rem; background: transparent; }
+.score-list-today .score-row { position: relative; min-height: 5.35rem; border-top: 1px solid var(--line-soft); border-bottom: 0; background: transparent; }
 .score-list-today .score-row::before { position: absolute; inset: 0; content: ""; background: linear-gradient(90deg, rgb(22 22 22 / 0), rgb(22 22 22 / .88) 10%, var(--surface-raised) 50%, rgb(22 22 22 / .88) 90%, rgb(22 22 22 / 0)); opacity: 0; pointer-events: none; transition: opacity 150ms var(--ease); }
 .score-list-today .score-row-link { position: relative; z-index: 1; }
 .score-list-today .score-row:hover { background: transparent; }
 .score-list-today .score-row:hover::before { opacity: 1; }
-.score-list-today .score-row:first-child { border-top: 1px solid var(--line-soft); }
 .score-list-today .score-row-link { grid-template-columns: 2.25rem minmax(0, 1fr) auto; padding: 0 .2rem 0 0; }
 .score-list-today .rank-number { align-self: center; }
 .score-list-today .score-row-main { gap: .5rem; }
 .score-list-today .score-row-main > span { font-size: .86rem; }
 .score-list-today .score-row-value { padding-right: .25rem; }
+.today-virtual-list { position: relative; }
+.today-virtual-row { position: absolute; right: 0; left: 0; height: 5.35rem; }
 
 .daily-update-control { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-top: 4.5rem; padding: 1.35rem 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
 .daily-update-control h2 { margin-bottom: .35rem; }
