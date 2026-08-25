@@ -49,6 +49,7 @@ export function PriceChart({ points, ticker }: PriceChartProps) {
   const activePoint = activeIndex === null ? null : coordinates[activeIndex];
   const activePrice = activeIndex === null ? null : prices[activeIndex];
   const activeDate = activeIndex === null ? null : new Date(`${points[activeIndex].sessionDate}T00:00:00Z`).toLocaleDateString("en-CA", { month: "short", day: "numeric", timeZone: "UTC" });
+  const tooltipAlignment = activePoint && activePoint.x / width < 0.16 ? "tooltip-left" : activePoint && activePoint.x / width > 0.84 ? "tooltip-right" : "";
 
   function setNearestPoint(event: PointerEvent<SVGSVGElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -82,7 +83,7 @@ export function PriceChart({ points, ticker }: PriceChartProps) {
         {activePoint && <line className="price-chart-guide" x1={activePoint.x} x2={activePoint.x} y1={inset} y2={height - inset} vectorEffect="non-scaling-stroke" />}
       </svg>
       {activePoint && <span className={`price-chart-active-dot ${direction}`} aria-hidden="true" style={{ left: `${(activePoint.x / width) * 100}%`, top: `${(activePoint.y / height) * 100}%` }} />}
-      {activePoint && activePrice !== null && activeDate && <output className="price-chart-tooltip" style={{ left: `${(activePoint.x / width) * 100}%`, top: `${(activePoint.y / height) * 100}%` }}><strong>{formatPrice(activePrice)}</strong><span>{activeDate}</span></output>}
+      {activePoint && activePrice !== null && activeDate && <output className={`price-chart-tooltip ${tooltipAlignment}`} style={{ left: `${(activePoint.x / width) * 100}%`, top: `${(activePoint.y / height) * 100}%` }}><strong>{formatPrice(activePrice)}</strong><span>{activeDate}</span></output>}
     </div>
     <div className="price-chart-range"><span>{start}</span><span>{end}</span></div>
   </section>;

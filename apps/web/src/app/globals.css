@@ -317,6 +317,8 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .price-chart-active-dot { position: absolute; z-index: 2; width: 9px; height: 9px; border: 1px solid var(--canvas); border-radius: 50%; background: var(--positive); box-shadow: 0 0 0 1px rgb(34 197 94 / .18); pointer-events: none; transform: translate(-50%, -50%); }
 .price-chart-active-dot.negative-change { background: var(--negative); box-shadow: 0 0 0 1px rgb(239 68 68 / .18); }
 .price-chart-tooltip { position: absolute; z-index: 3; display: grid; gap: .1rem; min-width: max-content; padding: .5rem .65rem; border: 1px solid rgb(255 255 255 / .14); border-radius: .7rem; background: var(--surface-strong); color: var(--foreground); box-shadow: var(--surface-shadow); font-size: .78rem; line-height: 1.2; pointer-events: none; transform: translate(-50%, calc(-100% - .7rem)); }
+.price-chart-tooltip.tooltip-left { transform: translate(0, calc(-100% - .7rem)); }
+.price-chart-tooltip.tooltip-right { transform: translate(-100%, calc(-100% - .7rem)); }
 .price-chart-tooltip strong { font-size: .9rem; letter-spacing: -.02em; }
 .price-chart-tooltip span { color: var(--muted); }
 
@@ -363,15 +365,17 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .daily-update-summary > .text-link { margin-left: -.85rem; }
   .date-form { flex-direction: column; align-items: stretch; }
   .date-form label, .date-form input { width: 100%; }
-  .detail-heading-row { align-items: start; }
-  .detail-watchlist-button { min-width: 2.75rem; overflow: hidden; padding-inline: .75rem; font-size: .82rem; }
+  .detail-heading-row { flex-direction: column; align-items: start; gap: .9rem; }
+  .detail-watchlist-button { margin-top: 0; }
+  .detail-header .lede { font-size: .98rem; line-height: 1.6; }
   .stock-identity { gap: .35rem .7rem; }
   .stock-company-name { flex-basis: 100%; font-size: .52em; }
   .detail-snapshot { grid-template-columns: 1fr; gap: 2.35rem; margin-top: 2.25rem; padding: 1.75rem 0; }
   .detail-score { gap: 1.75rem; }
   .detail-context { grid-template-columns: 1fr; gap: .85rem; }
   .detail-snapshot .price-chart { height: 12rem; }
-  .score-history .section-heading { align-items: end; }
+  .score-history .section-heading { flex-direction: column; align-items: start; }
+  .score-history-change { max-width: 100%; white-space: normal; }
   .score-history-list li { grid-template-columns: minmax(0, 1fr) auto; gap: .65rem; }
   .score-history-list small { grid-column: 1 / -1; justify-self: start; text-align: left; }
   .unavailable-score { grid-template-columns: 1fr; gap: 1.5rem; margin-top: 2.75rem; padding: 1.75rem 0; }
