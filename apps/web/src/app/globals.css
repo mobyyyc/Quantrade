@@ -106,6 +106,16 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .watchlist-preview .compact-company-list { display: grid; gap: .65rem; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .watchlist-preview .compact-company-list li { overflow: hidden; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface); box-shadow: var(--surface-shadow); }
 .watchlist-preview .compact-company-list li:last-child { border-bottom: 1px solid var(--line); }
+.watchlist-preview-scroll-frame { position: relative; }
+.watchlist-preview-scroll-frame::before, .watchlist-preview-scroll-frame::after { position: absolute; z-index: 2; right: .55rem; left: 0; height: 2rem; content: ""; pointer-events: none; opacity: 0; transition: opacity 150ms var(--ease); }
+.watchlist-preview-scroll-frame::before { top: 0; background: linear-gradient(to bottom, var(--canvas), rgb(8 8 8 / 0)); }
+.watchlist-preview-scroll-frame::after { right: 0; bottom: 0; background: linear-gradient(to top, var(--canvas), rgb(8 8 8 / 0)); }
+.watchlist-preview-scroll-frame.has-top-fade::before, .watchlist-preview-scroll-frame.has-bottom-fade::after { opacity: 1; }
+.watchlist-preview-scroll-region { max-height: min(58vh, 37rem); overflow-x: hidden; overflow-y: auto; padding: .1rem .55rem .1rem 0; scroll-behavior: smooth; scrollbar-color: #4a4a4a transparent; scrollbar-width: thin; }
+.watchlist-preview-scroll-region::-webkit-scrollbar { width: .5rem; }
+.watchlist-preview-scroll-region::-webkit-scrollbar-track { background: transparent; }
+.watchlist-preview-scroll-region::-webkit-scrollbar-thumb { border: .17rem solid transparent; border-radius: 9999px; background: #4a4a4a; background-clip: padding-box; }
+.watchlist-preview-scroll-region:focus-visible { outline-offset: 4px; }
 .compact-company-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .45rem .7rem; padding: .95rem 1.1rem; }
 .compact-company-identity, .compact-company-market, .compact-company-score { display: grid; gap: .14rem; }
 .compact-company-identity { min-width: 0; }
@@ -376,6 +386,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 @media (max-width: 900px) {
   .today-grid { grid-template-columns: 1fr; gap: 0; }
   .watchlist-preview { margin-top: 3.5rem; }
+  .watchlist-preview-scroll-region { max-height: min(55vh, 34rem); }
   .rankings-layout { grid-template-columns: 1fr; gap: 2.5rem; }
   .rankings-results, .rankings-context { grid-column: 1; grid-row: auto; }
   .rankings-context { position: static; padding: 1rem 0; }
