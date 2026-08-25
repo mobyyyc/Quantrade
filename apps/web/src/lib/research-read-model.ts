@@ -246,6 +246,18 @@ export async function getLatestDatedScores(): Promise<{
   return scoreDate ? { scoreDate, scores: await listDatedScores(scoreDate) } : null;
 }
 
+export async function getPreviousDatedScores(beforeDate: string): Promise<{
+  scoreDate: string;
+  scores: DatedScore[];
+} | null> {
+  const result = await databasePool().query<{ score_date: string }>(
+    "SELECT MAX(score_date)::text AS score_date FROM quantrade.score_snapshots WHERE score_date < $1",
+    [beforeDate],
+  );
+  const scoreDate = result.rows[0]?.score_date;
+  return scoreDate ? { scoreDate, scores: await listDatedScores(scoreDate) } : null;
+}
+
 export async function getRecentScoreRuns(limit = 5): Promise<ScoreRunSummary[]> {
   const result = await databasePool().query(
     `SELECT score_date::text AS score_date, MAX(published_at) AS published_at,

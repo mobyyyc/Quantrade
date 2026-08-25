@@ -160,6 +160,17 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .ranking-run-facts dt { color: var(--subtle); font-size: .76rem; }
 .ranking-run-facts dd { margin: 0; color: var(--foreground); font-size: .78rem; text-align: right; }
 .rankings-context > p:not(.eyebrow) { margin: 1.2rem 0 0; color: var(--muted); font-size: .82rem; line-height: 1.55; }
+.ranking-movers { margin-top: 1.25rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--line-soft); }
+.ranking-movers .eyebrow { margin-bottom: .45rem; }
+.ranking-movers h3 { margin: 0; color: var(--foreground); font-size: 1rem; letter-spacing: -.025em; }
+.ranking-movers-date, .ranking-movers-empty { margin: .35rem 0 0; color: var(--muted); font-size: .78rem; line-height: 1.5; }
+.ranking-movers ol { margin: .75rem 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line-soft); }
+.ranking-movers li { border-bottom: 1px solid var(--line-soft); }
+.ranking-movers a { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .6rem 0; }
+.ranking-movers a > div { display: grid; min-width: 0; gap: .08rem; }
+.ranking-movers a strong { color: var(--foreground); font-size: .84rem; letter-spacing: -.02em; }
+.ranking-movers a span { overflow: hidden; color: var(--subtle); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.ranking-movers a b { color: var(--foreground); font-size: .8rem; font-weight: 680; white-space: nowrap; }
 .rankings-date-form { display: grid; gap: .55rem; margin-top: 1.2rem; }
 .rankings-date-form label { display: grid; gap: .4rem; color: var(--muted); font-size: .78rem; }
 .rankings-date-form input { width: 100%; min-height: 2.45rem; border: 1px solid var(--line); border-radius: 9999px; padding: 0 .8rem; background: var(--surface); color: var(--foreground); box-shadow: var(--control-shadow); }
@@ -321,6 +332,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .rankings-layout { grid-template-columns: 1fr; gap: 2.5rem; }
   .rankings-results, .rankings-context { grid-column: 1; grid-row: auto; }
   .rankings-context { position: static; padding: 1rem 0; }
+  .ranking-movers { max-width: 28rem; }
 }
 
 @media (max-width: 700px) {
