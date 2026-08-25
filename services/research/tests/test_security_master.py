@@ -23,9 +23,10 @@ class FakeSecurityMasterRepository:
         self.persisted_rows = []
         self.closed_ciks = []
 
-    def persist_raw_artifact(self, artifact: RawArtifact, source_reference: str) -> str:
+    def persist_raw_artifact(self, artifact: RawArtifact, source_reference: str, provider: str = "sec_edgar") -> str:
         self.artifact = artifact
         self.source_reference = source_reference
+        self.provider = provider
         return "artifact-1"
 
     def upsert_security_master_row(self, row, raw_artifact_id, source_reference, ingested_at) -> None:
@@ -80,6 +81,21 @@ class SecurityMasterTests(unittest.TestCase):
         self.assertEqual(report.closed_listings, 2)
         self.assertEqual(repository.closed_ciks, ["0000320193"])
         self.assertIn("raw_artifact_uri=file:///artifacts/security-master.json", report.manifest_note())
+
+    def test_manual_fallback_does_not_close_the_sec_snapshot_and_preserves_manual_lineage(self) -> None:
+        rows, _ = normalize_security_master(
+            parse_company_tickers_exchange(b'{"fields":["cik","name","ticker","exchange"],"data":[[320193,"APPLE INC","AAPL","Nasdaq"]]}'),
+            date(2026, 8, 20),
+        )
+        repository = FakeSecurityMasterRepository()
+        report = persist_security_master_snapshot(
+            repository,
+            RawArtifact("file:///artifacts/manual.csv", "b" * 64, datetime(2026, 8, 20, tzinfo=timezone.utc)),
+            "https://example.test/current-source", rows, 0, provider="manual", close_missing_sec_listings=False,
+        )
+        self.assertEqual(repository.provider, "manual")
+        self.assertFalse(repository.closed_ciks)
+        self.assertEqual(report.closed_listings, 0)
 
 
 if __name__ == "__main__":

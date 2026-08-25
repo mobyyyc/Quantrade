@@ -35,7 +35,7 @@ class SecurityMasterIngestionReport:
 
 
 class SecurityMasterRepository(Protocol):
-    def persist_raw_artifact(self, artifact: RawArtifact, source_reference: str) -> str: ...
+    def persist_raw_artifact(self, artifact: RawArtifact, source_reference: str, provider: str = "sec_edgar") -> str: ...
 
     def upsert_security_master_row(
         self, row: SecurityMasterRow, raw_artifact_id: str, source_reference: str, ingested_at: datetime
@@ -85,17 +85,19 @@ class PostgresSecurityMasterRepository:
     def close(self) -> None:
         self._connection.close()
 
-    def persist_raw_artifact(self, artifact: RawArtifact, source_reference: str) -> str:
+    def persist_raw_artifact(self, artifact: RawArtifact, source_reference: str, provider: str = "sec_edgar") -> str:
+        if provider not in {"sec_edgar", "manual"}:
+            raise ValueError("security-master artifacts must use sec_edgar or manual provider lineage")
         with self._connection.cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO quantrade.raw_artifacts
                     (provider, source_reference, storage_uri, retrieved_at, content_sha256)
-                VALUES ('sec_edgar', %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT (storage_uri) DO UPDATE SET storage_uri = EXCLUDED.storage_uri
                 RETURNING raw_artifact_id
                 """,
-                (source_reference, artifact.storage_uri, artifact.retrieved_at, artifact.content_sha256),
+                (provider, source_reference, artifact.storage_uri, artifact.retrieved_at, artifact.content_sha256),
             )
             raw_artifact_id = str(cursor.fetchone()[0])
         self._connection.commit()
@@ -188,11 +190,14 @@ def persist_security_master_snapshot(
     artifact: RawArtifact,
     source_reference: str,
     rows: list[SecurityMasterRow],
-    unmapped_exchange_rows: int,
+    unmapped_exchange_rows: int, *, provider: str = "sec_edgar", close_missing_sec_listings: bool = True,
 ) -> SecurityMasterIngestionReport:
     ingested_at = datetime.now(timezone.utc)
-    raw_artifact_id = repository.persist_raw_artifact(artifact, source_reference)
+    raw_artifact_id = repository.persist_raw_artifact(artifact, source_reference, provider)
     for row in rows:
         repository.upsert_security_master_row(row, raw_artifact_id, source_reference, ingested_at)
-    closed = repository.close_missing_sec_listings([row.cik for row in rows], rows[0].snapshot_date) if rows else 0
+    closed = (
+        repository.close_missing_sec_listings([row.cik for row in rows], rows[0].snapshot_date)
+        if rows and close_missing_sec_listings else 0
+    )
     return SecurityMasterIngestionReport(len(rows), unmapped_exchange_rows, closed, artifact.storage_uri)
