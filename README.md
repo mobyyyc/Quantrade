@@ -23,6 +23,7 @@ in `.env.example`.
 - [Experiment protocol](EXPERIMENT_PROTOCOL.md)
 - [Free-data provider audit](FREE_DATA_AUDIT.md)
 - [Data capability decision](DATA_CAPABILITY_DECISION.md)
+- [Historical free-track coverage](data/derived/historical-coverage/)
 - [Operational monitoring](OPERATIONAL_MONITORING.md)
 - [Recovery runbook](RECOVERY_RUNBOOK.md)
 - [Release runbook](RELEASE_RUNBOOK.md)
@@ -33,3 +34,21 @@ in `.env.example`.
 - Free-data-first: SEC EDGAR, Alpaca Basic, and FRED/ALFRED.
 - Transparent factor ranking before advanced machine learning.
 - Point-in-time data integrity, cost-aware backtesting, and model versioning before user features.
+
+## Historical free research track
+
+The current-survivors historical lane is explicitly Tier B: it is a fixed,
+survivorship-biased S&P 500 cohort with static current sectors. After a market
+backfill, create an auditable local coverage report with:
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path 'services/research/src').Path
+py -3.14 -m quantrade_research.historical_market_coverage `
+  --start 2016-01-01 --end 2026-06-30 `
+  --output data/derived/historical-coverage/sp500_current_survivors_v1_2016-01-01_2026-06-30.json `
+  --env-file .env
+```
+
+The generated report is deliberately local and ignored by Git: it contains the
+actual provider coverage and exclusions for that run. It must be reviewed before
+building a training export.
