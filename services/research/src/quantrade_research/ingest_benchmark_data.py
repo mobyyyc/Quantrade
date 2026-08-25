@@ -37,6 +37,12 @@ def main() -> None:
     count = 0
     import psycopg
     with psycopg.connect(settings.database_url) as connection, connection.cursor() as cursor:
+        cursor.execute(
+            """SELECT availability_rule_id FROM quantrade.availability_rules
+               WHERE rule_key = 'alpaca_retrieval' AND rule_version = 'v1-benchmark'
+                 AND data_domain = 'benchmark_bar'"""
+        )
+        availability_rule_id = cursor.fetchone()[0]
         for adjustment, basis in (("raw", "unadjusted"), ("split", "split_adjusted")):
             token = None
             while True:
@@ -54,21 +60,43 @@ def main() -> None:
                     (ALPACA_BARS_URL, artifact.storage_uri, artifact.retrieved_at, artifact.content_sha256),
                 )
                 artifact_id = cursor.fetchone()[0]
+                cursor.execute(
+                    """INSERT INTO quantrade.raw_documents (provider, content_sha256, canonical_storage_uri)
+                       VALUES ('alpaca', %s, %s)
+                       ON CONFLICT (provider, content_sha256) DO NOTHING""",
+                    (artifact.content_sha256, artifact.storage_uri),
+                )
+                cursor.execute(
+                    """SELECT raw_document_id FROM quantrade.raw_documents
+                       WHERE provider = 'alpaca' AND content_sha256 = %s""",
+                    (artifact.content_sha256,),
+                )
+                document_id = cursor.fetchone()[0]
+                cursor.execute(
+                    """INSERT INTO quantrade.raw_document_retrievals
+                           (raw_document_id, raw_artifact_id, source_reference, retrieved_at)
+                       VALUES (%s, %s, %s, %s)
+                       ON CONFLICT (raw_artifact_id) DO NOTHING""",
+                    (document_id, artifact_id, ALPACA_BARS_URL, artifact.retrieved_at),
+                )
                 for bar in bars:
                     cursor.execute(
                         """INSERT INTO quantrade.benchmark_daily_price_bars
                            (benchmark_ticker, session_date, session, currency, open_price, high_price, low_price,
-                            close_price, volume, adjustment_basis, observed_at, available_at, ingested_at,
+                            close_price, volume, adjustment_basis, observed_at, available_at, availability_rule_id, ingested_at,
                             raw_artifact_id, source_reference)
-                           VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                           VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                            ON CONFLICT (benchmark_ticker, session_date, session, adjustment_basis)
                            DO UPDATE SET open_price = EXCLUDED.open_price, high_price = EXCLUDED.high_price,
                                low_price = EXCLUDED.low_price, close_price = EXCLUDED.close_price,
                                volume = EXCLUDED.volume, observed_at = EXCLUDED.observed_at,
-                               available_at = EXCLUDED.available_at, ingested_at = EXCLUDED.ingested_at,
+                               available_at = EXCLUDED.available_at,
+                               availability_rule_id = EXCLUDED.availability_rule_id,
+                               ingested_at = EXCLUDED.ingested_at,
                                raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference""",
                         (ticker, bar.session_date, bar.open_price, bar.high_price, bar.low_price, bar.close_price,
-                         bar.volume, basis, bar.observed_at, retrieved_at, datetime.now(timezone.utc), artifact_id,
+                         bar.volume, basis, bar.observed_at, retrieved_at, availability_rule_id,
+                         datetime.now(timezone.utc), artifact_id,
                          ALPACA_BARS_URL),
                     )
                     count += 1

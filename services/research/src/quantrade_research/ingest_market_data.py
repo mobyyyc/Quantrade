@@ -52,6 +52,7 @@ def main() -> None:
     bar_count = 0
     action_count = 0
     try:
+        availability_rule_id = repository.availability_rule_id("alpaca_retrieval", "v1", "market_bar")
         batches = [arguments.symbols[index:index + arguments.batch_size] for index in range(0, len(arguments.symbols), arguments.batch_size)]
         for symbols in batches:
           for adjustment in ("raw", "split"):
@@ -65,7 +66,7 @@ def main() -> None:
                 artifact_id = repository.persist_raw_artifact(artifact, ALPACA_BARS_URL)
                 bar_count += repository.upsert_daily_bars(
                     bars, "unadjusted" if adjustment == "raw" else "split_adjusted",
-                    artifact_id, ALPACA_BARS_URL, retrieved_at,
+                    artifact_id, ALPACA_BARS_URL, retrieved_at, availability_rule_id,
                 )
                 if token is None:
                     break

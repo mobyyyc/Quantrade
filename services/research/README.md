@@ -49,6 +49,23 @@ membership, resumable historical-backfill records, and training-dataset
 provenance. Subsequent backfill commands must link their output to these records
 and preserve source availability separately from retrieval time.
 
+## Historical market backfill
+
+The historical price worker is prepared, but is not run until its coverage audit
+task is approved. It downloads the fixed current-survivors cohort and SPY in
+quarterly, 100-symbol batches, with raw and split-adjusted bars. Every
+historical session is modeled as available at **6:00 p.m. America/Toronto**,
+not at its later download time.
+
+```bash
+python -m quantrade_research.historical_market_backfill \
+  --start 2016-01-01 --end 2026-06-30 --dry-run
+```
+
+Remove `--dry-run` only for the approved execution task. The worker records
+completed chunks in PostgreSQL and safely skips them on a restart; raw and
+split-adjusted benchmark bars for SPY use the same availability rule.
+
 ## SEC security master
 
 P2.1 ingests SEC's current ticker/exchange association file as a dated

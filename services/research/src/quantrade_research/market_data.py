@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+from typing import Callable
 
 from .alpaca import AlpacaCorporateAction, AlpacaDailyBar
 from .security_master import RawArtifact
@@ -33,8 +34,39 @@ class PostgresMarketDataRepository:
                 (source_reference, artifact.storage_uri, artifact.retrieved_at, artifact.content_sha256),
             )
             identifier = str(cursor.fetchone()[0])
+            cursor.execute(
+                """INSERT INTO quantrade.raw_documents (provider, content_sha256, canonical_storage_uri)
+                   VALUES ('alpaca', %s, %s)
+                   ON CONFLICT (provider, content_sha256) DO NOTHING""",
+                (artifact.content_sha256, artifact.storage_uri),
+            )
+            cursor.execute(
+                """SELECT raw_document_id FROM quantrade.raw_documents
+                   WHERE provider = 'alpaca' AND content_sha256 = %s""",
+                (artifact.content_sha256,),
+            )
+            document_id = cursor.fetchone()[0]
+            cursor.execute(
+                """INSERT INTO quantrade.raw_document_retrievals
+                       (raw_document_id, raw_artifact_id, source_reference, retrieved_at)
+                   VALUES (%s, %s, %s, %s)
+                   ON CONFLICT (raw_artifact_id) DO NOTHING""",
+                (document_id, identifier, source_reference, artifact.retrieved_at),
+            )
         self._connection.commit()
         return identifier
+
+    def availability_rule_id(self, rule_key: str, rule_version: str, data_domain: str) -> str:
+        with self._connection.cursor() as cursor:
+            cursor.execute(
+                """SELECT availability_rule_id::text FROM quantrade.availability_rules
+                   WHERE rule_key = %s AND rule_version = %s AND data_domain = %s""",
+                (rule_key, rule_version, data_domain),
+            )
+            row = cursor.fetchone()
+        if row is None:
+            raise ValueError(f"availability rule {rule_key}@{rule_version} is unavailable for {data_domain}")
+        return str(row[0])
 
     def _security_id(self, cursor, ticker: str, on_date) -> object:
         cursor.execute(
@@ -64,27 +96,63 @@ class PostgresMarketDataRepository:
             raise ValueError(f"no active security-master listing for {ticker} on {on_date}")
         return row[0]
 
-    def upsert_daily_bars(self, bars: list[AlpacaDailyBar], adjustment_basis: str, raw_artifact_id: str, source_reference: str, available_at: datetime) -> int:
+    def upsert_daily_bars(
+        self, bars: list[AlpacaDailyBar], adjustment_basis: str, raw_artifact_id: str,
+        source_reference: str, available_at: datetime | Callable[[AlpacaDailyBar], datetime],
+        availability_rule_id: str,
+    ) -> int:
         with self._connection.cursor() as cursor:
             for bar in bars:
                 security_id = self._security_id(cursor, bar.ticker, bar.session_date)
+                bar_available_at = available_at(bar) if callable(available_at) else available_at
                 cursor.execute(
                     """
                     INSERT INTO quantrade.daily_price_bars
                         (security_id, session_date, session, currency, open_price, high_price, low_price,
-                         close_price, volume, adjustment_basis, observed_at, available_at, ingested_at,
+                         close_price, volume, adjustment_basis, observed_at, available_at, availability_rule_id, ingested_at,
                          raw_artifact_id, source_reference)
-                    VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (security_id, session_date, session, adjustment_basis)
                     DO UPDATE SET open_price = EXCLUDED.open_price, high_price = EXCLUDED.high_price,
                         low_price = EXCLUDED.low_price, close_price = EXCLUDED.close_price,
                         volume = EXCLUDED.volume, observed_at = EXCLUDED.observed_at,
-                        available_at = EXCLUDED.available_at, ingested_at = EXCLUDED.ingested_at,
+                        available_at = EXCLUDED.available_at, availability_rule_id = EXCLUDED.availability_rule_id,
+                        ingested_at = EXCLUDED.ingested_at,
                         raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference
                     """,
                     (security_id, bar.session_date, bar.open_price, bar.high_price, bar.low_price,
-                     bar.close_price, bar.volume, adjustment_basis, bar.observed_at, available_at,
-                     datetime.now(timezone.utc), raw_artifact_id, source_reference),
+                     bar.close_price, bar.volume, adjustment_basis, bar.observed_at, bar_available_at,
+                     availability_rule_id, datetime.now(timezone.utc), raw_artifact_id, source_reference),
+                )
+        self._connection.commit()
+        return len(bars)
+
+    def upsert_benchmark_daily_bars(
+        self, bars: list[AlpacaDailyBar], benchmark_ticker: str, adjustment_basis: str,
+        raw_artifact_id: str, source_reference: str,
+        available_at: datetime | Callable[[AlpacaDailyBar], datetime], availability_rule_id: str,
+    ) -> int:
+        with self._connection.cursor() as cursor:
+            for bar in bars:
+                bar_available_at = available_at(bar) if callable(available_at) else available_at
+                cursor.execute(
+                    """INSERT INTO quantrade.benchmark_daily_price_bars
+                           (benchmark_ticker, session_date, session, currency, open_price, high_price, low_price,
+                            close_price, volume, adjustment_basis, observed_at, available_at, availability_rule_id,
+                            ingested_at, raw_artifact_id, source_reference)
+                       VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                       ON CONFLICT (benchmark_ticker, session_date, session, adjustment_basis)
+                       DO UPDATE SET open_price = EXCLUDED.open_price, high_price = EXCLUDED.high_price,
+                           low_price = EXCLUDED.low_price, close_price = EXCLUDED.close_price,
+                           volume = EXCLUDED.volume, observed_at = EXCLUDED.observed_at,
+                           available_at = EXCLUDED.available_at,
+                           availability_rule_id = EXCLUDED.availability_rule_id,
+                           ingested_at = EXCLUDED.ingested_at,
+                           raw_artifact_id = EXCLUDED.raw_artifact_id,
+                           source_reference = EXCLUDED.source_reference""",
+                    (benchmark_ticker, bar.session_date, bar.open_price, bar.high_price, bar.low_price,
+                     bar.close_price, bar.volume, adjustment_basis, bar.observed_at, bar_available_at,
+                     availability_rule_id, datetime.now(timezone.utc), raw_artifact_id, source_reference),
                 )
         self._connection.commit()
         return len(bars)

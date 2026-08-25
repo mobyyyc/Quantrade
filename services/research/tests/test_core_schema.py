@@ -121,6 +121,14 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("survivorship_biased", sql)
         self.assertIn("historical lineage records are immutable", sql)
 
+    def test_historical_market_backfill_records_availability_rules_and_chunks(self) -> None:
+        migration = MIGRATION.with_name("0017_add_historical_market_backfill.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("alpaca_historical_eod_close", sql)
+        self.assertIn("availability_rule_id UUID", sql)
+        self.assertIn("CREATE TABLE quantrade.historical_backfill_chunks", sql)
+        self.assertIn("completed historical backfill chunks are immutable", sql)
+
     def test_holdout_and_experiment_governance_are_immutable(self) -> None:
         migration = MIGRATION.with_name("0007_add_experiment_governance.sql")
         sql = migration.read_text(encoding="utf-8")
