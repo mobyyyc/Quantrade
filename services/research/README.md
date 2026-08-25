@@ -212,6 +212,19 @@ These are future-only training and validation inputs—not model predictions and
 not total-return measures. A missing mark creates a withheld label rather than
 moving the window, filling a value, or introducing look-ahead data.
 
+Use the read-only audit export to inspect exactly what an eventual ML experiment
+would receive. It includes only completed labels, the immutable score snapshot
+metadata, and the sector-percentile feature rows that actually formed that
+dated baseline score. It does not train, select, or approve any model:
+
+```bash
+python -m quantrade_research.training_dataset --horizon-sessions 5 --output data/derived/score-labels-5d.csv
+```
+
+The CSV is intentionally long-format, one feature row per score-label example,
+and its adjacent JSON file records the shared feature schema, score-date span,
+and example count. `data/derived/` remains local and untracked.
+
 ## Costs, liquidity, and performance metrics
 
 P4.5 enforces the provisional USD 10M median-dollar-volume gate for every
