@@ -44,11 +44,20 @@ def publish_paper_portfolio(*, settings: Settings, score_date: date, starting_na
         if len(target_ids) != 20:
             raise DataQualityError(f"paper portfolio requires 20 eligible scores; found {len(target_ids)}")
         cursor.execute(
-            """SELECT MIN(session_date) FROM quantrade.daily_price_bars
-               WHERE security_id = ANY(%s::uuid[]) AND session = 'regular' AND session_date > %s""",
-            (target_ids, score_date),
+            """SELECT session_date
+               FROM quantrade.daily_price_bars
+               WHERE security_id = ANY(%s::uuid[])
+                 AND session = 'regular'
+                 AND adjustment_basis = 'unadjusted'
+                 AND session_date > %s
+               GROUP BY session_date
+               HAVING COUNT(DISTINCT security_id) = %s
+               ORDER BY session_date ASC
+               LIMIT 1""",
+            (target_ids, score_date, len(target_ids)),
         )
-        execution_date = cursor.fetchone()[0]
+        execution_row = cursor.fetchone()
+        execution_date = execution_row[0] if execution_row is not None else None
         if execution_date is None:
             raise DataQualityError("next regular-session open is not available yet")
         cursor.execute(
@@ -81,6 +90,65 @@ def publish_paper_portfolio(*, settings: Settings, score_date: date, starting_na
             )
         connection.commit()
     return len(ledger.positions)
+
+
+def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) -> tuple[date, ...]:
+    """Publish only score runs whose first tradable open is this evaluation date.
+
+    This intentionally does not backfill missed runs. A forward paper record is
+    useful only when it is established at the next available market open.
+    """
+    settings.require_runtime_storage()
+    assert settings.database_url is not None
+    import psycopg
+    with psycopg.connect(settings.database_url) as connection, connection.cursor() as cursor:
+        cursor.execute(
+            """SELECT score_date
+               FROM quantrade.score_snapshots s
+               WHERE score_date < %s
+                 AND eligible
+                 AND NOT EXISTS (
+                   SELECT 1
+                   FROM quantrade.paper_portfolio_runs p
+                   WHERE p.score_date = s.score_date
+                 )
+               GROUP BY score_date
+               HAVING COUNT(*) >= 20
+               ORDER BY score_date ASC""",
+            (execution_date,),
+        )
+        candidates = [row[0] for row in cursor.fetchall()]
+        due_dates: list[date] = []
+        for score_date in candidates:
+            cursor.execute(
+                """WITH targets AS (
+                     SELECT security_id
+                     FROM quantrade.score_snapshots
+                     WHERE score_date = %s AND eligible
+                     ORDER BY rank ASC
+                     LIMIT 20
+                   )
+                   SELECT session_date
+                   FROM quantrade.daily_price_bars
+                   WHERE security_id IN (SELECT security_id FROM targets)
+                     AND session = 'regular'
+                     AND adjustment_basis = 'unadjusted'
+                     AND session_date > %s
+                   GROUP BY session_date
+                   HAVING COUNT(DISTINCT security_id) = 20
+                   ORDER BY session_date ASC
+                   LIMIT 1""",
+                (score_date, score_date),
+            )
+            next_open_row = cursor.fetchone()
+            next_open = next_open_row[0] if next_open_row is not None else None
+            if next_open == execution_date:
+                due_dates.append(score_date)
+    published: list[date] = []
+    for score_date in due_dates:
+        publish_paper_portfolio(settings=settings, score_date=score_date)
+        published.append(score_date)
+    return tuple(published)
 
 
 def main() -> None:

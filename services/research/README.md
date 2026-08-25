@@ -190,6 +190,11 @@ same-close execution, missing opens, duplicate positions, short positions, or
 target weights that do not total one. It first closes the prior basket, then
 opens the target basket; P4.5 adds costs and liquidity constraints.
 
+The post-close manual update creates a paper portfolio only when the prior
+eligible score run's first regular-session open is present in the newly
+ingested market data. It never creates missed portfolios retroactively. This
+preserves the forward, no-lookahead record needed for evaluation.
+
 ## Costs, liquidity, and performance metrics
 
 P4.5 enforces the provisional USD 10M median-dollar-volume gate for every

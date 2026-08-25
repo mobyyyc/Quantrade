@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 from .score_run import TORONTO, _dotenv_values, _settings
+from .paper_portfolio import publish_due_paper_portfolios
 
 
 def _symbols(database_url: str, score_date) -> list[str]:
@@ -48,7 +49,9 @@ def main() -> None:
     )
     for command in commands:
         subprocess.run(command, env=environment, check=True)
-    print(f"completed score_date={score_date}")
+    published_portfolios = publish_due_paper_portfolios(settings=settings, execution_date=score_date)
+    published_note = ",".join(item.isoformat() for item in published_portfolios) or "none_due"
+    print(f"completed score_date={score_date}; paper_portfolios={published_note}")
 
 
 if __name__ == "__main__":
