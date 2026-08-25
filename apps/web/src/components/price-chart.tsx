@@ -16,6 +16,10 @@ function formatPrice(value: number): string {
   }).format(value);
 }
 
+function formatAxisDate(value: string): string {
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-CA", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 export function PriceChart({ points, ticker }: PriceChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   if (points.length < 2) {
@@ -46,6 +50,7 @@ export function PriceChart({ points, ticker }: PriceChartProps) {
   const areaPath = `M ${coordinates.map(({ x, y }) => `${x} ${y}`).join(" L ")} L ${lastPoint?.x} ${height - inset} L ${firstPoint.x} ${height - inset} Z`;
   const start = new Date(`${points[0].sessionDate}T00:00:00Z`).toLocaleDateString("en-CA", { month: "short", day: "numeric", timeZone: "UTC" });
   const end = new Date(`${points.at(-1)?.sessionDate}T00:00:00Z`).toLocaleDateString("en-CA", { month: "short", day: "numeric", timeZone: "UTC" });
+  const axisIndexes = [...new Set([0, .25, .5, .75, 1].map((fraction) => Math.round(fraction * (points.length - 1))))];
   const activePoint = activeIndex === null ? null : coordinates[activeIndex];
   const activePrice = activeIndex === null ? null : prices[activeIndex];
   const activeDate = activeIndex === null ? null : new Date(`${points[activeIndex].sessionDate}T00:00:00Z`).toLocaleDateString("en-CA", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -85,6 +90,6 @@ export function PriceChart({ points, ticker }: PriceChartProps) {
       {activePoint && <span className={`price-chart-active-dot ${direction}`} aria-hidden="true" style={{ left: `${(activePoint.x / width) * 100}%`, top: `${(activePoint.y / height) * 100}%` }} />}
       {activePoint && activePrice !== null && activeDate && <output className={`price-chart-tooltip ${tooltipAlignment}`} style={{ left: `${(activePoint.x / width) * 100}%`, top: `${(activePoint.y / height) * 100}%` }}><strong>{formatPrice(activePrice)}</strong><span>{activeDate}</span></output>}
     </div>
-    <div className="price-chart-range"><span>{start}</span><span>{end}</span></div>
+    <div className="price-chart-axis" aria-label={`Chart dates from ${start} to ${end}`}>{axisIndexes.map((index, position) => <time key={points[index].sessionDate} dateTime={points[index].sessionDate} className={position === 0 ? "axis-start" : position === axisIndexes.length - 1 ? "axis-end" : ""} style={{ left: `${(coordinates[index].x / width) * 100}%` }}>{formatAxisDate(points[index].sessionDate)}</time>)}</div>
   </section>;
 }
