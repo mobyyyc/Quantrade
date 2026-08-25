@@ -27,6 +27,28 @@ configuration fingerprint, and—when relevant—decision timestamp. Manifests
 are JSON artifacts, not environment dumps, so no credential values belong in
 them.
 
+## Historical research foundation
+
+The free historical lane is a fixed research cohort, not a reconstructed index.
+Register it from the current 500-member `sp500` snapshot before historical
+backfills begin:
+
+```bash
+python -m quantrade_research.register_historical_cohort --code-revision <git-sha>
+```
+
+It creates `sp500_current_survivors_v1`: a Tier-B, survivorship-biased cohort
+with a static current sector mapping. It is useful for private model
+development, but must never be called historical S&P 500 membership or used for
+public performance claims. `sp500_verified_pit_v1` remains reserved for a later
+licensed point-in-time membership, delisting, and sector source.
+
+Migration `0016_add_historical_research_foundation.sql` adds content-hashed raw
+documents, immutable retrieval events, availability-rule definitions, cohort
+membership, resumable historical-backfill records, and training-dataset
+provenance. Subsequent backfill commands must link their output to these records
+and preserve source availability separately from retrieval time.
+
 ## SEC security master
 
 P2.1 ingests SEC's current ticker/exchange association file as a dated

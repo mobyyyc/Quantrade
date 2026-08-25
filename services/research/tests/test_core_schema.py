@@ -103,6 +103,24 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("latest_decisions", sql)
         self.assertIn("ORDER BY score_date, decision_at DESC", sql)
 
+    def test_historical_research_foundation_preserves_lineage_and_cohort_limits(self) -> None:
+        migration = MIGRATION.with_name("0016_add_historical_research_foundation.sql")
+        sql = migration.read_text(encoding="utf-8")
+        for table in (
+            "raw_documents",
+            "raw_document_retrievals",
+            "availability_rules",
+            "research_cohorts",
+            "research_cohort_memberships",
+            "historical_backfill_runs",
+            "training_dataset_provenance",
+        ):
+            self.assertIn(f"CREATE TABLE quantrade.{table}", sql)
+        self.assertIn("UNIQUE (provider, content_sha256)", sql)
+        self.assertIn("current_survivors", sql)
+        self.assertIn("survivorship_biased", sql)
+        self.assertIn("historical lineage records are immutable", sql)
+
     def test_holdout_and_experiment_governance_are_immutable(self) -> None:
         migration = MIGRATION.with_name("0007_add_experiment_governance.sql")
         sql = migration.read_text(encoding="utf-8")
