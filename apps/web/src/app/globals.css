@@ -48,6 +48,7 @@ button, a[href] { cursor: pointer; }
 .brand-mark { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: .65rem; background: var(--foreground); color: var(--canvas); font-weight: 850; }
 .desktop-nav { display: flex; gap: .25rem; }
 .nav-link, .text-link, .back-link, .sidebar-link { color: var(--muted); border: 1px solid transparent; border-radius: 9999px; padding: .58rem .85rem; transition: color 150ms var(--ease), background-color 150ms var(--ease), border-color 150ms var(--ease), box-shadow 150ms var(--ease); }
+.nav-link { font-weight: 650; }
 .nav-link-active { color: var(--foreground); background: var(--surface-strong); border-color: rgb(255 255 255 / .12); box-shadow: var(--control-shadow); font-weight: 650; }
 .header-search { width: min(19rem, 28vw); margin-left: auto; }
 .header-search input, .date-form input { width: 100%; min-height: 2.65rem; border: 1px solid var(--line); border-radius: 9999px; padding: 0 1rem; background: var(--surface); color: var(--foreground); box-shadow: var(--control-shadow); transition: color 150ms var(--ease), background-color 150ms var(--ease), border-color 150ms var(--ease), box-shadow 150ms var(--ease); }
