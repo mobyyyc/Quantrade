@@ -101,7 +101,7 @@ CREATE TABLE quantrade.filings (
     raw_artifact_id UUID NOT NULL REFERENCES quantrade.raw_artifacts(raw_artifact_id),
     source_reference TEXT NOT NULL CHECK (length(source_reference) > 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CHECK (available_at >= accepted_at),
+    CHECK (available_at >= accepted_at)
     -- EDGAR filingDate is a filing-day label, not a timestamp that can be
     -- ordered against acceptanceDateTime across time zones or midnight.
 );
