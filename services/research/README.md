@@ -59,12 +59,14 @@ not at its later download time.
 
 ```bash
 python -m quantrade_research.historical_market_backfill \
-  --start 2016-01-01 --end 2026-06-30 --dry-run
+  --start 2021-01-01 --end 2026-06-30 --dry-run
 ```
 
-Remove `--dry-run` only for the approved execution task. The worker records
-completed chunks in PostgreSQL and safely skips them on a restart; raw and
-split-adjusted benchmark bars for SPY use the same availability rule.
+Remove `--dry-run` only for the approved execution task. The worker rejects
+requests before 2021 because the free-provider runtime audit found incomplete
+earlier history. It records completed chunks in PostgreSQL and safely skips
+them on a restart; raw and split-adjusted benchmark bars for SPY use the same
+availability rule.
 
 ## SEC security master
 
