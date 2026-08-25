@@ -99,8 +99,17 @@ class PostgresOperationalMonitor:
 
     def score_runs(self) -> tuple[ScoreRunSummary | None, ScoreRunSummary | None]:
         with self._connection.cursor() as cursor:
-            cursor.execute("""WITH dates AS (SELECT DISTINCT score_date FROM quantrade.score_snapshots ORDER BY score_date DESC LIMIT 2)
-                SELECT d.score_date, COUNT(s.score_snapshot_id) FILTER (WHERE s.eligible), AVG(s.score) FILTER (WHERE s.eligible)
-                FROM dates d LEFT JOIN quantrade.score_snapshots s ON s.score_date = d.score_date GROUP BY d.score_date ORDER BY d.score_date DESC""")
+            cursor.execute("""WITH runs AS (
+                    SELECT score_date, decision_at
+                    FROM quantrade.daily_research_runs
+                    WHERE status = 'completed'
+                    ORDER BY score_date DESC LIMIT 2
+                )
+                SELECT runs.score_date, COUNT(snapshot.score_snapshot_id) FILTER (WHERE snapshot.eligible),
+                       AVG(snapshot.score) FILTER (WHERE snapshot.eligible)
+                FROM runs
+                LEFT JOIN quantrade.score_snapshots snapshot
+                  ON snapshot.score_date = runs.score_date AND snapshot.decision_at = runs.decision_at
+                GROUP BY runs.score_date ORDER BY runs.score_date DESC""")
             rows = [ScoreRunSummary(row[0], int(row[1]), row[2]) for row in cursor.fetchall()]
         return (rows[0] if rows else None, rows[1] if len(rows) > 1 else None)

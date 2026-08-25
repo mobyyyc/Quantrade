@@ -28,17 +28,27 @@ def _ciks_from_file(path: str) -> list[str]:
     return ciks
 
 
+def _ciks(value: str) -> list[str]:
+    values = [item.strip().zfill(10) for item in value.split(",") if item.strip()]
+    ciks = sorted(set(value for value in values if value.isdigit() and len(value) == 10))
+    if not ciks:
+        raise argparse.ArgumentTypeError("at least one valid CIK is required")
+    return ciks
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest SEC filing metadata and facts for one CIK")
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--cik")
+    source.add_argument("--ciks", type=_ciks)
     source.add_argument("--ciks-file")
     parser.add_argument("--code-revision", required=True)
     parser.add_argument("--minimum-request-interval", type=float, default=0.12)
     arguments = parser.parse_args()
     if arguments.minimum_request_interval < 0:
         parser.error("--minimum-request-interval must be non-negative")
-    ciks = [arguments.cik.zfill(10)] if arguments.cik else _ciks_from_file(arguments.ciks_file)
+    ciks = ([arguments.cik.zfill(10)] if arguments.cik else arguments.ciks
+            if arguments.ciks else _ciks_from_file(arguments.ciks_file))
 
     settings = Settings.from_environment()
     settings.require_runtime_storage()

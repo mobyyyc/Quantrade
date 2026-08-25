@@ -12,6 +12,9 @@ function userFacingError(output: string): string {
   if (output.includes("No current S&P 500 universe")) {
     return "Today’s S&P 500 universe is not ready yet. Try again after the daily data refresh.";
   }
+  if (output.includes("already running")) {
+    return "A daily update is already running. Keep this page open and try again when it finishes.";
+  }
   return "The daily update did not complete. Check the local research service logs for details.";
 }
 
@@ -38,10 +41,10 @@ export async function POST() {
     const eligibleCount = latest?.scores.filter((score) => score.eligible).length ?? 0;
     const totalCount = latest?.scores.length ?? 0;
     return Response.json({
-      message: "Daily update completed. Scores are ready to view.",
+      message: "Daily update completed. The canonical score publication is ready to view.",
       result: latest ? { scoreDate: latest.scoreDate, eligibleCount, totalCount } : undefined,
     });
   } catch {
-    return Response.json({ message: "Daily update completed. Scores are ready to view." });
+    return Response.json({ message: "Daily update completed. The canonical score publication is ready to view." });
   }
 }

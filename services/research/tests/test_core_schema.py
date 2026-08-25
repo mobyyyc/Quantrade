@@ -94,6 +94,15 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("adjustment_basis = 'split_adjusted'", sql)
         self.assertIn("forward_score_outcomes_immutable", sql)
 
+    def test_daily_research_runs_select_one_canonical_publication(self) -> None:
+        migration = MIGRATION.with_name("0015_add_daily_research_runs.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.daily_research_runs", sql)
+        self.assertIn("score_date DATE PRIMARY KEY", sql)
+        self.assertIn("status IN ('running', 'completed', 'failed', 'skipped')", sql)
+        self.assertIn("latest_decisions", sql)
+        self.assertIn("ORDER BY score_date, decision_at DESC", sql)
+
     def test_holdout_and_experiment_governance_are_immutable(self) -> None:
         migration = MIGRATION.with_name("0007_add_experiment_governance.sql")
         sql = migration.read_text(encoding="utf-8")

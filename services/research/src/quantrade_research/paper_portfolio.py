@@ -35,9 +35,13 @@ def publish_paper_portfolio(*, settings: Settings, score_date: date, starting_na
         if cursor.fetchone() is not None:
             raise DataQualityError(f"paper portfolio already exists for {score_date}")
         cursor.execute(
-            """SELECT security_id::text FROM quantrade.score_snapshots
-               WHERE score_date = %s AND eligible
-               ORDER BY rank ASC LIMIT 20""",
+            """SELECT snapshot.security_id::text FROM quantrade.score_snapshots snapshot
+               JOIN quantrade.daily_research_runs run
+                 ON run.score_date = snapshot.score_date
+                AND run.decision_at = snapshot.decision_at
+                AND run.status = 'completed'
+               WHERE snapshot.score_date = %s AND snapshot.eligible
+               ORDER BY snapshot.rank ASC LIMIT 20""",
             (score_date,),
         )
         target_ids = [row[0] for row in cursor.fetchall()]
@@ -103,10 +107,14 @@ def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) ->
     import psycopg
     with psycopg.connect(settings.database_url) as connection, connection.cursor() as cursor:
         cursor.execute(
-            """SELECT score_date
+            """SELECT s.score_date
                FROM quantrade.score_snapshots s
-               WHERE score_date < %s
-                 AND eligible
+               JOIN quantrade.daily_research_runs run
+                 ON run.score_date = s.score_date
+                AND run.decision_at = s.decision_at
+                AND run.status = 'completed'
+               WHERE s.score_date < %s
+                 AND s.eligible
                  AND NOT EXISTS (
                    SELECT 1
                    FROM quantrade.paper_portfolio_runs p
@@ -122,10 +130,14 @@ def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) ->
         for score_date in candidates:
             cursor.execute(
                 """WITH targets AS (
-                     SELECT security_id
-                     FROM quantrade.score_snapshots
-                     WHERE score_date = %s AND eligible
-                     ORDER BY rank ASC
+                     SELECT snapshot.security_id
+                     FROM quantrade.score_snapshots snapshot
+                     JOIN quantrade.daily_research_runs run
+                       ON run.score_date = snapshot.score_date
+                      AND run.decision_at = snapshot.decision_at
+                      AND run.status = 'completed'
+                     WHERE snapshot.score_date = %s AND snapshot.eligible
+                     ORDER BY snapshot.rank ASC
                      LIMIT 20
                    )
                    SELECT session_date

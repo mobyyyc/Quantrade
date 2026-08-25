@@ -244,11 +244,13 @@ def _persist_explanations(database_url: str, snapshots, contributions: Iterable[
     return inserted
 
 
-def run_score_generation(*, settings: Settings, score_date: date, universe_code: str, benchmark_ticker: str, code_revision: str, manual: bool = False) -> tuple[int, int]:
+def run_score_generation(*, settings: Settings, score_date: date, universe_code: str, benchmark_ticker: str,
+                         code_revision: str, manual: bool = False,
+                         decision_at: datetime | None = None) -> tuple[int, int]:
     """Calculate, rank, persist, and explain one valid end-of-day baseline run."""
     settings.require_runtime_storage()
     assert settings.database_url is not None and settings.raw_artifacts_uri is not None
-    decision_at = datetime.now(TORONTO) if manual else _decision_at(score_date)
+    decision_at = decision_at or (datetime.now(TORONTO) if manual else _decision_at(score_date))
     registry = baseline_feature_registry()
     import psycopg
     with psycopg.connect(settings.database_url) as connection:
@@ -275,7 +277,9 @@ def run_score_generation(*, settings: Settings, score_date: date, universe_code:
     scores = build_equal_weight_baseline(ranks, formation_date=score_date, universe_security_ids=security_ids, registry=registry)
     repository = PostgresScoreSnapshotRepository(settings.database_url)
     try:
-        snapshots = generate_end_of_day_scores(scores, repository, score_date=score_date, decision_at=decision_at, published_at=datetime.now(TORONTO), data_cutoff_at=decision_at, data_capability_tier="B", manual=manual)
+        snapshots = generate_end_of_day_scores(scores, repository, score_date=score_date, decision_at=decision_at,
+                                               published_at=decision_at, data_cutoff_at=decision_at,
+                                               data_capability_tier="B", manual=manual)
     finally:
         repository.close()
     contributions = build_baseline_feature_contributions(scores, ranks, formation_date=score_date, universe_security_ids=security_ids, registry=registry)
@@ -293,8 +297,10 @@ def main() -> None:
     parser.add_argument("--code-revision", required=True)
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
     parser.add_argument("--manual", action="store_true", help="Use the current post-close timestamp for a private manual run")
+    parser.add_argument("--decision-at", type=datetime.fromisoformat,
+                        help="Canonical post-close timestamp supplied by the daily-update ledger")
     arguments = parser.parse_args()
-    snapshots, eligible = run_score_generation(settings=_settings(arguments.env_file), score_date=arguments.score_date, universe_code=arguments.universe_code, benchmark_ticker=arguments.benchmark_ticker.upper(), code_revision=arguments.code_revision, manual=arguments.manual)
+    snapshots, eligible = run_score_generation(settings=_settings(arguments.env_file), score_date=arguments.score_date, universe_code=arguments.universe_code, benchmark_ticker=arguments.benchmark_ticker.upper(), code_revision=arguments.code_revision, manual=arguments.manual, decision_at=arguments.decision_at)
     print(f"score_snapshots={snapshots}; eligible={eligible}")
 
 

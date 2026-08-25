@@ -75,6 +75,10 @@ def materialize_due_forward_score_outcomes(
             cursor.execute(
                 """SELECT ss.score_snapshot_id::text, ss.security_id::text, ss.score_date
                    FROM quantrade.score_snapshots ss
+                   JOIN quantrade.daily_research_runs run
+                     ON run.score_date = ss.score_date
+                    AND run.decision_at = ss.decision_at
+                    AND run.status = 'completed'
                    WHERE ss.eligible
                      AND ss.score_date < %s
                      AND NOT EXISTS (

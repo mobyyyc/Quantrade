@@ -164,6 +164,10 @@ export async function listDatedScores(scoreDate: string): Promise<DatedScore[]> 
             eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at,
             data_capability_tier, unavailable_reason
      FROM quantrade.score_snapshots ss
+     JOIN quantrade.daily_research_runs run
+       ON run.score_date = ss.score_date
+      AND run.decision_at = ss.decision_at
+      AND run.status = 'completed'
      LEFT JOIN quantrade.securities s ON s.security_id = ss.security_id
      LEFT JOIN LATERAL (
        SELECT ticker
@@ -190,6 +194,10 @@ export async function getDatedScore(
             eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at,
             data_capability_tier, unavailable_reason
      FROM quantrade.score_snapshots ss
+     JOIN quantrade.daily_research_runs run
+       ON run.score_date = ss.score_date
+      AND run.decision_at = ss.decision_at
+      AND run.status = 'completed'
      LEFT JOIN quantrade.securities s ON s.security_id = ss.security_id
      LEFT JOIN LATERAL (
        SELECT ticker
@@ -214,14 +222,18 @@ export async function getScoreHistory(
   limit = 8,
 ): Promise<ScoreHistoryPoint[]> {
   const result = await databasePool().query(
-    `SELECT score_date::text AS score_date, score, rank
+    `SELECT recent.score_date::text AS score_date, recent.score, recent.rank
      FROM (
-       SELECT score_date, score, rank
-       FROM quantrade.score_snapshots
-       WHERE security_id = $1
-         AND score_date <= $2
-         AND eligible
-       ORDER BY score_date DESC
+        SELECT ss.score_date, ss.score, ss.rank
+        FROM quantrade.score_snapshots ss
+        JOIN quantrade.daily_research_runs run
+          ON run.score_date = ss.score_date
+         AND run.decision_at = ss.decision_at
+         AND run.status = 'completed'
+        WHERE ss.security_id = $1
+          AND ss.score_date <= $2
+          AND ss.eligible
+        ORDER BY ss.score_date DESC
        LIMIT $3
      ) recent
      ORDER BY score_date ASC`,
@@ -268,7 +280,7 @@ export async function getLatestDatedScores(): Promise<{
   scores: DatedScore[];
 } | null> {
   const result = await databasePool().query<{ score_date: string }>(
-    "SELECT MAX(score_date)::text AS score_date FROM quantrade.score_snapshots",
+    "SELECT MAX(score_date)::text AS score_date FROM quantrade.daily_research_runs WHERE status = 'completed'",
   );
   const scoreDate = result.rows[0]?.score_date;
   return scoreDate ? { scoreDate, scores: await listDatedScores(scoreDate) } : null;
@@ -279,7 +291,7 @@ export async function getPreviousDatedScores(beforeDate: string): Promise<{
   scores: DatedScore[];
 } | null> {
   const result = await databasePool().query<{ score_date: string }>(
-    "SELECT MAX(score_date)::text AS score_date FROM quantrade.score_snapshots WHERE score_date < $1",
+    "SELECT MAX(score_date)::text AS score_date FROM quantrade.daily_research_runs WHERE status = 'completed' AND score_date < $1",
     [beforeDate],
   );
   const scoreDate = result.rows[0]?.score_date;
@@ -288,10 +300,10 @@ export async function getPreviousDatedScores(beforeDate: string): Promise<{
 
 export async function getRecentScoreRuns(limit = 5): Promise<ScoreRunSummary[]> {
   const result = await databasePool().query(
-    `SELECT score_date::text AS score_date, MAX(published_at) AS published_at,
-            COUNT(*) FILTER (WHERE eligible) AS eligible_count
-     FROM quantrade.score_snapshots
-     GROUP BY score_date
+    `SELECT score_date::text AS score_date, completed_at AS published_at,
+            eligible_count
+     FROM quantrade.daily_research_runs
+     WHERE status = 'completed'
      ORDER BY score_date DESC
      LIMIT $1`,
     [limit],
@@ -313,7 +325,9 @@ export async function getForwardOutcomeReadiness(): Promise<ForwardOutcomeReadin
             COUNT(DISTINCT ss.score_date) FILTER (WHERE outcome.status = 'completed') AS completed_score_dates,
             MAX(outcome.outcome_date)::text AS latest_outcome_date
      FROM horizons
-     LEFT JOIN quantrade.score_snapshots ss ON ss.eligible
+     LEFT JOIN quantrade.daily_research_runs run ON run.status = 'completed'
+     LEFT JOIN quantrade.score_snapshots ss
+       ON ss.score_date = run.score_date AND ss.decision_at = run.decision_at AND ss.eligible
      LEFT JOIN quantrade.forward_score_outcomes outcome
        ON outcome.score_snapshot_id = ss.score_snapshot_id
       AND outcome.horizon_sessions = horizons.horizon_sessions
@@ -514,6 +528,10 @@ export async function getScoreExplanations(
             e.contribution, e.unavailable_reason, d.display_name
      FROM quantrade.score_explanations e
      JOIN quantrade.score_snapshots s ON s.score_snapshot_id = e.score_snapshot_id
+     JOIN quantrade.daily_research_runs run
+       ON run.score_date = s.score_date
+      AND run.decision_at = s.decision_at
+      AND run.status = 'completed'
      LEFT JOIN quantrade.feature_definitions d
        ON d.feature_key = e.feature_key
       AND d.feature_version = e.feature_version

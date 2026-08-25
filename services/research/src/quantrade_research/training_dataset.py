@@ -138,6 +138,10 @@ def load_completed_training_dataset(
                       outcome.benchmark_relative_return, outcome.data_cutoff_at
                FROM quantrade.forward_score_outcomes outcome
                JOIN quantrade.score_snapshots ss ON ss.score_snapshot_id = outcome.score_snapshot_id
+               JOIN quantrade.daily_research_runs run
+                 ON run.score_date = ss.score_date
+                AND run.decision_at = ss.decision_at
+                AND run.status = 'completed'
                JOIN quantrade.securities security ON security.security_id = ss.security_id
                JOIN quantrade.score_explanations explanation ON explanation.score_snapshot_id = ss.score_snapshot_id
                LEFT JOIN LATERAL (
