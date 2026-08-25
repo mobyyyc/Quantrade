@@ -36,6 +36,9 @@ export async function POST() {
   if (result.code !== 0) {
     return Response.json({ error: userFacingError(result.output) }, { status: 500 });
   }
+  if (result.output.includes("already_completed")) {
+    return Response.json({ message: "Today’s canonical score publication already exists. No duplicate update was run." });
+  }
   try {
     const latest = await getLatestDatedScores();
     const eligibleCount = latest?.scores.filter((score) => score.eligible).length ?? 0;
