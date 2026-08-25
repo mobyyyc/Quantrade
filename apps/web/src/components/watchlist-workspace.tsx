@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { formatPriceChange, formatScore, formatUsdPrice } from "@/lib/format";
 import type { DatedScore, LatestPriceSummary } from "@/lib/research-read-model";
@@ -13,6 +13,8 @@ export function WatchlistWorkspace({ scores, scoreDate }: { scores: DatedScore[]
   const [prices, setPrices] = useState<LatestPriceSummary[]>([]);
   const [pricesUnavailable, setPricesUnavailable] = useState(false);
   const [sortBy, setSortBy] = useState<"score" | "ticker">("score");
+  const scrollRegionRef = useRef<HTMLDivElement>(null);
+  const [scrollEdges, setScrollEdges] = useState({ top: false, bottom: false });
   const scoresBySecurity = useMemo(() => new Map(scores.map((score) => [score.securityId, score])), [scores]);
   const pricesBySecurity = useMemo(() => new Map(prices.map((price) => [price.securityId, price])), [prices]);
   const orderedWatchlist = useMemo(() => [...watchlist].sort((left, right) => {
@@ -48,6 +50,23 @@ export function WatchlistWorkspace({ scores, scoreDate }: { scores: DatedScore[]
     return () => controller.abort();
   }, [hydrated, watchlist]);
 
+  useEffect(() => {
+    const region = scrollRegionRef.current;
+    if (!region) return;
+    const updateEdges = () => setScrollEdges({
+      top: region.scrollTop > 2,
+      bottom: region.scrollTop + region.clientHeight < region.scrollHeight - 2,
+    });
+    updateEdges();
+    region.addEventListener("scroll", updateEdges, { passive: true });
+    const observer = new ResizeObserver(updateEdges);
+    observer.observe(region);
+    return () => {
+      region.removeEventListener("scroll", updateEdges);
+      observer.disconnect();
+    };
+  }, [orderedWatchlist.length]);
+
   const remove = (company: WatchlistEntry) => {
     const next = watchlist.filter((entry) => entry.securityId !== company.securityId);
     setWatchlist(next);
@@ -65,7 +84,7 @@ export function WatchlistWorkspace({ scores, scoreDate }: { scores: DatedScore[]
   if (!hydrated) return <section className="empty-state small"><p className="eyebrow">WATCHLIST</p><h2>Loading your saved companies.</h2></section>;
 
   return <>
-    {watchlist.length ? <><div className="watchlist-toolbar"><span>{watchlist.length} saved</span><div className="segmented-control" aria-label="Watchlist sort order"><button type="button" className={sortBy === "score" ? "segment-active" : ""} aria-pressed={sortBy === "score"} onClick={() => setSortBy("score")}>Score</button><button type="button" className={sortBy === "ticker" ? "segment-active" : ""} aria-pressed={sortBy === "ticker"} onClick={() => setSortBy("ticker")}>Ticker</button></div></div><ul className="grouped-list watchlist-list" aria-label="Saved companies">
+    {watchlist.length ? <><div className="watchlist-toolbar"><span>{watchlist.length} saved</span><div className="segmented-control" aria-label="Watchlist sort order"><button type="button" className={sortBy === "score" ? "segment-active" : ""} aria-pressed={sortBy === "score"} onClick={() => setSortBy("score")}>Score</button><button type="button" className={sortBy === "ticker" ? "segment-active" : ""} aria-pressed={sortBy === "ticker"} onClick={() => setSortBy("ticker")}>Ticker</button></div></div><div className={`watchlist-scroll-frame${scrollEdges.top ? " has-top-fade" : ""}${scrollEdges.bottom ? " has-bottom-fade" : ""}`}><div ref={scrollRegionRef} className="watchlist-scroll-region" tabIndex={0} aria-label="Saved companies. Scroll to see more."><ul className="grouped-list watchlist-list">
       {orderedWatchlist.map((company) => {
         const score = scoresBySecurity.get(company.securityId);
         const price = pricesBySecurity.get(company.securityId);
@@ -83,7 +102,7 @@ export function WatchlistWorkspace({ scores, scoreDate }: { scores: DatedScore[]
           </details>
         </li>;
       })}
-    </ul></> : <section className="empty-state small watchlist-empty-state"><p className="eyebrow">YOUR LIST</p><h2>Save companies worth returning to.</h2><p>Use the search field above to find a company, then save it from its research page.</p></section>}
+    </ul></div></div></> : <section className="empty-state small watchlist-empty-state"><p className="eyebrow">YOUR LIST</p><h2>Save companies worth returning to.</h2><p>Use the search field above to find a company, then save it from its research page.</p></section>}
     {removed && <aside className="undo-toast" role="status"><span>{removed.ticker} removed from watchlist.</span><button type="button" onClick={undo}>Undo</button></aside>}
   </>;
 }
