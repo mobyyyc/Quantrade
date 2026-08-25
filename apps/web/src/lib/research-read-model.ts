@@ -83,6 +83,18 @@ export type ScoreRunSummary = {
   eligibleCount: number;
 };
 
+export type ForwardOutcomeReadiness = {
+  horizonSessions: number;
+  completedLabels: number;
+  withheldLabels: number;
+  pendingLabels: number;
+  completedScoreDates: number;
+  latestOutcomeDate?: string;
+};
+
+export const ML_DATASET_MINIMUM_COMPLETED_LABELS = 5000;
+export const ML_DATASET_MINIMUM_SCORE_DATES = 126;
+
 export type ScoreHistoryPoint = {
   scoreDate: string;
   score: string;
@@ -288,6 +300,33 @@ export async function getRecentScoreRuns(limit = 5): Promise<ScoreRunSummary[]> 
     scoreDate: String(row.score_date),
     ...(row.published_at ? { publishedAt: new Date(String(row.published_at)).toISOString() } : {}),
     eligibleCount: Number(row.eligible_count),
+  }));
+}
+
+export async function getForwardOutcomeReadiness(): Promise<ForwardOutcomeReadiness[]> {
+  const result = await databasePool().query(
+    `WITH horizons AS (SELECT * FROM unnest(ARRAY[5, 20, 60]::smallint[]) AS horizon_sessions)
+     SELECT horizons.horizon_sessions,
+            COUNT(ss.score_snapshot_id) FILTER (WHERE outcome.status = 'completed') AS completed_labels,
+            COUNT(ss.score_snapshot_id) FILTER (WHERE outcome.status = 'withheld') AS withheld_labels,
+            COUNT(ss.score_snapshot_id) FILTER (WHERE outcome.score_snapshot_id IS NULL) AS pending_labels,
+            COUNT(DISTINCT ss.score_date) FILTER (WHERE outcome.status = 'completed') AS completed_score_dates,
+            MAX(outcome.outcome_date)::text AS latest_outcome_date
+     FROM horizons
+     LEFT JOIN quantrade.score_snapshots ss ON ss.eligible
+     LEFT JOIN quantrade.forward_score_outcomes outcome
+       ON outcome.score_snapshot_id = ss.score_snapshot_id
+      AND outcome.horizon_sessions = horizons.horizon_sessions
+     GROUP BY horizons.horizon_sessions
+     ORDER BY horizons.horizon_sessions ASC`,
+  );
+  return result.rows.map((row) => ({
+    horizonSessions: Number(row.horizon_sessions),
+    completedLabels: Number(row.completed_labels),
+    withheldLabels: Number(row.withheld_labels),
+    pendingLabels: Number(row.pending_labels),
+    completedScoreDates: Number(row.completed_score_dates),
+    ...(row.latest_outcome_date ? { latestOutcomeDate: String(row.latest_outcome_date) } : {}),
   }));
 }
 

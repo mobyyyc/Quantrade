@@ -305,6 +305,15 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .portfolio-checkpoints li > span { color: var(--muted); font-size: .82rem; line-height: 1.45; }
 .portfolio-checkpoints li > small { color: var(--subtle); font-size: .75rem; white-space: nowrap; }
 .portfolio-checkpoints-note { margin: .9rem 0 0; color: var(--subtle) !important; font-size: .78rem; line-height: 1.55; }
+.ml-readiness-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 1.4rem !important; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+.ml-readiness-list > div { display: grid; align-content: start; gap: .18rem; min-height: 9.25rem; padding: 1rem 1.15rem; border-right: 1px solid var(--line-soft); }
+.ml-readiness-list > div:first-child { padding-left: 0; }
+.ml-readiness-list > div:last-child { padding-right: 0; border-right: 0; }
+.ml-readiness-list dt { color: var(--subtle); font-size: .71rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+.ml-readiness-list dd { margin: .25rem 0 0; color: var(--foreground); font-size: 1.6rem; font-weight: 730; letter-spacing: -.055em; }
+.ml-readiness-list span, .ml-readiness-list small, .ml-readiness-list time { color: var(--muted); font-size: .76rem; line-height: 1.45; }
+.ml-readiness-list time { margin-top: auto; color: var(--subtle); }
+.ml-readiness-note { margin: .95rem 0 0; padding-top: .95rem; border-top: 1px solid var(--line-soft); color: var(--muted) !important; font-size: .82rem; line-height: 1.55; }
 .inline-notice { margin-top: 1rem; color: var(--subtle); font-size: .9rem; }
 .positive-change { color: var(--positive); }
 .negative-change { color: var(--negative); }
@@ -401,6 +410,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .methodology dl { grid-template-columns: 1fr; }
   .portfolio-checkpoints li { grid-template-columns: 1fr auto; }
   .portfolio-checkpoints li > span { grid-column: 1 / -1; grid-row: 2; }
+  .ml-readiness-list { grid-template-columns: 1fr; }
+  .ml-readiness-list > div, .ml-readiness-list > div:first-child, .ml-readiness-list > div:last-child { min-height: 0; padding: .9rem 0; border-right: 0; border-bottom: 1px solid var(--line-soft); }
+  .ml-readiness-list > div:last-child { border-bottom: 0; }
   .coverage-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .price-panel-heading { flex-direction: column; align-items: flex-start; }
   .price-change { justify-items: start; text-align: left; }

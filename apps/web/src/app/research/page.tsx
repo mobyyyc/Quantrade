@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { formatPublicationTime, formatResearchDate } from "@/lib/format";
-import { getLatestDatedScores, getLatestPaperPortfolio, getModelCard, getRecentScoreRuns, ResearchReadModelError, type DatedScore, type ScoreRunSummary } from "@/lib/research-read-model";
+import { getForwardOutcomeReadiness, getLatestDatedScores, getLatestPaperPortfolio, getModelCard, getRecentScoreRuns, ML_DATASET_MINIMUM_COMPLETED_LABELS, ML_DATASET_MINIMUM_SCORE_DATES, ResearchReadModelError, type DatedScore, type ForwardOutcomeReadiness, type ScoreRunSummary } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +32,14 @@ export default async function ResearchPage() {
   let portfolio = null;
   let latestScores = null;
   let recentRuns: ScoreRunSummary[] = [];
+  let forwardReadiness: ForwardOutcomeReadiness[] = [];
   let unavailable = false;
   try {
     card = await getModelCard("baseline_equal_weight_v1");
     portfolio = await getLatestPaperPortfolio();
     latestScores = await getLatestDatedScores();
     recentRuns = await getRecentScoreRuns();
+    forwardReadiness = await getForwardOutcomeReadiness();
   } catch (error) { unavailable = error instanceof ResearchReadModelError; }
   const coverage = latestScores?.scores ?? [];
   const eligibleCount = coverage.filter((score) => score.eligible).length;
@@ -45,6 +47,7 @@ export default async function ResearchPage() {
   const coveragePercent = coverage.length ? Math.round((eligibleCount / coverage.length) * 100) : 0;
   const gateBreakdown = coverageBreakdown(coverage).slice(0, 3);
   const latestResearch = coverage[0];
+  const datasetReady = forwardReadiness.length === 3 && forwardReadiness.every((item) => item.completedLabels >= ML_DATASET_MINIMUM_COMPLETED_LABELS && item.completedScoreDates >= ML_DATASET_MINIMUM_SCORE_DATES);
   return <AppShell current="/research">
     <section className="page-intro compact"><p className="eyebrow">RESEARCH</p><h1>Know what the score can and cannot say.</h1><p className="lede">Quantrade turns dated quantitative evidence into a readable starting point for research.</p></section>
     <section className="content-section methodology"><div><p className="eyebrow">MODEL</p><h2>{latestResearch?.modelVersion ?? card?.modelVersion ?? "Baseline research model"}</h2></div><div><p>{card?.purpose ?? "A transparent equal-weight reference that ranks only eligible research inputs."}</p><dl><div><dt>Status</dt><dd>{card?.status?.replaceAll("_", " ") ?? "Research-only"}</dd></div><div><dt>Data capability</dt><dd>Tier {latestResearch?.dataCapabilityTier ?? card?.dataCapabilityTier ?? "B"}</dd></div><div><dt>Protocol</dt><dd>{latestResearch?.protocolVersion ?? card?.protocolVersion ?? "0.1"}</dd></div><div><dt>Research date</dt><dd>{latestScores ? formatResearchDate(latestScores.scoreDate) : "Not published"}</dd></div><div><dt>Data cutoff</dt><dd>{latestResearch ? formatPublicationTime(latestResearch.dataCutoffAt) : "Unavailable"}</dd></div><div><dt>Published</dt><dd>{latestResearch ? formatPublicationTime(latestResearch.publishedAt) : "Unavailable"}</dd></div></dl><p className="research-freshness-note">Each published result is tied to its recorded data cutoff and model configuration. Later market movement does not alter that dated research view.</p></div></section>
@@ -58,6 +61,7 @@ export default async function ResearchPage() {
       const relative = Number(outcome.benchmarkRelativeReturn);
       return <li key={horizon}><strong>{horizon} sessions</strong><span className={relative >= 0 ? "positive-change" : "negative-change"}>{formatReturn(outcome.portfolioReturn!)} portfolio · {formatReturn(outcome.benchmarkRelativeReturn!)} vs SPY</span><small>{formatResearchDate(outcome.outcomeDate)}</small></li>;
     })}</ul><p className="portfolio-checkpoints-note">Each checkpoint uses the original next-open execution and its actual later market close. Missing marks or corporate actions are withheld, not estimated.</p></div></> : <p>No paper portfolio is published yet. This record appears only after an eligible score run can be executed under the documented next-session rule.</p>}</div></section>
+    <section className="content-section methodology"><div><p className="eyebrow">ML FOUNDATION</p><h2>Future labels, tracked honestly.</h2></div><div>{forwardReadiness.length ? <><p>Each eligible score receives a future split-adjusted price-return label only after the relevant market window has closed. The minimum gate is {ML_DATASET_MINIMUM_COMPLETED_LABELS.toLocaleString("en-CA")} valid labels across {ML_DATASET_MINIMUM_SCORE_DATES} distinct research dates for every horizon.</p><dl className="ml-readiness-list">{forwardReadiness.map((item) => <div key={item.horizonSessions}><dt>{item.horizonSessions}-session label</dt><dd>{item.completedLabels.toLocaleString("en-CA")}</dd><span>completed labels · {item.completedScoreDates}/{ML_DATASET_MINIMUM_SCORE_DATES} research dates</span><small>{item.withheldLabels.toLocaleString("en-CA")} withheld · {item.pendingLabels.toLocaleString("en-CA")} awaiting</small>{item.latestOutcomeDate && <time dateTime={item.latestOutcomeDate}>Latest: {formatResearchDate(item.latestOutcomeDate)}</time>}</div>)}</dl><p className="ml-readiness-note">{datasetReady ? "Dataset minimum met. Model work may begin only with the existing walk-forward and holdout controls." : "Collection is in progress. No ML model will be trained or presented until every horizon meets this minimum."}</p></> : <p className="quiet-copy">Forward-label readiness will appear after the research database is connected.</p>}</div></section>
     <section className="content-section methodology"><div><p className="eyebrow">LIMITS</p><h2>Read uncertainty plainly.</h2></div><div><ul className="plain-list">{card?.limitations?.map((limitation) => <li key={limitation}>{limitation}</li>) ?? <><li>Tier B data does not verify historical constituent or delisting coverage.</li><li>A research score is not investment advice, a prediction, or a guarantee.</li><li>Unavailable data blocks publication instead of being substituted.</li></>}</ul>{unavailable && <p className="inline-notice">The stored model card is unavailable until the research database is connected.</p>}</div></section>
   </AppShell>;
 }
