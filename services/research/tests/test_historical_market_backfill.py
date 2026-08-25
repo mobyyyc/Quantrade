@@ -8,9 +8,12 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC))
 
 from quantrade_research.historical_market_backfill import (
+    FREE_TRACK_HOLDOUT_END_DATE,
+    FREE_TRACK_START_DATE,
     build_historical_market_chunks,
     calendar_quarters,
     historical_eod_available_at,
+    validate_free_track_backfill_window,
 )
 
 
@@ -47,6 +50,11 @@ class HistoricalMarketBackfillTests(unittest.TestCase):
         self.assertEqual(chunks[-1].start_date, date(2025, 4, 1))
         self.assertEqual(chunks[-1].end_date, date(2025, 4, 1))
         self.assertNotEqual(chunks[0].key, chunks[1].key)
+
+    def test_free_track_rejects_the_unaudited_pre_2021_period(self) -> None:
+        with self.assertRaisesRegex(ValueError, "begins on 2021-01-01"):
+            validate_free_track_backfill_window(date(2020, 12, 31), FREE_TRACK_HOLDOUT_END_DATE)
+        validate_free_track_backfill_window(FREE_TRACK_START_DATE, FREE_TRACK_HOLDOUT_END_DATE)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,9 @@ TORONTO = ZoneInfo("America/Toronto")
 HISTORICAL_EOD_RULE_KEY = "alpaca_historical_eod_close"
 HISTORICAL_MARKET_RULE_VERSION = "v1"
 HISTORICAL_BENCHMARK_RULE_VERSION = "v1-benchmark"
+FREE_TRACK_START_DATE = date(2021, 1, 1)
+FREE_TRACK_HOLDOUT_START_DATE = date(2025, 7, 1)
+FREE_TRACK_HOLDOUT_END_DATE = date(2026, 6, 30)
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +92,17 @@ def build_historical_market_chunks(
             for basis in ("unadjusted", "split_adjusted"):
                 chunks.append(HistoricalMarketChunk(period.start_date, period.end_date, batch, basis))
     return tuple(chunks)
+
+
+def validate_free_track_backfill_window(start_date: date, end_date: date) -> None:
+    """Reject a historical request outside the audited, usable free-data window."""
+    if start_date < FREE_TRACK_START_DATE:
+        raise ValueError(
+            f"the free historical research track begins on {FREE_TRACK_START_DATE.isoformat()}; "
+            "earlier Alpaca coverage was incomplete in the runtime audit"
+        )
+    if end_date < start_date:
+        raise ValueError("historical backfill end date must not be before its start date")
 
 
 class HistoricalMarketBackfillRepository:
@@ -353,13 +367,17 @@ def main() -> None:
     from .score_run import _settings
 
     parser = argparse.ArgumentParser(description="Backfill Tier-B historical market bars for the fixed current-survivors cohort")
-    parser.add_argument("--start", type=date.fromisoformat, required=True)
-    parser.add_argument("--end", type=date.fromisoformat, required=True)
+    parser.add_argument("--start", type=date.fromisoformat, default=FREE_TRACK_START_DATE)
+    parser.add_argument("--end", type=date.fromisoformat, default=FREE_TRACK_HOLDOUT_END_DATE)
     parser.add_argument("--batch-size", type=int, default=100)
     parser.add_argument("--max-chunks", type=int)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--env-file", default=".env")
     arguments = parser.parse_args()
+    try:
+        validate_free_track_backfill_window(arguments.start, arguments.end)
+    except ValueError as error:
+        parser.error(str(error))
     settings = _settings(Path(arguments.env_file))
     settings.require_runtime_storage()
     settings.require_alpaca_access()

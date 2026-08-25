@@ -10,6 +10,8 @@ from typing import Any
 
 from .historical_cohorts import CURRENT_SURVIVORS_COHORT
 from .historical_market_backfill import (
+    FREE_TRACK_HOLDOUT_END_DATE,
+    FREE_TRACK_START_DATE,
     HISTORICAL_BENCHMARK_RULE_VERSION,
     HISTORICAL_EOD_RULE_KEY,
     HISTORICAL_MARKET_RULE_VERSION,
@@ -230,8 +232,8 @@ def main() -> None:
     from .score_run import _settings
 
     parser = argparse.ArgumentParser(description="Write a Tier-B historical market coverage report")
-    parser.add_argument("--start", type=date.fromisoformat, required=True)
-    parser.add_argument("--end", type=date.fromisoformat, required=True)
+    parser.add_argument("--start", type=date.fromisoformat, default=FREE_TRACK_START_DATE)
+    parser.add_argument("--end", type=date.fromisoformat, default=FREE_TRACK_HOLDOUT_END_DATE)
     parser.add_argument("--cohort", default=CURRENT_SURVIVORS_COHORT)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--env-file", type=Path, default=Path(".env"))

@@ -44,8 +44,8 @@ backfill, create an auditable local coverage report with:
 ```powershell
 $env:PYTHONPATH = (Resolve-Path 'services/research/src').Path
 py -3.14 -m quantrade_research.historical_market_coverage `
-  --start 2016-01-01 --end 2026-06-30 `
-  --output data/derived/historical-coverage/sp500_current_survivors_v1_2016-01-01_2026-06-30.json `
+  --start 2021-01-01 --end 2026-06-30 `
+  --output data/derived/historical-coverage/sp500_current_survivors_v1_2021-01-01_2026-06-30.json `
   --env-file .env
 ```
 

@@ -5,7 +5,7 @@
 | Need | Initial source | Use in V1 | Known boundary |
 |---|---|---|---|
 | Company filings and XBRL facts | SEC EDGAR | Primary source for fundamentals and filing times | Normalization and point-in-time availability are our responsibility |
-| Daily US equities | Alpaca Basic | Historical research and private-beta end-of-day data | Coverage begins in 2016; test corporate actions, delistings, and universe completeness before performance claims |
+| Daily US equities | Alpaca Basic | Historical research and private-beta end-of-day data | Runtime audit supports the clean free-track window from Jan 2021; earlier returned bars are incomplete and excluded |
 | Macro context and revisions | FRED / ALFRED | Regime research | Use vintage values for historical decisions |
 | News sentiment | None in first model | Deferred research candidate | Historical timestamps, coverage, and licensing require an audit |
 | Prototype fallback | Alpha Vantage | Small-sample exploration only | Free tier has 25 requests per day, unsuitable for universe-scale ingestion |
@@ -33,6 +33,19 @@ Evaluate paid providers when the project needs one or more of:
 - Longer validated price history.
 - Guaranteed corporate-action treatment and point-in-time fundamentals.
 - Intraday data, exchange-grade current prices, or public display rights.
+
+## Free historical research window
+
+The audited, model-development window for `sp500_current_survivors_v1` begins
+on **2021-01-01**. The first locked holdout remains **2025-07-01 through
+2026-06-30**. Historical bars returned before 2021 were not sufficiently
+continuous across both equities and SPY, so the downloader rejects requests
+before this boundary for the free research track.
+
+This is a data-quality boundary, not a claim that all current cohort companies
+traded throughout that window. IPOs, symbol availability, and other missing
+inputs remain explicit exclusions in the coverage report; replay and training
+export must withhold those examples.
 
 ## Provider evaluation requirements
 
