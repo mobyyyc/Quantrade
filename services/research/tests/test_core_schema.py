@@ -85,6 +85,15 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("REFERENCES quantrade.paper_portfolio_runs", sql)
         self.assertIn("paper_portfolio_outcomes_immutable", sql)
 
+    def test_forward_score_outcomes_are_immutable_training_labels(self) -> None:
+        migration = MIGRATION.with_name("0014_add_forward_score_outcomes.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.forward_score_outcomes", sql)
+        self.assertIn("REFERENCES quantrade.score_snapshots", sql)
+        self.assertIn("horizon_sessions IN (5, 20, 60)", sql)
+        self.assertIn("adjustment_basis = 'split_adjusted'", sql)
+        self.assertIn("forward_score_outcomes_immutable", sql)
+
     def test_holdout_and_experiment_governance_are_immutable(self) -> None:
         migration = MIGRATION.with_name("0007_add_experiment_governance.sql")
         sql = migration.read_text(encoding="utf-8")

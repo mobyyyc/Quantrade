@@ -202,6 +202,16 @@ SPY bought at that same open. Missing marks or a corporate action affecting a
 held company yield an immutable withheld checkpoint rather than a substitute
 calculation; corporate-action-adjusted position accounting is a later task.
 
+## Forward outcome labels
+
+The daily update also records one immutable 5-, 20-, and 60-session label for
+every eligible stock score once its future window has occurred. Each label uses
+the split-adjusted close of the first regular SPY session after the score date
+and the corresponding later close, alongside the same-window SPY price return.
+These are future-only training and validation inputs—not model predictions and
+not total-return measures. A missing mark creates a withheld label rather than
+moving the window, filling a value, or introducing look-ahead data.
+
 ## Costs, liquidity, and performance metrics
 
 P4.5 enforces the provisional USD 10M median-dollar-volume gate for every
