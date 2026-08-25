@@ -11,6 +11,7 @@ import sys
 
 from .score_run import TORONTO, _dotenv_values, _settings
 from .paper_portfolio import publish_due_paper_portfolios
+from .portfolio_outcomes import materialize_due_paper_portfolio_outcomes
 
 
 def _symbols(database_url: str, score_date) -> list[str]:
@@ -49,9 +50,13 @@ def main() -> None:
     )
     for command in commands:
         subprocess.run(command, env=environment, check=True)
+    outcomes = materialize_due_paper_portfolio_outcomes(settings=settings, as_of_date=score_date)
     published_portfolios = publish_due_paper_portfolios(settings=settings, execution_date=score_date)
     published_note = ",".join(item.isoformat() for item in published_portfolios) or "none_due"
-    print(f"completed score_date={score_date}; paper_portfolios={published_note}")
+    outcome_note = ",".join(
+        f"{item.horizon_sessions}d:{item.status}" for item in outcomes
+    ) or "none_due"
+    print(f"completed score_date={score_date}; paper_portfolios={published_note}; paper_outcomes={outcome_note}")
 
 
 if __name__ == "__main__":

@@ -77,6 +77,14 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("CREATE TABLE quantrade.benchmark_daily_price_bars", sql)
         self.assertIn("PRIMARY KEY (benchmark_ticker, session_date, session, adjustment_basis)", sql)
 
+    def test_paper_portfolio_outcomes_are_immutable_and_horizon_bound(self) -> None:
+        migration = MIGRATION.with_name("0013_add_paper_portfolio_outcomes.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.paper_portfolio_outcomes", sql)
+        self.assertIn("horizon_sessions IN (5, 20, 60)", sql)
+        self.assertIn("REFERENCES quantrade.paper_portfolio_runs", sql)
+        self.assertIn("paper_portfolio_outcomes_immutable", sql)
+
     def test_holdout_and_experiment_governance_are_immutable(self) -> None:
         migration = MIGRATION.with_name("0007_add_experiment_governance.sql")
         sql = migration.read_text(encoding="utf-8")

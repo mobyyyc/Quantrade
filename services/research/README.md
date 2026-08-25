@@ -195,6 +195,13 @@ eligible score run's first regular-session open is present in the newly
 ingested market data. It never creates missed portfolios retroactively. This
 preserves the forward, no-lookahead record needed for evaluation.
 
+Each paper portfolio is then observed only at its 5th, 20th, and 60th regular
+SPY session, counting the next-open execution session as day one. Returns use
+the same unadjusted prices as the execution ledger and compare the basket with
+SPY bought at that same open. Missing marks or a corporate action affecting a
+held company yield an immutable withheld checkpoint rather than a substitute
+calculation; corporate-action-adjusted position accounting is a later task.
+
 ## Costs, liquidity, and performance metrics
 
 P4.5 enforces the provisional USD 10M median-dollar-volume gate for every
