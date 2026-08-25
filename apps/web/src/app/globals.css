@@ -141,6 +141,14 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .scroll-fade-region::-webkit-scrollbar-thumb { border: .17rem solid transparent; border-radius: 9999px; background: #4a4a4a; background-clip: padding-box; }
 .scroll-fade-region:focus-visible { outline-offset: 4px; }
 .today-ranking-scroll .scroll-fade-region { max-height: min(58vh, 37rem); }
+.score-list-today { overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.score-list-today .score-row { min-height: 5.35rem; background: transparent; }
+.score-list-today .score-row:first-child { border-top: 1px solid var(--line-soft); }
+.score-list-today .score-row-link { grid-template-columns: 2.25rem minmax(0, 1fr) auto; padding: 0 .2rem 0 0; }
+.score-list-today .rank-number { align-self: center; }
+.score-list-today .score-row-main { gap: .5rem; }
+.score-list-today .score-row-main > span { font-size: .86rem; }
+.score-list-today .score-row-value { padding-right: .25rem; }
 
 .daily-update-control { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-top: 4.5rem; padding: 1.35rem 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
 .daily-update-control h2 { margin-bottom: .35rem; }
@@ -399,6 +407,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .watchlist-preview { margin-top: 3.5rem; }
   .watchlist-preview-scroll-region { max-height: min(55vh, 34rem); }
   .today-ranking-scroll .scroll-fade-region { max-height: min(55vh, 34rem); }
+  .score-list-today .score-row-link { grid-template-columns: 2rem minmax(0, 1fr) auto; padding-right: .1rem; }
   .rankings-layout { grid-template-columns: 1fr; gap: 2.5rem; }
   .rankings-results, .rankings-context { grid-column: 1; grid-row: auto; }
   .rankings-context { position: static; padding: 1rem 0; }

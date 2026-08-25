@@ -2,13 +2,13 @@ import Link from "next/link";
 import type { DatedScore } from "@/lib/research-read-model";
 import { formatIssuerName, formatScore } from "@/lib/format";
 
-export function ScoreList({ scores, limit, from = "rankings" }: { scores: DatedScore[]; limit?: number; from?: "today" | "rankings" }) {
+export function ScoreList({ scores, limit, from = "rankings", variant = "default" }: { scores: DatedScore[]; limit?: number; from?: "today" | "rankings"; variant?: "default" | "today" }) {
   const rows = limit ? scores.slice(0, limit) : scores;
   if (!rows.length) {
     return <p className="quiet-copy">No eligible research scores were published for this date.</p>;
   }
   return (
-    <ol className="score-list">
+    <ol className={`score-list${variant === "today" ? " score-list-today" : ""}`}>
       {rows.map((score) => (
         <li key={score.scoreSnapshotId} className="score-row">
           <Link
