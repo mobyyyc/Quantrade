@@ -83,6 +83,22 @@ export type ScoreRunSummary = {
   eligibleCount: number;
 };
 
+export type DailyOperationRunStatus = "running" | "completed" | "failed" | "skipped";
+
+export type DailyOperationsStatus = {
+  latestRun?: {
+    scoreDate: string;
+    status: DailyOperationRunStatus;
+    decisionAt?: string;
+    completedAt?: string;
+    eligibleCount?: number;
+    failureReason?: string;
+  };
+  latestMarketSession?: string;
+  latestBenchmarkSession?: string;
+  latestSecRefreshAt?: string;
+};
+
 export type ForwardOutcomeReadiness = {
   horizonSessions: number;
   completedLabels: number;
@@ -313,6 +329,48 @@ export async function getRecentScoreRuns(limit = 5): Promise<ScoreRunSummary[]> 
     ...(row.published_at ? { publishedAt: new Date(String(row.published_at)).toISOString() } : {}),
     eligibleCount: Number(row.eligible_count),
   }));
+}
+
+export async function getDailyOperationsStatus(): Promise<DailyOperationsStatus> {
+  const [runResult, freshnessResult] = await Promise.all([
+    databasePool().query(
+      `SELECT score_date::text AS score_date, status, decision_at, completed_at,
+              eligible_count, failure_reason
+       FROM quantrade.daily_research_runs
+       ORDER BY score_date DESC
+       LIMIT 1`,
+    ),
+    databasePool().query(
+      `SELECT
+         (SELECT MAX(session_date)::text
+          FROM quantrade.daily_price_bars
+          WHERE session = 'regular' AND adjustment_basis = 'split_adjusted') AS market_session,
+         (SELECT MAX(session_date)::text
+          FROM quantrade.benchmark_daily_price_bars
+          WHERE benchmark_ticker = 'SPY' AND session = 'regular'
+            AND adjustment_basis = 'split_adjusted') AS benchmark_session,
+         (SELECT MAX(retrieved_at)
+          FROM quantrade.raw_artifacts
+          WHERE provider = 'sec_edgar') AS sec_refresh_at`,
+    ),
+  ]);
+  const run = runResult.rows[0] as Record<string, unknown> | undefined;
+  const freshness = freshnessResult.rows[0] as Record<string, unknown> | undefined;
+  return {
+    ...(run ? {
+      latestRun: {
+        scoreDate: String(run.score_date),
+        status: run.status as DailyOperationRunStatus,
+        ...(run.decision_at ? { decisionAt: new Date(String(run.decision_at)).toISOString() } : {}),
+        ...(run.completed_at ? { completedAt: new Date(String(run.completed_at)).toISOString() } : {}),
+        ...(run.eligible_count === null ? {} : { eligibleCount: Number(run.eligible_count) }),
+        ...(run.failure_reason ? { failureReason: String(run.failure_reason) } : {}),
+      },
+    } : {}),
+    ...(freshness?.market_session ? { latestMarketSession: String(freshness.market_session) } : {}),
+    ...(freshness?.benchmark_session ? { latestBenchmarkSession: String(freshness.benchmark_session) } : {}),
+    ...(freshness?.sec_refresh_at ? { latestSecRefreshAt: new Date(String(freshness.sec_refresh_at)).toISOString() } : {}),
+  };
 }
 
 export async function getForwardOutcomeReadiness(): Promise<ForwardOutcomeReadiness[]> {

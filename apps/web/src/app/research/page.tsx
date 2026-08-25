@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { formatPublicationTime, formatResearchDate } from "@/lib/format";
-import { getForwardOutcomeReadiness, getLatestDatedScores, getLatestPaperPortfolio, getModelCard, getRecentScoreRuns, ML_DATASET_MINIMUM_COMPLETED_LABELS, ML_DATASET_MINIMUM_SCORE_DATES, ResearchReadModelError, type DatedScore, type ForwardOutcomeReadiness, type ScoreRunSummary } from "@/lib/research-read-model";
+import { getDailyOperationsStatus, getForwardOutcomeReadiness, getLatestDatedScores, getLatestPaperPortfolio, getModelCard, getRecentScoreRuns, ML_DATASET_MINIMUM_COMPLETED_LABELS, ML_DATASET_MINIMUM_SCORE_DATES, ResearchReadModelError, type DailyOperationRunStatus, type DailyOperationsStatus, type DatedScore, type ForwardOutcomeReadiness, type ScoreRunSummary } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +27,31 @@ function formatReturn(value: string) {
   return `${numeric > 0 ? "+" : ""}${(numeric * 100).toFixed(2)}%`;
 }
 
+function nextScheduledUpdate() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date()).reduce<Record<string, string>>((values, part) => ({ ...values, [part.type]: part.value }), {});
+  const candidate = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)));
+  if (Number(parts.hour) >= 20) candidate.setUTCDate(candidate.getUTCDate() + 1);
+  while (candidate.getUTCDay() === 0 || candidate.getUTCDay() === 6) candidate.setUTCDate(candidate.getUTCDate() + 1);
+  return `${formatResearchDate(candidate.toISOString().slice(0, 10))}, 8:00 PM Toronto`;
+}
+
+function runStatusCopy(status?: DailyOperationRunStatus) {
+  if (status === "completed") return "Published";
+  if (status === "running") return "In progress";
+  if (status === "failed") return "Needs attention";
+  if (status === "skipped") return "Market closed";
+  return "Waiting for first run";
+}
+
 export default async function ResearchPage() {
   let card = null;
   let portfolio = null;
   let latestScores = null;
   let recentRuns: ScoreRunSummary[] = [];
   let forwardReadiness: ForwardOutcomeReadiness[] = [];
+  let operations: DailyOperationsStatus = {};
   let unavailable = false;
   try {
     card = await getModelCard("baseline_equal_weight_v1");
@@ -40,6 +59,7 @@ export default async function ResearchPage() {
     latestScores = await getLatestDatedScores();
     recentRuns = await getRecentScoreRuns();
     forwardReadiness = await getForwardOutcomeReadiness();
+    operations = await getDailyOperationsStatus();
   } catch (error) { unavailable = error instanceof ResearchReadModelError; }
   const coverage = latestScores?.scores ?? [];
   const eligibleCount = coverage.filter((score) => score.eligible).length;
@@ -54,6 +74,7 @@ export default async function ResearchPage() {
     <section className="content-section methodology"><div><p className="eyebrow">METHOD</p><h2>How a score is formed</h2></div><div><p>{card?.methodology ?? "Sector-aware feature percentiles are averaged only when every required input is available."}</p><Link href="/rankings" className="text-link">Open dated rankings</Link></div></section>
     <section className="content-section coverage-health"><div><p className="eyebrow">DATA COVERAGE</p><h2>What this run could score.</h2><p>Incomplete source data is withheld, never estimated or filled in.</p></div><div>{coverage.length ? <><p className="coverage-date">Latest completed run, {formatResearchDate(latestScores!.scoreDate)}</p><dl className="coverage-metrics"><div><dt>Eligible</dt><dd>{eligibleCount}</dd><span>published scores</span></div><div><dt>Withheld</dt><dd>{withheldCount}</dd><span>quality-gated names</span></div><div><dt>Coverage</dt><dd>{coveragePercent}%</dd><span>of this run</span></div></dl>{withheldCount ? <div className="coverage-gates"><p>Most common gates</p><ul>{gateBreakdown.map(([gate, count]) => <li key={gate}><span>{gate}</span><strong>{count} {count === 1 ? "name" : "names"}</strong></li>)}</ul></div> : <p className="coverage-complete">Every company in this run met the required data-quality gates.</p>}</> : <p className="quiet-copy">Coverage will appear after the first completed daily research run.</p>}</div></section>
     <section className="content-section methodology"><div><p className="eyebrow">RESEARCH ACTIVITY</p><h2>Recent score publications</h2></div><div>{recentRuns.length ? <ul className="publication-list">{recentRuns.map((run) => <li key={run.scoreDate}><strong>{formatResearchDate(run.scoreDate)}</strong><span>{run.eligibleCount} eligible names</span></li>)}</ul> : <p>No dated score publication has been recorded yet.</p>}</div></section>
+    <section className="content-section operations-health"><div><p className="eyebrow">OPERATIONS</p><h2>Daily research health</h2><p>The local 8 PM workflow records one dated publication, or an explicit reason it could not.</p></div><div className="operations-list"><div><span>Latest run</span><strong>{runStatusCopy(operations.latestRun?.status)}</strong><small>{operations.latestRun ? `${formatResearchDate(operations.latestRun.scoreDate)}${operations.latestRun.eligibleCount === undefined ? "" : ` · ${operations.latestRun.eligibleCount} eligible`}` : "No completed publication yet"}</small>{operations.latestRun?.failureReason && <small>{operations.latestRun.failureReason}</small>}</div><div><span>Data freshness</span><strong>{operations.latestMarketSession ? formatResearchDate(operations.latestMarketSession) : "Unavailable"}</strong><small>{operations.latestBenchmarkSession === operations.latestMarketSession ? "Stocks and SPY aligned" : "Check the benchmark refresh"}{operations.latestSecRefreshAt ? ` · SEC ${formatPublicationTime(operations.latestSecRefreshAt)}` : ""}</small></div><div><span>Next scheduled attempt</span><strong>{nextScheduledUpdate()}</strong><small>Requires this PC, Codex, and internet to be available.</small></div></div></section>
     <section className="content-section methodology" id="track-record"><div><p className="eyebrow">TRACK RECORD</p><h2>Paper portfolio</h2></div><div>{portfolio ? <><p>A dated research basket, scored {formatResearchDate(portfolio.scoreDate)} and executed at the following regular-session open on {formatResearchDate(portfolio.executionDate)}.</p><dl><div><dt>Starting NAV</dt><dd>${Number(portfolio.startingNav).toLocaleString("en-CA")}</dd></div><div><dt>Positions</dt><dd>{portfolio.positions.length}</dd></div></dl><div className="portfolio-checkpoints"><p className="portfolio-checkpoints-title">Forward checkpoints</p><ul>{[5, 20, 60].map((horizon) => {
       const outcome = portfolio.outcomes.find((item) => item.horizonSessions === horizon);
       if (!outcome) return <li key={horizon}><strong>{horizon} sessions</strong><span>Awaiting its dated market close</span></li>;
