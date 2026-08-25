@@ -141,6 +141,17 @@ python -m quantrade_research.ingest_filings \
 This requires the SEC user-agent, storage, database, and security-master
 configuration described above.
 
+For the Tier-B historical research track, add `--include-history`. It follows
+SEC's dated submission-history references, links every retained fact to its
+filing acceptance timestamp, and preserves the raw response that supplied each
+filing. The local runner below safely applies this to the registered 500-name
+cohort:
+
+```powershell
+.\scripts\run-historical-sec-backfill.ps1 -SingleCompanySmokeTest
+.\scripts\run-historical-sec-backfill.ps1
+```
+
 ## Data-quality gates
 
 P2.5 supplies fail-closed checks for the next pipeline stage. A dated panel or

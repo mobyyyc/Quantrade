@@ -6,13 +6,17 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal
 import json
+import re
 from typing import Any
 from urllib.request import Request, urlopen
 
 
 COMPANY_TICKERS_EXCHANGE_URL = "https://www.sec.gov/files/company_tickers_exchange.json"
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
+SUBMISSION_HISTORY_URL = "https://data.sec.gov/submissions/{name}"
 COMPANY_FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+
+_SUBMISSION_HISTORY_NAME = re.compile(r"^CIK\d{10}-submissions-\d{3}\.json$")
 
 EXCHANGE_MIC_BY_SEC_NAME = {
     "Nasdaq": "XNAS",
@@ -126,15 +130,14 @@ def _optional_date(value: object) -> date | None:
     return date.fromisoformat(value) if isinstance(value, str) and value else None
 
 
-def parse_submissions(payload: bytes) -> list[SecFilingMetadata]:
+def _parse_submission_rows(rows: object) -> list[SecFilingMetadata]:
     try:
-        recent = json.loads(payload)["filings"]["recent"]
         forms, accessions, filed, accepted, reports = (
-            recent["form"], recent["accessionNumber"], recent["filingDate"],
-            recent["acceptanceDateTime"], recent["reportDate"],
+            rows["form"], rows["accessionNumber"], rows["filingDate"],
+            rows["acceptanceDateTime"], rows["reportDate"],
         )
-    except (json.JSONDecodeError, KeyError, TypeError) as error:
-        raise SecEdgarError("SEC submissions payload has an invalid shape") from error
+    except (KeyError, TypeError) as error:
+        raise SecEdgarError("SEC submissions payload columns are invalid") from error
     if not all(isinstance(column, list) for column in (forms, accessions, filed, accepted, reports)):
         raise SecEdgarError("SEC submissions payload columns are invalid")
     filings: list[SecFilingMetadata] = []
@@ -143,6 +146,55 @@ def parse_submissions(payload: bytes) -> list[SecFilingMetadata]:
             raise SecEdgarError("SEC submissions payload contains an invalid filing")
         filings.append(SecFilingMetadata(accession, form if form in {"10-K", "10-Q", "8-K", "20-F", "40-F"} else "other", _timestamp(filing_date + "T00:00:00Z"), _timestamp(acceptance), _optional_date(report_date)))
     return filings
+
+
+def parse_submissions(payload: bytes) -> list[SecFilingMetadata]:
+    """Parse the current submissions payload's `filings.recent` records."""
+    try:
+        recent = json.loads(payload)["filings"]["recent"]
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise SecEdgarError("SEC submissions payload has an invalid shape") from error
+    return _parse_submission_rows(recent)
+
+
+def submission_history_names(payload: bytes) -> list[str]:
+    """Return validated dated submission-history file names in SEC-provided order."""
+    try:
+        files = json.loads(payload)["filings"].get("files", [])
+    except (json.JSONDecodeError, KeyError, AttributeError, TypeError) as error:
+        raise SecEdgarError("SEC submissions history references have an invalid shape") from error
+    if not isinstance(files, list):
+        raise SecEdgarError("SEC submissions history references must be a list")
+    names: list[str] = []
+    for item in files:
+        name = item.get("name") if isinstance(item, dict) else None
+        if not isinstance(name, str) or not _SUBMISSION_HISTORY_NAME.fullmatch(name):
+            raise SecEdgarError("SEC submissions history contains an invalid file name")
+        names.append(name)
+    return names
+
+
+def parse_submission_history(payload: bytes) -> list[SecFilingMetadata]:
+    """Parse a dated SEC submission-history file, which stores records at its top level."""
+    try:
+        rows = json.loads(payload)
+    except json.JSONDecodeError as error:
+        raise SecEdgarError("SEC submission-history payload is not valid JSON") from error
+    return _parse_submission_rows(rows)
+
+
+def merge_filings(*groups: list[SecFilingMetadata]) -> list[SecFilingMetadata]:
+    """Deduplicate SEC history while rejecting conflicting accession metadata."""
+    merged: dict[str, SecFilingMetadata] = {}
+    for group in groups:
+        for filing in group:
+            existing = merged.get(filing.accession_number)
+            if existing is not None and existing != filing:
+                raise SecEdgarError(
+                    f"SEC submissions disagree about accession {filing.accession_number}"
+                )
+            merged[filing.accession_number] = filing
+    return sorted(merged.values(), key=lambda filing: (filing.accepted_at, filing.accession_number))
 
 
 def parse_company_facts(payload: bytes, filings_by_accession: dict[str, SecFilingMetadata]) -> list[SecFilingFact]:
@@ -192,6 +244,11 @@ class SecEdgarClient:
 
     def fetch_submissions(self, cik: str) -> bytes:
         return self._fetch(SUBMISSIONS_URL.format(cik=cik.zfill(10)))
+
+    def fetch_submission_history(self, name: str) -> bytes:
+        if not _SUBMISSION_HISTORY_NAME.fullmatch(name):
+            raise SecEdgarError("invalid SEC submission-history file name")
+        return self._fetch(SUBMISSION_HISTORY_URL.format(name=name))
 
     def fetch_company_facts(self, cik: str) -> bytes:
         return self._fetch(COMPANY_FACTS_URL.format(cik=cik.zfill(10)))

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Mapping
 
 from .sec_edgar import SecFilingFact, SecFilingMetadata
 from .security_master import RawArtifact
@@ -55,11 +56,18 @@ class PostgresFilingRepository:
             raise ValueError(f"CIK {cik.zfill(10)} is absent from the security master")
         return row[0]
 
-    def upsert_filings(self, cik: str, filings: list[SecFilingMetadata], raw_artifact_id: str, source_reference: str, ingested_at: datetime) -> dict[str, str]:
+    def upsert_filings(
+        self, cik: str, filings: list[SecFilingMetadata], raw_artifact_id: str, source_reference: str,
+        ingested_at: datetime, source_by_accession: Mapping[str, tuple[str, str]] | None = None,
+    ) -> dict[str, str]:
         identifiers: dict[str, str] = {}
         with self._connection.cursor() as cursor:
             security_id = self._security_id(cursor, cik)
             for filing in filings:
+                filing_artifact_id, filing_reference = (
+                    source_by_accession.get(filing.accession_number, (raw_artifact_id, source_reference))
+                    if source_by_accession else (raw_artifact_id, source_reference)
+                )
                 cursor.execute(
                     """INSERT INTO quantrade.filings
                        (security_id, accession_number, form, filed_at, accepted_at, period_end, published_at,
@@ -69,7 +77,7 @@ class PostgresFilingRepository:
                         raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference
                        RETURNING filing_id""",
                     (security_id, filing.accession_number, filing.form, filing.filed_at, filing.accepted_at,
-                     filing.period_end, None, filing.accepted_at, ingested_at, raw_artifact_id, source_reference),
+                     filing.period_end, None, filing.accepted_at, ingested_at, filing_artifact_id, filing_reference),
                 )
                 identifiers[filing.accession_number] = str(cursor.fetchone()[0])
         self._connection.commit()
@@ -101,11 +109,18 @@ def persist_sec_filings(
     repository, cik: str, filings: list[SecFilingMetadata], facts: list[SecFilingFact],
     submissions_artifact: RawArtifact, facts_artifact: RawArtifact,
     submissions_reference: str, facts_reference: str,
+    submission_sources: Mapping[str, tuple[RawArtifact, str]] | None = None,
 ) -> FilingIngestionReport:
     ingested_at = datetime.now(timezone.utc)
     submissions_id = repository.persist_raw_artifact(submissions_artifact, submissions_reference)
     facts_id = repository.persist_raw_artifact(facts_artifact, facts_reference)
+    source_by_accession = {
+        accession: (repository.persist_raw_artifact(artifact, reference), reference)
+        for accession, (artifact, reference) in (submission_sources or {}).items()
+    }
     filing_map = {filing.accession_number: filing for filing in filings}
-    filing_ids = repository.upsert_filings(cik, filings, submissions_id, submissions_reference, ingested_at)
+    filing_ids = repository.upsert_filings(
+        cik, filings, submissions_id, submissions_reference, ingested_at, source_by_accession,
+    )
     fact_count = repository.upsert_facts(cik, facts, filing_map, filing_ids, facts_id, facts_reference, ingested_at)
     return FilingIngestionReport(len(filings), fact_count, submissions_artifact.storage_uri, facts_artifact.storage_uri)

@@ -6,7 +6,14 @@ import unittest
 SRC = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC))
 
-from quantrade_research.sec_edgar import parse_company_facts, parse_submissions
+from quantrade_research.sec_edgar import (
+    SecEdgarError,
+    merge_filings,
+    parse_company_facts,
+    parse_submission_history,
+    parse_submissions,
+    submission_history_names,
+)
 
 
 class FilingParserTests(unittest.TestCase):
@@ -26,6 +33,19 @@ class FilingParserTests(unittest.TestCase):
     def test_other_forms_are_retained_without_becoming_supported_form_labels(self) -> None:
         payload = b'{"filings":{"recent":{"form":["DEF 14A"],"accessionNumber":["0000320193-26-000002"],"filingDate":["2026-08-01"],"acceptanceDateTime":["2026-08-01T20:15:00Z"],"reportDate":[""]}}}'
         self.assertEqual(parse_submissions(payload)[0].form, "other")
+
+    def test_reads_dated_submission_history_and_merges_it_with_recent_filings(self) -> None:
+        recent = b'{"filings":{"recent":{"form":["10-Q"],"accessionNumber":["0000320193-26-000001"],"filingDate":["2026-08-01"],"acceptanceDateTime":["2026-08-01T20:15:00Z"],"reportDate":["2026-06-30"]},"files":[{"name":"CIK0000320193-submissions-001.json"}]}}'
+        history = b'{"form":["10-K"],"accessionNumber":["0000320193-21-000001"],"filingDate":["2021-01-29"],"acceptanceDateTime":["2021-01-29T16:30:00Z"],"reportDate":["2020-12-31"]}'
+        self.assertEqual(submission_history_names(recent), ["CIK0000320193-submissions-001.json"])
+        filings = merge_filings(parse_submissions(recent), parse_submission_history(history))
+        self.assertEqual([filing.accession_number for filing in filings], ["0000320193-21-000001", "0000320193-26-000001"])
+        self.assertEqual(filings[0].accepted_at.isoformat(), "2021-01-29T16:30:00+00:00")
+
+    def test_rejects_unsafe_submission_history_file_name(self) -> None:
+        payload = b'{"filings":{"recent":{"form":[],"accessionNumber":[],"filingDate":[],"acceptanceDateTime":[],"reportDate":[]},"files":[{"name":"../outside.json"}]}}'
+        with self.assertRaisesRegex(SecEdgarError, "invalid file name"):
+            submission_history_names(payload)
 
 
 if __name__ == "__main__":
