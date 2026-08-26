@@ -67,8 +67,8 @@ small and must not be over-interpreted.
 ## Required next gates
 
 1. Freeze this model specification and the feature schema.
-2. Define a like-for-like baseline comparison and portfolio mapping without
-   reading the final holdout.
+2. Use the committed `REGULARIZED_MODEL_COMPARISON_PROTOCOL.md` like-for-like
+   baseline comparison and portfolio mapping without reading the final holdout.
 3. Perform the single locked-holdout evaluation only after the review approves
    that frozen protocol.
 4. Apply the approval policy, including point-in-time, coverage, liquidity, and

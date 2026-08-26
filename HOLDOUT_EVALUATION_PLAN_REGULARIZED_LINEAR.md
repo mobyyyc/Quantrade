@@ -23,10 +23,10 @@ feature changes, hyperparameter selection, or retrying a failed gate.
 
 ## Required comparable baseline
 
-Before the holdout is opened, specify the exact baseline portfolio mapping,
-rebalance schedule, liquidity gate, and candidate mapping. Both must use the
-same eligible universe, decision time, next-session execution convention,
-portfolio size, and 5/20-bps one-way-cost calculations.
+`REGULARIZED_MODEL_COMPARISON_PROTOCOL.md` freezes the exact baseline portfolio
+mapping, candidate mapping, rebalance schedule, common eligibility universe,
+liquidity gate, next-session execution convention, portfolio size, and
+1/5/10/20-bps one-way-cost calculations.
 
 The existing equal-weight score baseline is not yet an approved benchmark for a
 regularized-model promotion. Therefore the holdout run must not be treated as
