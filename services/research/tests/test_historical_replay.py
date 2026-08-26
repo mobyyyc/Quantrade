@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 import unittest
 
-from quantrade_research.historical_replay import historical_decision_at, replayable_session_dates
+from quantrade_research.historical_replay import historical_decision_at, pending_session_dates, replayable_session_dates
 from quantrade_research.feature_diagnostics import FeatureOutcome
 from quantrade_research.features import FeatureRegistry, baseline_feature_registry
 from quantrade_research.ranking import SectorClassification, build_sector_aware_percentile_ranks
@@ -21,6 +21,13 @@ class HistoricalReplayTests(unittest.TestCase):
             start_date=date(2021, 1, 4), end_date=date(2021, 1, 5),
         )
         self.assertEqual(sessions, (date(2021, 1, 4), date(2021, 1, 5)))
+
+    def test_batch_selection_advances_past_completed_sessions(self) -> None:
+        sessions = (date(2021, 1, 4), date(2021, 1, 5), date(2021, 1, 6))
+        self.assertEqual(
+            pending_session_dates(sessions, {date(2021, 1, 4)}, limit=1),
+            (date(2021, 1, 5),),
+        )
 
     def test_static_sector_grouping_is_explicitly_opt_in(self) -> None:
         formation = date(2021, 1, 4)

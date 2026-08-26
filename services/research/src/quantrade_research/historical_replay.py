@@ -29,6 +29,13 @@ def replayable_session_dates(
     return tuple(sorted({session_date for session_date in session_dates if start_date <= session_date <= end_date}))
 
 
+def pending_session_dates(session_dates: tuple[date, ...], completed_dates: set[date],
+                          limit: int | None = None) -> tuple[date, ...]:
+    """Select the next unfinished sessions, not the first sessions in the range."""
+    pending = tuple(session_date for session_date in session_dates if session_date not in completed_dates)
+    return pending if limit is None else pending[:limit]
+
+
 def _session_dates(database_url: str, start_date: date, end_date: date) -> tuple[date, ...]:
     import psycopg
 
@@ -49,16 +56,16 @@ def _session_dates(database_url: str, start_date: date, end_date: date) -> tuple
     return replayable_session_dates(candidates, start_date=start_date, end_date=end_date)
 
 
-def _is_completed(database_url: str, score_date: date) -> bool:
+def _completed_dates(database_url: str, start_date: date, end_date: date) -> set[date]:
     import psycopg
 
     with psycopg.connect(database_url) as connection, connection.cursor() as cursor:
         cursor.execute(
-            "SELECT status = 'completed' FROM quantrade.daily_research_runs WHERE score_date = %s",
-            (score_date,),
+            """SELECT score_date FROM quantrade.daily_research_runs
+               WHERE status = 'completed' AND score_date BETWEEN %s AND %s""",
+            (start_date, end_date),
         )
-        row = cursor.fetchone()
-        return bool(row and row[0])
+        return {row[0] for row in cursor.fetchall()}
 
 
 def _start_run(database_url: str, score_date: date) -> None:
@@ -104,18 +111,16 @@ def _fail_run(database_url: str, score_date: date, error: Exception) -> None:
 
 
 def replay_historical_sessions(*, settings, start_date: date, end_date: date, cohort_code: str,
-                               code_revision: str, limit: int | None = None) -> tuple[int, int, int]:
+                               code_revision: str, limit: int | None = None,
+                               progress_every: int = 20) -> tuple[int, int, int]:
     """Resume-safe replay; incomplete feature inputs become immutable unavailable snapshots."""
     settings.require_runtime_storage()
     assert settings.database_url is not None
-    sessions = _session_dates(settings.database_url, start_date, end_date)
-    if limit is not None:
-        sessions = sessions[:limit]
-    replayed = skipped = eligible_total = 0
-    for score_date in sessions:
-        if _is_completed(settings.database_url, score_date):
-            skipped += 1
-            continue
+    all_sessions = _session_dates(settings.database_url, start_date, end_date)
+    completed_dates = _completed_dates(settings.database_url, start_date, end_date)
+    sessions = pending_session_dates(all_sessions, completed_dates, limit)
+    replayed = eligible_total = 0
+    for index, score_date in enumerate(sessions, start=1):
         decision_at = historical_decision_at(score_date)
         _start_run(settings.database_url, score_date)
         try:
@@ -129,7 +134,13 @@ def replay_historical_sessions(*, settings, start_date: date, end_date: date, co
             raise
         replayed += 1
         eligible_total += eligible
-    return replayed, skipped, eligible_total
+        if index % progress_every == 0 or index == len(sessions):
+            print(
+                f"progress completed_this_run={index}/{len(sessions)}; "
+                f"latest_date={score_date}; eligible_snapshots={eligible_total}",
+                flush=True,
+            )
+    return replayed, len(completed_dates), eligible_total
 
 
 def main() -> None:
@@ -138,24 +149,25 @@ def main() -> None:
     parser.add_argument("--end", type=date.fromisoformat, default=DEFAULT_END)
     parser.add_argument("--cohort", default=DEFAULT_COHORT)
     parser.add_argument("--limit", type=int, help="Process only the first N eligible sessions; useful for controlled batches")
+    parser.add_argument("--progress-every", type=int, default=20, help="Write one progress line after this many sessions")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
     arguments = parser.parse_args()
-    if arguments.limit is not None and arguments.limit <= 0:
-        parser.error("--limit must be positive")
+    if (arguments.limit is not None and arguments.limit <= 0) or arguments.progress_every <= 0:
+        parser.error("--limit and --progress-every must be positive")
     settings = _settings(arguments.env_file)
     settings.require_runtime_storage()
     assert settings.database_url is not None
-    sessions = _session_dates(settings.database_url, arguments.start, arguments.end)
-    if arguments.limit is not None:
-        sessions = sessions[:arguments.limit]
+    all_sessions = _session_dates(settings.database_url, arguments.start, arguments.end)
+    completed = _completed_dates(settings.database_url, arguments.start, arguments.end)
+    sessions = pending_session_dates(all_sessions, completed, arguments.limit)
     if arguments.dry_run:
-        print(f"replayable_sessions={len(sessions)}; cohort={arguments.cohort}; start={arguments.start}; end={arguments.end}")
+        print(f"replayable_sessions={len(all_sessions)}; completed_sessions={len(completed)}; remaining_sessions={len(all_sessions) - len(completed)}; selected_sessions={len(sessions)}; cohort={arguments.cohort}; start={arguments.start}; end={arguments.end}")
         return
     revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
     replayed, skipped, eligible = replay_historical_sessions(
         settings=settings, start_date=arguments.start, end_date=arguments.end, cohort_code=arguments.cohort,
-        code_revision=revision, limit=arguments.limit,
+        code_revision=revision, limit=arguments.limit, progress_every=arguments.progress_every,
     )
     print(f"replayed_sessions={replayed}; skipped_completed={skipped}; eligible_snapshots={eligible}; cohort={arguments.cohort}")
 
