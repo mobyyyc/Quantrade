@@ -89,7 +89,34 @@ def _outcome(
     )
 
 
-def _load_universe(connection, universe_code: str, score_date: date) -> tuple[str, list[str]]:
+def _load_universe(connection, universe_code: str, score_date: date, research_cohort_code: str | None = None) -> tuple[str, list[str]]:
+    if research_cohort_code is not None:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """SELECT cohort.source_universe_snapshot_id::text
+                   FROM quantrade.research_cohorts cohort
+                   WHERE cohort.cohort_code = %s AND cohort.cohort_kind = 'current_survivors'
+                     AND cohort.data_capability_tier = 'B' AND cohort.survivorship_biased
+                     AND NOT cohort.historical_membership_verified
+                     AND NOT cohort.sector_classification_point_in_time
+                     AND cohort.status = 'active'""",
+                (research_cohort_code,),
+            )
+            row = cursor.fetchone()
+            if row is None or row[0] is None:
+                raise DataQualityError(f"no active Tier-B current-survivors cohort exists for {research_cohort_code}")
+            snapshot_id = str(row[0])
+            cursor.execute(
+                """SELECT membership.security_id::text
+                   FROM quantrade.research_cohort_memberships membership
+                   JOIN quantrade.research_cohorts cohort ON cohort.research_cohort_id = membership.research_cohort_id
+                   WHERE cohort.cohort_code = %s ORDER BY membership.security_id""",
+                (research_cohort_code,),
+            )
+            security_ids = [str(member[0]) for member in cursor.fetchall()]
+        if not security_ids:
+            raise DataQualityError(f"research cohort {research_cohort_code} has no members")
+        return snapshot_id, security_ids
     with connection.cursor() as cursor:
         cursor.execute(
             """SELECT universe_snapshot_id FROM quantrade.universe_snapshots
@@ -151,15 +178,25 @@ def _load_facts(connection, security_ids: Iterable[str], formation_date: date, d
     return result
 
 
-def _load_sectors(connection, security_ids: Iterable[str], formation_date: date, decision_at: datetime) -> list[SectorClassification]:
+def _load_sectors(connection, security_ids: Iterable[str], formation_date: date, decision_at: datetime,
+                  static_tier_b_grouping: bool = False) -> list[SectorClassification]:
     with connection.cursor() as cursor:
-        cursor.execute(
-            """SELECT DISTINCT ON (security_id) security_id::text, sector_code, as_of_date, available_at
-               FROM quantrade.sector_classifications
-               WHERE security_id = ANY(%s::uuid[]) AND as_of_date <= %s AND available_at <= %s
-               ORDER BY security_id, as_of_date DESC, available_at DESC""",
-            (list(security_ids), formation_date, decision_at),
-        )
+        if static_tier_b_grouping:
+            cursor.execute(
+                """SELECT DISTINCT ON (security_id) security_id::text, sector_code, as_of_date, available_at
+                   FROM quantrade.sector_classifications
+                   WHERE security_id = ANY(%s::uuid[])
+                   ORDER BY security_id, as_of_date DESC, available_at DESC""",
+                (list(security_ids),),
+            )
+        else:
+            cursor.execute(
+                """SELECT DISTINCT ON (security_id) security_id::text, sector_code, as_of_date, available_at
+                   FROM quantrade.sector_classifications
+                   WHERE security_id = ANY(%s::uuid[]) AND as_of_date <= %s AND available_at <= %s
+                   ORDER BY security_id, as_of_date DESC, available_at DESC""",
+                (list(security_ids), formation_date, decision_at),
+            )
         return [SectorClassification(*row) for row in cursor.fetchall()]
 
 
@@ -176,7 +213,8 @@ def _load_benchmark_prices(connection, ticker: str, formation_date: date, decisi
         return [FeaturePriceObservation(*row) for row in cursor.fetchall()]
 
 
-def _source_inputs(connection, snapshot_id: str, security_ids: Iterable[str], formation_date: date, decision_at: datetime, benchmark_ticker: str) -> tuple[SourceInput, ...]:
+def _source_inputs(connection, snapshot_id: str, security_ids: Iterable[str], formation_date: date, decision_at: datetime,
+                   benchmark_ticker: str, static_tier_b_grouping: bool = False) -> tuple[SourceInput, ...]:
     """Collect the actual raw artifacts that contributed to this score run."""
     with connection.cursor() as cursor:
         cursor.execute(
@@ -184,7 +222,8 @@ def _source_inputs(connection, snapshot_id: str, security_ids: Iterable[str], fo
                    SELECT raw_artifact_id FROM quantrade.universe_snapshots WHERE universe_snapshot_id = %s
                    UNION
                    SELECT raw_artifact_id FROM quantrade.sector_classifications
-                    WHERE security_id = ANY(%s::uuid[]) AND as_of_date <= %s AND available_at <= %s
+                    WHERE security_id = ANY(%s::uuid[])
+                      AND (%s OR (as_of_date <= %s AND available_at <= %s))
                    UNION
                    SELECT raw_artifact_id FROM quantrade.daily_price_bars
                     WHERE security_id = ANY(%s::uuid[]) AND session_date <= %s AND available_at <= %s
@@ -199,7 +238,7 @@ def _source_inputs(connection, snapshot_id: str, security_ids: Iterable[str], fo
                FROM quantrade.raw_artifacts
                WHERE raw_artifact_id IN (SELECT raw_artifact_id FROM input_artifacts)
                ORDER BY provider, source_reference, storage_uri""",
-            (snapshot_id, list(security_ids), formation_date, decision_at, list(security_ids), formation_date,
+            (snapshot_id, list(security_ids), static_tier_b_grouping, formation_date, decision_at, list(security_ids), formation_date,
              decision_at, list(security_ids), formation_date, decision_at, benchmark_ticker, formation_date,
              decision_at),
         )
@@ -246,7 +285,8 @@ def _persist_explanations(database_url: str, snapshots, contributions: Iterable[
 
 def run_score_generation(*, settings: Settings, score_date: date, universe_code: str, benchmark_ticker: str,
                          code_revision: str, manual: bool = False,
-                         decision_at: datetime | None = None) -> tuple[int, int]:
+                         decision_at: datetime | None = None,
+                         research_cohort_code: str | None = None) -> tuple[int, int]:
     """Calculate, rank, persist, and explain one valid end-of-day baseline run."""
     settings.require_runtime_storage()
     assert settings.database_url is not None and settings.raw_artifacts_uri is not None
@@ -254,12 +294,14 @@ def run_score_generation(*, settings: Settings, score_date: date, universe_code:
     registry = baseline_feature_registry()
     import psycopg
     with psycopg.connect(settings.database_url) as connection:
-        snapshot_id, security_ids = _load_universe(connection, universe_code, score_date)
-        sectors = _load_sectors(connection, security_ids, score_date, decision_at)
+        snapshot_id, security_ids = _load_universe(connection, universe_code, score_date, research_cohort_code)
+        sectors = _load_sectors(connection, security_ids, score_date, decision_at,
+                                static_tier_b_grouping=research_cohort_code is not None)
         prices = _load_prices(connection, security_ids, score_date, decision_at)
         facts = _load_facts(connection, security_ids, score_date, decision_at)
         benchmark_prices = _load_benchmark_prices(connection, benchmark_ticker, score_date, decision_at)
-        source_inputs = _source_inputs(connection, snapshot_id, security_ids, score_date, decision_at, benchmark_ticker)
+        source_inputs = _source_inputs(connection, snapshot_id, security_ids, score_date, decision_at, benchmark_ticker,
+                                       static_tier_b_grouping=research_cohort_code is not None)
 
     outcomes: list[FeatureOutcome] = []
     for security_id in security_ids:
@@ -273,7 +315,11 @@ def run_score_generation(*, settings: Settings, score_date: date, universe_code:
             _outcome(security_id, score_date, registry, "trailing_volatility_60d", lambda p=security_prices, s=security_id: calculate_trailing_volatility_60d(p, security_id=s, formation_date=score_date, decision_at=decision_at, registry=registry)),
             _outcome(security_id, score_date, registry, "median_dollar_volume_20d", lambda p=security_prices, s=security_id: calculate_median_dollar_volume_20d(p, security_id=s, formation_date=score_date, decision_at=decision_at, registry=registry)),
         ))
-    ranks = build_sector_aware_percentile_ranks(outcomes, sectors, formation_date=score_date, decision_at=decision_at, universe_security_ids=security_ids, registry=registry)
+    ranks = build_sector_aware_percentile_ranks(
+        outcomes, sectors, formation_date=score_date, decision_at=decision_at,
+        universe_security_ids=security_ids, registry=registry,
+        allow_static_tier_b_grouping=research_cohort_code is not None,
+    )
     scores = build_equal_weight_baseline(ranks, formation_date=score_date, universe_security_ids=security_ids, registry=registry)
     repository = PostgresScoreSnapshotRepository(settings.database_url)
     try:
@@ -284,7 +330,8 @@ def run_score_generation(*, settings: Settings, score_date: date, universe_code:
         repository.close()
     contributions = build_baseline_feature_contributions(scores, ranks, formation_date=score_date, universe_security_ids=security_ids, registry=registry)
     explanation_count = _persist_explanations(settings.database_url, snapshots, contributions)
-    manifest = RunManifest.create(settings=settings, run_kind="score", code_revision=code_revision, data_capability_tier="B", decision_at=decision_at, status="completed", source_inputs=source_inputs, note=f"universe={universe_code}; securities={len(security_ids)}; eligible={sum(score.eligible for score in scores)}; explanations_inserted={explanation_count}; benchmark={benchmark_ticker}")
+    cohort_note = f"; research_cohort={research_cohort_code}; survivorship_biased=true; static_sector_grouping=true" if research_cohort_code else ""
+    manifest = RunManifest.create(settings=settings, run_kind="score", code_revision=code_revision, data_capability_tier="B", decision_at=decision_at, status="completed", source_inputs=source_inputs, note=f"universe={universe_code}; securities={len(security_ids)}; eligible={sum(score.eligible for score in scores)}; explanations_inserted={explanation_count}; benchmark={benchmark_ticker}{cohort_note}")
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")
     return len(snapshots), sum(score.eligible for score in scores)
 

@@ -58,17 +58,18 @@ def _sector_index(
     universe_security_ids: set[str],
     formation_date: date,
     decision_at: datetime,
+    allow_static_tier_b_grouping: bool = False,
 ) -> dict[str, SectorClassification]:
     decision = _as_utc(decision_at, "decision_at")
     selected: dict[str, SectorClassification] = {}
     for classification in classifications:
         if classification.security_id not in universe_security_ids:
             continue
-        if classification.as_of_date > formation_date:
+        if classification.as_of_date > formation_date and not allow_static_tier_b_grouping:
             raise DataQualityError(
                 f"sector classification for {classification.security_id} has a future as_of_date"
             )
-        if _as_utc(classification.available_at, "sector available_at") > decision:
+        if _as_utc(classification.available_at, "sector available_at") > decision and not allow_static_tier_b_grouping:
             raise DataQualityError(
                 f"sector classification for {classification.security_id} was unavailable at decision_at"
             )
@@ -144,6 +145,7 @@ def build_sector_aware_percentile_ranks(
     universe_security_ids: Iterable[str],
     registry: FeatureRegistry | None = None,
     minimum_peer_count: int = 2,
+    allow_static_tier_b_grouping: bool = False,
 ) -> tuple[SectorPercentileRank, ...]:
     """Normalize explicit feature outcomes within dated sector cohorts."""
     if minimum_peer_count < 2:
@@ -157,6 +159,7 @@ def build_sector_aware_percentile_ranks(
         universe_security_ids=universe,
         formation_date=formation_date,
         decision_at=decision_at,
+        allow_static_tier_b_grouping=allow_static_tier_b_grouping,
     )
     index = _outcome_index(
         outcomes,
