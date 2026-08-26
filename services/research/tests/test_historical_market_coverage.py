@@ -7,7 +7,12 @@ import unittest
 SRC = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC))
 
-from quantrade_research.historical_market_coverage import BasisCoverage, HistoricalMarketCoverageReport, coverage_warnings
+from quantrade_research.historical_market_coverage import (
+    BasisCoverage,
+    FundamentalCoverage,
+    HistoricalMarketCoverageReport,
+    coverage_warnings,
+)
 
 
 class HistoricalMarketCoverageTests(unittest.TestCase):
@@ -33,6 +38,14 @@ class HistoricalMarketCoverageTests(unittest.TestCase):
         )
         self.assertIn('"requested_start": "2016-01-01"', report.to_json())
         self.assertIn('"EXAMPLE"', report.to_json())
+
+    def test_warns_when_early_fundamental_history_is_incomplete(self) -> None:
+        fundamentals = FundamentalCoverage(500, 500, 500, 490, 480, 1, 1, None, None, 0)
+        warnings = coverage_warnings(
+            requested_start=date(2021, 1, 1), stock_coverage=(), benchmark_coverage=(),
+            excluded_listings=(), fundamental_coverage=fundamentals,
+        )
+        self.assertTrue(any("fundamentals are unavailable" in warning for warning in warnings))
 
 
 if __name__ == "__main__":

@@ -31,6 +31,20 @@ class BasisCoverage:
 
 
 @dataclass(frozen=True, slots=True)
+class FundamentalCoverage:
+    company_count: int
+    companies_with_filing: int
+    companies_with_facts: int
+    companies_with_pre_start_filing: int
+    companies_with_pre_start_facts: int
+    filing_count: int
+    fact_count: int
+    first_accepted_at: datetime | None
+    last_accepted_at: datetime | None
+    availability_mismatch_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class HistoricalMarketCoverageReport:
     generated_at: datetime
     cohort_code: str
@@ -43,6 +57,7 @@ class HistoricalMarketCoverageReport:
     incorrect_stock_availability_count: int
     incorrect_benchmark_availability_count: int
     warnings: tuple[str, ...]
+    fundamental_coverage: FundamentalCoverage | None = None
 
     def to_json(self) -> str:
         def convert(value: Any) -> Any:
@@ -60,6 +75,7 @@ class HistoricalMarketCoverageReport:
 def coverage_warnings(
     *, requested_start: date, stock_coverage: tuple[BasisCoverage, ...],
     benchmark_coverage: tuple[BasisCoverage, ...], excluded_listings: tuple[str, ...],
+    fundamental_coverage: FundamentalCoverage | None = None,
 ) -> tuple[str, ...]:
     warnings = [
         "Tier B only: this is a fixed current-survivors cohort, not dated historical S&P 500 membership.",
@@ -77,6 +93,11 @@ def coverage_warnings(
         )
     if excluded_listings:
         warnings.append("One or more fixed-cohort listings returned no historical bars and are excluded from usable examples.")
+    if fundamental_coverage and fundamental_coverage.companies_with_pre_start_facts < fundamental_coverage.company_count:
+        warnings.append(
+            "SEC fundamentals are unavailable before the requested start for some cohort names; "
+            "early examples must be withheld until each name has eligible facts."
+        )
     return tuple(warnings)
 
 
@@ -213,6 +234,49 @@ class PostgresHistoricalMarketCoverageRepository:
             )
             incorrect_benchmark_availability = int(cursor.fetchone()[0])
 
+            cursor.execute(
+                """WITH cohort AS (
+                         SELECT membership.security_id
+                         FROM quantrade.research_cohort_memberships membership
+                         JOIN quantrade.research_cohorts cohort
+                           ON cohort.research_cohort_id = membership.research_cohort_id
+                         WHERE cohort.cohort_code = %s
+                     ), scoped_filings AS (
+                         SELECT filing.*
+                         FROM quantrade.filings filing
+                         JOIN cohort ON cohort.security_id = filing.security_id
+                         WHERE filing.accepted_at <= (%s::date + interval '1 day')
+                     ), scoped_facts AS (
+                         SELECT fact.*
+                         FROM quantrade.filing_facts fact
+                         JOIN scoped_filings filing ON filing.filing_id = fact.filing_id
+                     )
+                     SELECT
+                       (SELECT COUNT(*) FROM cohort),
+                       (SELECT COUNT(DISTINCT security_id) FROM scoped_filings),
+                       (SELECT COUNT(DISTINCT security_id) FROM scoped_facts),
+                       (SELECT COUNT(DISTINCT security_id) FROM scoped_filings WHERE accepted_at < %s::date),
+                       (SELECT COUNT(DISTINCT fact.security_id) FROM scoped_facts fact
+                          JOIN scoped_filings filing ON filing.filing_id = fact.filing_id
+                         WHERE filing.accepted_at < %s::date),
+                       (SELECT COUNT(*) FROM scoped_filings),
+                       (SELECT COUNT(*) FROM scoped_facts),
+                       (SELECT MIN(accepted_at) FROM scoped_filings),
+                       (SELECT MAX(accepted_at) FROM scoped_filings),
+                       (SELECT COUNT(*) FROM scoped_facts fact
+                          JOIN scoped_filings filing ON filing.filing_id = fact.filing_id
+                         WHERE fact.available_at <> filing.accepted_at)""",
+                (cohort_code, requested_end, requested_start, requested_start),
+            )
+            fundamental_row = cursor.fetchone()
+            fundamental_coverage = FundamentalCoverage(
+                company_count=int(fundamental_row[0]), companies_with_filing=int(fundamental_row[1]),
+                companies_with_facts=int(fundamental_row[2]), companies_with_pre_start_filing=int(fundamental_row[3]),
+                companies_with_pre_start_facts=int(fundamental_row[4]), filing_count=int(fundamental_row[5]),
+                fact_count=int(fundamental_row[6]), first_accepted_at=fundamental_row[7],
+                last_accepted_at=fundamental_row[8], availability_mismatch_count=int(fundamental_row[9]),
+            )
+
         return HistoricalMarketCoverageReport(
             generated_at=datetime.now().astimezone(), cohort_code=cohort_code,
             requested_start=requested_start, requested_end=requested_end,
@@ -220,9 +284,11 @@ class PostgresHistoricalMarketCoverageRepository:
             benchmark_coverage=benchmark_coverage, excluded_cohort_listings=excluded,
             incorrect_stock_availability_count=incorrect_stock_availability,
             incorrect_benchmark_availability_count=incorrect_benchmark_availability,
+            fundamental_coverage=fundamental_coverage,
             warnings=coverage_warnings(
                 requested_start=requested_start, stock_coverage=stock_coverage,
                 benchmark_coverage=benchmark_coverage, excluded_listings=excluded,
+                fundamental_coverage=fundamental_coverage,
             ),
         )
 
