@@ -47,6 +47,12 @@ approval until the baseline is finalized under the same protocol.
    after viewing results.
 7. Apply `MODEL_APPROVAL_POLICY.md`. A failure is recorded, not tuned away.
 
+The first guarded implementation is `quantrade_research.holdout_evaluation`.
+It requires `--confirm-locked-holdout`, refuses to overwrite its selection
+manifest, and produces selections only; it intentionally does not calculate or
+expose holdout performance until the separately approved execution-and-cost
+evaluation step.
+
 ## Non-negotiable interpretations
 
 - A positive holdout result would support only private Tier-B research review.
