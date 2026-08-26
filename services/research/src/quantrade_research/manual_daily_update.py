@@ -227,7 +227,7 @@ def main() -> None:
                     return
                 if ciks:
                     _run([sys.executable, "-m", "quantrade_research.ingest_filings", "--ciks", ciks,
-                          "--code-revision", revision], environment)
+                          "--code-revision", revision, "--incremental"], environment)
                 decision_at = _set_decision_at(connection, score_date, retry_cutoff)
                 score_note = _run([sys.executable, "-m", "quantrade_research.score_run", "--score-date", score_date.isoformat(),
                                    "--code-revision", revision, "--manual", "--decision-at", decision_at.isoformat()], environment)

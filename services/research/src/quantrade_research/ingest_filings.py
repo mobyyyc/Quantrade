@@ -45,6 +45,11 @@ def _ciks(value: str) -> list[str]:
     return ciks
 
 
+def _new_accession_numbers(filings, known_accessions: set[str]) -> list[str]:
+    """Return stable new accessions from a submissions response."""
+    return sorted({filing.accession_number for filing in filings} - known_accessions)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest SEC filing metadata and facts for one CIK")
     source = parser.add_mutually_exclusive_group(required=True)
@@ -53,11 +58,14 @@ def main() -> None:
     source.add_argument("--ciks-file")
     parser.add_argument("--code-revision", required=True)
     parser.add_argument("--include-history", action="store_true", help="Follow dated SEC submission-history references for historical fact eligibility")
+    parser.add_argument("--incremental", action="store_true", help="Fetch Company Facts only when current submissions contain a new accession")
     parser.add_argument("--env-file", default=".env")
     parser.add_argument("--minimum-request-interval", type=float, default=0.12)
     arguments = parser.parse_args()
     if arguments.minimum_request_interval < 0:
         parser.error("--minimum-request-interval must be non-negative")
+    if arguments.incremental and arguments.include_history:
+        parser.error("--incremental cannot be combined with --include-history")
     ciks = ([arguments.cik.zfill(10)] if arguments.cik else arguments.ciks
             if arguments.ciks else _ciks_from_file(arguments.ciks_file))
 
@@ -72,6 +80,7 @@ def main() -> None:
     repository = PostgresFilingRepository(settings.database_url)
     total_filings = 0
     total_facts = 0
+    refreshed_ciks = 0
     source_inputs: list[SourceInput] = []
     try:
         for index, cik in enumerate(ciks):
@@ -81,6 +90,18 @@ def main() -> None:
             artifacts: list[tuple[object, str]] = []
             submissions_artifact = store.store(submissions_payload, retrieved_at, category="sec-submissions")
             artifacts.append((submissions_artifact, SUBMISSIONS_URL.format(cik=cik)))
+            known_accessions = repository.known_accession_numbers(
+                cik, [filing.accession_number for filing in filings_groups[0]],
+            ) if arguments.incremental else set()
+            if arguments.incremental and not _new_accession_numbers(filings_groups[0], known_accessions):
+                repository.persist_raw_artifact(submissions_artifact, SUBMISSIONS_URL.format(cik=cik))
+                source_inputs.append(SourceInput(
+                    provider="sec_edgar", source_reference=SUBMISSIONS_URL.format(cik=cik),
+                    raw_artifact_uris=(submissions_artifact.storage_uri,),
+                ))
+                if index + 1 < len(ciks):
+                    time.sleep(arguments.minimum_request_interval)
+                continue
             if arguments.include_history:
                 for history_name in submission_history_names(submissions_payload):
                     time.sleep(arguments.minimum_request_interval)
@@ -109,6 +130,7 @@ def main() -> None:
             )
             total_filings += report.filings
             total_facts += report.facts
+            refreshed_ciks += 1
             source_inputs.extend(
                 SourceInput(provider="sec_edgar", source_reference=source_reference, raw_artifact_uris=(artifact.storage_uri,))
                 for artifact, source_reference in artifacts
@@ -122,6 +144,7 @@ def main() -> None:
         settings=settings, run_kind="ingestion", code_revision=arguments.code_revision, data_capability_tier="B",
         source_inputs=tuple(source_inputs), status="completed",
         note=(f"ciks={len(ciks)}; filings={total_filings}; facts={total_facts}; "
+              f"incremental={arguments.incremental}; refreshed_ciks={refreshed_ciks}; "
               f"history_included={arguments.include_history}; filing_availability=acceptance_timestamp"),
     )
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")

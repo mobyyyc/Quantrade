@@ -56,6 +56,24 @@ class PostgresFilingRepository:
             raise ValueError(f"CIK {cik.zfill(10)} is absent from the security master")
         return row[0]
 
+    def known_accession_numbers(self, cik: str, accession_numbers: list[str]) -> set[str]:
+        """Return the already-persisted accessions for one security.
+
+        Daily ingestion uses this small metadata lookup before requesting the much
+        larger SEC Company Facts document.  Historical ingestion deliberately does
+        not use it because it must traverse every dated submission reference.
+        """
+        if not accession_numbers:
+            return set()
+        with self._connection.cursor() as cursor:
+            security_id = self._security_id(cursor, cik)
+            cursor.execute(
+                """SELECT accession_number FROM quantrade.filings
+                   WHERE security_id = %s AND accession_number = ANY(%s)""",
+                (security_id, accession_numbers),
+            )
+            return {str(row[0]) for row in cursor.fetchall()}
+
     def upsert_filings(
         self, cik: str, filings: list[SecFilingMetadata], raw_artifact_id: str, source_reference: str,
         ingested_at: datetime, source_by_accession: Mapping[str, tuple[str, str]] | None = None,

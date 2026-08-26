@@ -14,9 +14,18 @@ from quantrade_research.sec_edgar import (
     parse_submissions,
     submission_history_names,
 )
+from quantrade_research.ingest_filings import _new_accession_numbers
 
 
 class FilingParserTests(unittest.TestCase):
+    def test_identifies_only_unseen_current_submission_accessions(self) -> None:
+        payload = b'{"filings":{"recent":{"form":["10-Q","8-K","8-K"],"accessionNumber":["0000320193-26-000001","0000320193-26-000002","0000320193-26-000002"],"filingDate":["2026-08-01","2026-08-02","2026-08-02"],"acceptanceDateTime":["2026-08-01T20:15:00Z","2026-08-02T20:15:00Z","2026-08-02T20:15:00Z"],"reportDate":["2026-06-30","",""]}}}'
+        filings = parse_submissions(payload)
+        self.assertEqual(
+            _new_accession_numbers(filings, {"0000320193-26-000001"}),
+            ["0000320193-26-000002"],
+        )
+
     def test_links_company_facts_to_submission_acceptance_metadata(self) -> None:
         submissions = b'{"filings":{"recent":{"form":["10-Q"],"accessionNumber":["0000320193-26-000001"],"filingDate":["2026-08-01"],"acceptanceDateTime":["2026-08-01T20:15:00.000Z"],"reportDate":["2026-06-30"]}}}'
         filings = parse_submissions(submissions)
