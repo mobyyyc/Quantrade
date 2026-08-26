@@ -12,6 +12,9 @@ class FakePriceSource:
     def __init__(self, *, missing_exit: bool = False) -> None:
         self.missing_exit = missing_exit
 
+    def require_corporate_action_coverage(self, start_date: date, end_date: date) -> None:
+        return None
+
     def next_benchmark_session(self, formation_date: date) -> date:
         return formation_date + timedelta(days=1)
 

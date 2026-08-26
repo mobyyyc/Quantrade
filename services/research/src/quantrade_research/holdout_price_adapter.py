@@ -17,6 +17,7 @@ from .score_run import _dotenv_values
 
 
 class HoldoutPriceSource(Protocol):
+    def require_corporate_action_coverage(self, start_date: date, end_date: date) -> None: ...
     def next_benchmark_session(self, formation_date: date) -> date | None: ...
     def security_opens(self, security_ids: tuple[str, ...], session_date: date) -> dict[str, Decimal]: ...
     def benchmark_open(self, session_date: date) -> Decimal | None: ...
@@ -40,6 +41,12 @@ def _formation_date(formation: dict[str, object]) -> date:
 def build_execution_period_input(manifest: dict[str, object], source: HoldoutPriceSource) -> dict[str, object]:
     """Use the first SPY session after each formation; never shift a missing equity open."""
     formations = list(manifest["formations"])  # type: ignore[index]
+    if not formations:
+        raise DataQualityError("selection manifest has no frozen formations")
+    formation_dates = [_formation_date(formation) for formation in formations if isinstance(formation, dict)]
+    if len(formation_dates) != len(formations):
+        raise DataQualityError("selection manifest contains an invalid formation")
+    source.require_corporate_action_coverage(min(formation_dates), max(formation_dates))
     prepared: list[tuple[date, dict[str, object], date, tuple[str, ...]] | None] = []
     withheld: list[dict[str, str]] = []
     for formation in formations:
@@ -125,6 +132,21 @@ class PostgresHoldoutPriceSource:
 
     def close(self) -> None:
         self._connection.close()
+
+    def require_corporate_action_coverage(self, start_date: date, end_date: date) -> None:
+        """Fail closed: raw opens need a retrieved action feed to be interpretable."""
+        with self._connection.cursor() as cursor:
+            cursor.execute(
+                """SELECT COUNT(*) FROM quantrade.corporate_actions
+                   WHERE COALESCE(effective_date, process_date) >= %s
+                     AND COALESCE(effective_date, process_date) <= %s""",
+                (start_date, end_date),
+            )
+            count = int(cursor.fetchone()[0])
+        if count == 0:
+            raise DataQualityError(
+                "corporate-action coverage is unavailable for the locked period; raw-price execution evaluation is blocked"
+            )
 
     def next_benchmark_session(self, formation_date: date) -> date | None:
         with self._connection.cursor() as cursor:

@@ -64,6 +64,14 @@ this calculator never re-ranks names.
 for that calculator. It uses the first SPY regular-session open after each
 formation, does not shift missing equity marks to a more convenient date, and
 records missing marks or the final unclosed formation as explicit withholdings.
+It now blocks before price preparation when the corporate-action feed has no
+records for the locked window; raw prices without split/dividend position
+accounting cannot be interpreted as approval evidence.
+
+Any already-completed report must also receive the immutable
+`quantrade_research.holdout_integrity_audit`. Missing corporate-action coverage
+sets its approval status to `blocked_integrity`; the saved return numbers remain
+diagnostic only and are never rerun or tuned.
 
 ## Non-negotiable interpretations
 
