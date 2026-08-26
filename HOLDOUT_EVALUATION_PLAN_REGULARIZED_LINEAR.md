@@ -60,6 +60,11 @@ unhandled corporate actions, and cannot accept a formation date outside the
 selection manifest. A separate database adapter supplies those price periods;
 this calculator never re-ranks names.
 
+`quantrade_research.holdout_price_adapter` is the read-only PostgreSQL adapter
+for that calculator. It uses the first SPY regular-session open after each
+formation, does not shift missing equity marks to a more convenient date, and
+records missing marks or the final unclosed formation as explicit withholdings.
+
 ## Non-negotiable interpretations
 
 - A positive holdout result would support only private Tier-B research review.
