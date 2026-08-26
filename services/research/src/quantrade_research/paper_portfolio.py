@@ -120,9 +120,9 @@ def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) ->
                    FROM quantrade.paper_portfolio_runs p
                    WHERE p.score_date = s.score_date
                  )
-               GROUP BY score_date
+               GROUP BY s.score_date
                HAVING COUNT(*) >= 20
-               ORDER BY score_date ASC""",
+               ORDER BY s.score_date ASC""",
             (execution_date,),
         )
         candidates = [row[0] for row in cursor.fetchall()]

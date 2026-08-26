@@ -149,6 +149,32 @@ def _has_current_benchmark_session(database_url: str, score_date: date) -> bool:
         return bool(cursor.fetchone()[0])
 
 
+def _published_score_summary(
+    database_url: str, score_date: date, expected_count: int,
+) -> tuple[datetime, int, int] | None:
+    """Find a complete canonical snapshot set after a later daily-update step fails.
+
+    Snapshot evidence is authoritative: a failed ledger row may be retried or
+    repaired, but an immutable completed score set retains its own decision time.
+    """
+    import psycopg
+    with psycopg.connect(database_url) as connection, connection.cursor() as cursor:
+        cursor.execute(
+            """SELECT decision_at, COUNT(*), COUNT(*) FILTER (WHERE eligible)
+               FROM quantrade.score_snapshots
+               WHERE score_date = %s
+               GROUP BY decision_at
+               HAVING COUNT(*) = %s
+               ORDER BY decision_at DESC
+               LIMIT 1""",
+            (score_date, expected_count),
+        )
+        row = cursor.fetchone()
+    if row is None:
+        return None
+    return row[0], int(row[1]), int(row[2])
+
+
 def _run(command: list[str], environment: dict[str, str]) -> str:
     completed = subprocess.run(command, env=environment, check=True, text=True, capture_output=True)
     return completed.stdout.strip()
@@ -172,7 +198,8 @@ def main() -> None:
     environment.update(_dotenv_values(arguments.env_file))
     environment["PYTHONPATH"] = str(Path("services/research/src").resolve())
     revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
-    symbols = ",".join(_symbols(settings.database_url, score_date))
+    symbol_list = _symbols(settings.database_url, score_date)
+    symbols = ",".join(symbol_list)
     ciks = ",".join(_ciks(settings.database_url, score_date))
 
     with _daily_update_lock(settings.database_url) as connection:
@@ -181,31 +208,43 @@ def main() -> None:
             print(f"already_completed score_date={score_date}; no duplicate publication was created")
             return
         try:
-            start = _catch_up_start(settings.database_url, score_date)
-            if start <= score_date:
-                _run([sys.executable, "-m", "quantrade_research.ingest_market_data", "--symbols", symbols,
-                      "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision], environment)
-                _run([sys.executable, "-m", "quantrade_research.ingest_benchmark_data", "--ticker", "SPY",
-                      "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision], environment)
-            if not _has_current_benchmark_session(settings.database_url, score_date):
-                _set_skipped(connection, score_date, "No regular SPY session was returned for this date.")
-                print(f"skipped score_date={score_date}; no regular NYSE session")
-                return
-            if ciks:
-                _run([sys.executable, "-m", "quantrade_research.ingest_filings", "--ciks", ciks,
-                      "--code-revision", revision], environment)
-            decision_at = _set_decision_at(connection, score_date, retry_cutoff)
-            score_note = _run([sys.executable, "-m", "quantrade_research.score_run", "--score-date", score_date.isoformat(),
-                               "--code-revision", revision, "--manual", "--decision-at", decision_at.isoformat()], environment)
-            snapshot_text, eligible_text = score_note.split("; ")
-            snapshots, eligible = int(snapshot_text.split("=")[1]), int(eligible_text.split("=")[1])
-            forward_outcomes = materialize_due_forward_score_outcomes(settings=settings, as_of_date=score_date)
-            outcomes = materialize_due_paper_portfolio_outcomes(settings=settings, as_of_date=score_date)
-            published_portfolios = publish_due_paper_portfolios(settings=settings, execution_date=score_date)
+            existing_score = _published_score_summary(settings.database_url, score_date, len(symbol_list))
+            if existing_score is not None:
+                decision_at, snapshots, eligible = existing_score
+                _set_decision_at(connection, score_date, decision_at)
+                score_note = f"score_snapshots={snapshots}; eligible={eligible}"
+                print(f"reusing_existing_scores score_date={score_date}; snapshots={snapshots}; eligible={eligible}")
+            else:
+                start = _catch_up_start(settings.database_url, score_date)
+                if start <= score_date:
+                    _run([sys.executable, "-m", "quantrade_research.ingest_market_data", "--symbols", symbols,
+                          "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision], environment)
+                    _run([sys.executable, "-m", "quantrade_research.ingest_benchmark_data", "--ticker", "SPY",
+                          "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision], environment)
+                if not _has_current_benchmark_session(settings.database_url, score_date):
+                    _set_skipped(connection, score_date, "No regular SPY session was returned for this date.")
+                    print(f"skipped score_date={score_date}; no regular NYSE session")
+                    return
+                if ciks:
+                    _run([sys.executable, "-m", "quantrade_research.ingest_filings", "--ciks", ciks,
+                          "--code-revision", revision], environment)
+                decision_at = _set_decision_at(connection, score_date, retry_cutoff)
+                score_note = _run([sys.executable, "-m", "quantrade_research.score_run", "--score-date", score_date.isoformat(),
+                                   "--code-revision", revision, "--manual", "--decision-at", decision_at.isoformat()], environment)
+                snapshot_text, eligible_text = score_note.split("; ")
+                snapshots, eligible = int(snapshot_text.split("=")[1]), int(eligible_text.split("=")[1])
             _set_completed(connection, score_date, snapshots, eligible)
         except Exception as error:
             _set_failure(connection, score_date, str(error))
             raise
+
+    try:
+        forward_outcomes = materialize_due_forward_score_outcomes(settings=settings, as_of_date=score_date)
+        outcomes = materialize_due_paper_portfolio_outcomes(settings=settings, as_of_date=score_date)
+        published_portfolios = publish_due_paper_portfolios(settings=settings, execution_date=score_date)
+    except Exception as error:
+        print(f"completed score_date={score_date}; {score_note}; post_publication_error={error}")
+        return
 
     published_note = ",".join(item.isoformat() for item in published_portfolios) or "none_due"
     outcome_note = ",".join(f"{item.horizon_sessions}d:{item.status}" for item in outcomes) or "none_due"
