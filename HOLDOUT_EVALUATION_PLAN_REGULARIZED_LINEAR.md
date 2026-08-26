@@ -53,6 +53,13 @@ manifest, and produces selections only; it intentionally does not calculate or
 expose holdout performance until the separately approved execution-and-cost
 evaluation step.
 
+`quantrade_research.execution_cost_evaluation` is the corresponding frozen-
+selection calculator. It applies identical next-open entry/exit mechanics and
+1/5/10/20-bps cases to supplied price periods, rejects missing marks and
+unhandled corporate actions, and cannot accept a formation date outside the
+selection manifest. A separate database adapter supplies those price periods;
+this calculator never re-ranks names.
+
 ## Non-negotiable interpretations
 
 - A positive holdout result would support only private Tier-B research review.
