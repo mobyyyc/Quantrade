@@ -315,6 +315,16 @@ transparent baseline has passed private-beta approval. The comparison requires
 the same number of evaluation observations and reports benchmark-relative-return
 and Sharpe deltas; it never promotes a candidate automatically.
 
+## First development-only regularized experiment
+
+The first Tier-B regularized-linear experiment uses only the exported
+development partition, three chronological validation windows, and a 20-session
+purge before each window. Its model card is
+`MODEL_CARD_REGULARIZED_LINEAR_DEVELOPMENT.md`. The 2025-07-01 through
+2026-06-30 holdout remains untouched; the pre-registered procedure for its
+single future evaluation is
+`HOLDOUT_EVALUATION_PLAN_REGULARIZED_LINEAR.md`.
+
 ## Model cards and rejected hypotheses
 
 P5.5 creates immutable model-card and rejected-hypothesis governance records.
