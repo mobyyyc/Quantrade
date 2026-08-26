@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 from typing import Protocol
 
+from .corporate_action_coverage import require_corporate_action_coverage
 from .execution_cost_evaluation import load_selection_manifest
 from .holdout_evaluation import require_locked_holdout_confirmation
 from .quality import DataQualityError
@@ -128,25 +129,19 @@ class PostgresHoldoutPriceSource:
     def __init__(self, database_url: str) -> None:
         import psycopg
 
+        self._database_url = database_url
         self._connection = psycopg.connect(database_url)
 
     def close(self) -> None:
         self._connection.close()
 
     def require_corporate_action_coverage(self, start_date: date, end_date: date) -> None:
-        """Fail closed: raw opens need a retrieved action feed to be interpretable."""
-        with self._connection.cursor() as cursor:
-            cursor.execute(
-                """SELECT COUNT(*) FROM quantrade.corporate_actions
-                   WHERE COALESCE(effective_date, process_date) >= %s
-                     AND COALESCE(effective_date, process_date) <= %s""",
-                (start_date, end_date),
-            )
-            count = int(cursor.fetchone()[0])
-        if count == 0:
-            raise DataQualityError(
-                "corporate-action coverage is unavailable for the locked period; raw-price execution evaluation is blocked"
-            )
+        """Fail closed unless a completed, raw-backed cohort backfill covers the window."""
+        require_corporate_action_coverage(
+            self._database_url,
+            start_date=start_date,
+            end_date=end_date,
+        )
 
     def next_benchmark_session(self, formation_date: date) -> date | None:
         with self._connection.cursor() as cursor:

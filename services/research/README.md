@@ -86,6 +86,16 @@ Remove `--dry-run` only for an approved data run. The action ledger improves
 historical execution integrity, but it does not by itself turn Tier-B results
 into unbiased or total-return performance claims.
 
+Before any raw-price execution evaluation, use the read-only coverage monitor.
+It requires a completed cohort backfill, all planned chunks, a saved raw
+response for every completed chunk, and action records in the requested window:
+
+```bash
+python -m quantrade_research.corporate_action_coverage \
+  --start 2025-07-01 --end 2026-06-30 \
+  --output data/derived/historical-coverage/corporate_actions_2025-07-01_2026-06-30.json
+```
+
 ## SEC security master
 
 P2.1 ingests SEC's current ticker/exchange association file as a dated
