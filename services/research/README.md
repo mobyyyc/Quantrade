@@ -360,6 +360,23 @@ The repository includes the research-only baseline card in `MODEL_CARD_BASELINE.
 and pre-registered prohibited methods in `REJECTED_HYPOTHESES.md`. Neither file
 contains a fabricated evaluation outcome or an approval claim.
 
+## Frozen research-model artifact
+
+The selected development-only elastic-net candidate can be registered once as
+an immutable local inference artifact. Registration records a research-only
+database model card and links it to the exact experiment hash. It deliberately
+does **not** replace the daily baseline model or produce a live portfolio:
+
+```bash
+python -m quantrade_research.register_research_model \
+  --experiment data/derived/experiments/tier_b_regularized_linear_development_v1.json \
+  --training-dataset data/derived/training/sp500_current_survivors_20d_v1.csv \
+  --artifact data/derived/model-artifacts/tier_b_regularized_linear_development_v1.json
+```
+
+The next explicit model task will build a separate, dated paper-tracking path
+that references this artifact. It must not silently change baseline rankings.
+
 ## End-of-day score generation
 
 P6.1 generates score snapshots at exactly 8:00 p.m. America/Toronto from
