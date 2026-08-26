@@ -34,6 +34,19 @@ class AlpacaAdapterTests(unittest.TestCase):
         self.assertEqual(actions[1].action_type, "forward_split")
         self.assertEqual(str(actions[1].ratio_numerator), "4")
 
+    def test_parses_current_nested_corporate_action_response_shape(self) -> None:
+        payload = b'{"corporate_actions":{"cash_dividends":[{"id":"div-2","symbol":"AAPL","process_date":"2026-08-20","ex_date":"2026-08-19","rate":0.25}]},"next_page_token":null}'
+        actions, token = parse_corporate_actions(payload)
+        self.assertIsNone(token)
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0].ticker, "AAPL")
+        self.assertEqual(str(actions[0].cash_amount), "0.25")
+
+    def test_skips_unmapped_market_notice_without_inventing_a_security(self) -> None:
+        payload = b'{"corporate_actions":{"market_notices":[{"id":"notice-1","process_date":"2026-08-20"}]}}'
+        actions, _ = parse_corporate_actions(payload)
+        self.assertEqual(actions, [])
+
     def test_rejects_bar_without_price(self) -> None:
         with self.assertRaises(AlpacaError):
             parse_daily_bars(b'{"bars":{"AAPL":[{"t":"2026-08-20T00:00:00Z"}]}}')

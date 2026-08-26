@@ -68,6 +68,24 @@ earlier history. It records completed chunks in PostgreSQL and safely skips
 them on a restart; raw and split-adjusted benchmark bars for SPY use the same
 availability rule.
 
+## Historical corporate-action backfill
+
+The separate corporate-action worker uses the same fixed Tier-B cohort and
+quarterly 100-symbol batches. It preserves content-hashed provider responses,
+deduplicates by provider action ID, and assigns every historical action the
+conservative **6:00 p.m. America/Toronto** availability cutoff on its process
+date. Provider records for symbols outside the fixed cohort are retained in
+the raw response but are not mapped into the cohort's action ledger.
+
+```bash
+python -m quantrade_research.historical_corporate_action_backfill \
+  --start 2021-01-01 --end 2026-06-30 --dry-run
+```
+
+Remove `--dry-run` only for an approved data run. The action ledger improves
+historical execution integrity, but it does not by itself turn Tier-B results
+into unbiased or total-return performance claims.
+
 ## SEC security master
 
 P2.1 ingests SEC's current ticker/exchange association file as a dated

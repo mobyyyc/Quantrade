@@ -129,6 +129,14 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("CREATE TABLE quantrade.historical_backfill_chunks", sql)
         self.assertIn("completed historical backfill chunks are immutable", sql)
 
+    def test_historical_corporate_action_backfill_has_a_separate_tier_b_rule(self) -> None:
+        migration = MIGRATION.with_name("0018_add_historical_corporate_action_rule.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("v1-corporate-action", sql)
+        self.assertIn("corporate_action", sql)
+        self.assertIn("point_in_time_verified", sql)
+        self.assertIn("historical_backfill_runs_data_domain_check", sql)
+
     def test_holdout_and_experiment_governance_are_immutable(self) -> None:
         migration = MIGRATION.with_name("0007_add_experiment_governance.sql")
         sql = migration.read_text(encoding="utf-8")

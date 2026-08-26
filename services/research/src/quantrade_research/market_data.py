@@ -157,10 +157,17 @@ class PostgresMarketDataRepository:
         self._connection.commit()
         return len(bars)
 
-    def upsert_corporate_actions(self, actions: list[AlpacaCorporateAction], raw_artifact_id: str, source_reference: str, available_at: datetime) -> int:
+    def upsert_corporate_actions(self, actions: list[AlpacaCorporateAction], raw_artifact_id: str, source_reference: str, available_at: datetime | Callable[[AlpacaCorporateAction], datetime], *, skip_unmapped: bool = False) -> int:
+        persisted = 0
         with self._connection.cursor() as cursor:
             for action in actions:
-                security_id = self._security_id(cursor, action.ticker, action.effective_date or action.process_date)
+                try:
+                    security_id = self._security_id(cursor, action.ticker, action.effective_date or action.process_date)
+                except ValueError:
+                    if skip_unmapped:
+                        continue
+                    raise
+                action_available_at = available_at(action) if callable(available_at) else available_at
                 cursor.execute(
                     """
                     INSERT INTO quantrade.corporate_actions
@@ -175,8 +182,9 @@ class PostgresMarketDataRepository:
                     """,
                     (security_id, action.provider_action_id, action.action_type, action.process_date,
                      action.effective_date, action.cash_amount, action.ratio_numerator,
-                     action.ratio_denominator, available_at, datetime.now(timezone.utc), raw_artifact_id,
+                     action.ratio_denominator, action_available_at, datetime.now(timezone.utc), raw_artifact_id,
                      source_reference, json.dumps(action.payload, sort_keys=True)),
                 )
+                persisted += 1
         self._connection.commit()
-        return len(actions)
+        return persisted

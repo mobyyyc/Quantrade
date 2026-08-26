@@ -105,8 +105,11 @@ def parse_corporate_actions(payload: bytes) -> tuple[list[AlpacaCorporateAction]
         raise AlpacaError("Alpaca corporate-actions response is not JSON") from error
     if not isinstance(document, dict):
         raise AlpacaError("Alpaca corporate-actions response has an invalid shape")
+    action_groups = document.get("corporate_actions", document)
+    if not isinstance(action_groups, dict):
+        raise AlpacaError("Alpaca corporate-actions response has invalid action groups")
     actions: list[AlpacaCorporateAction] = []
-    for action_type, values in document.items():
+    for action_type, values in action_groups.items():
         if action_type == "next_page_token":
             continue
         if not isinstance(values, list):
@@ -114,9 +117,20 @@ def parse_corporate_actions(payload: bytes) -> tuple[list[AlpacaCorporateAction]
         for value in values:
             if not isinstance(value, dict):
                 raise AlpacaError("Alpaca corporate-actions response contains an invalid action")
+            symbol = (
+                value.get("symbol")
+                or value.get("acquirer_symbol")
+                or value.get("acquiree_symbol")
+                or value.get("new_symbol")
+                or value.get("old_symbol")
+            )
+            if not symbol:
+                # Preserve the raw provider response but do not invent an
+                # identity for an action without a tradable security mapping.
+                continue
             try:
                 action_id = str(value["id"])
-                ticker = _security_master_ticker(str(value["symbol"]))
+                ticker = _security_master_ticker(str(symbol))
                 process_date = date.fromisoformat(str(value["process_date"]))
             except (KeyError, ValueError) as error:
                 raise AlpacaError("corporate action is missing id, symbol, or process_date") from error
@@ -127,7 +141,7 @@ def parse_corporate_actions(payload: bytes) -> tuple[list[AlpacaCorporateAction]
                     provider_action_id=action_id, ticker=ticker, action_type=action_type.rstrip("s"),
                     process_date=process_date,
                     effective_date=date.fromisoformat(str(effective)) if effective else None,
-                    cash_amount=_decimal(value["cash"], "cash") if value.get("cash") is not None else None,
+                    cash_amount=_decimal(value.get("cash", value.get("rate")), "cash") if value.get("cash", value.get("rate")) is not None else None,
                     ratio_numerator=_decimal(ratio["numerator"], "ratio numerator") if ratio.get("numerator") is not None else None,
                     ratio_denominator=_decimal(ratio["denominator"], "ratio denominator") if ratio.get("denominator") is not None else None,
                     payload=value,
