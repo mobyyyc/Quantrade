@@ -15,6 +15,7 @@ COMPANY_TICKERS_EXCHANGE_URL = "https://www.sec.gov/files/company_tickers_exchan
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
 SUBMISSION_HISTORY_URL = "https://data.sec.gov/submissions/{name}"
 COMPANY_FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+DAILY_MASTER_INDEX_URL = "https://www.sec.gov/Archives/edgar/daily-index/{year}/QTR{quarter}/master.{stamp}.idx"
 
 _SUBMISSION_HISTORY_NAME = re.compile(r"^CIK\d{10}-submissions-\d{3}\.json$")
 
@@ -69,6 +70,14 @@ class SecFilingFact:
     fiscal_year: int | None
     fiscal_period: str | None
     filed_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class SecDailyIndexRecord:
+    cik: str
+    form: str
+    filed_on: date
+    file_name: str
 
 
 def parse_company_tickers_exchange(payload: bytes) -> list[SecTickerAssociation]:
@@ -155,6 +164,47 @@ def parse_submissions(payload: bytes) -> list[SecFilingMetadata]:
     except (json.JSONDecodeError, KeyError, TypeError) as error:
         raise SecEdgarError("SEC submissions payload has an invalid shape") from error
     return _parse_submission_rows(recent)
+
+
+def daily_master_index_url(filing_date: date) -> str:
+    quarter = (filing_date.month - 1) // 3 + 1
+    return DAILY_MASTER_INDEX_URL.format(
+        year=filing_date.year,
+        quarter=quarter,
+        stamp=filing_date.strftime("%Y%m%d"),
+    )
+
+
+def parse_daily_master_index(payload: bytes) -> list[SecDailyIndexRecord]:
+    """Parse the SEC daily master index after its pipe-delimited header."""
+    try:
+        lines = payload.decode("utf-8").splitlines()
+    except UnicodeDecodeError as error:
+        raise SecEdgarError("SEC daily master index is not UTF-8") from error
+
+    header_index = next((
+        index for index, line in enumerate(lines)
+        if line.strip() == "CIK|Company Name|Form Type|Date Filed|File Name"
+    ), None)
+    if header_index is None:
+        raise SecEdgarError("SEC daily master index header is missing")
+
+    records: list[SecDailyIndexRecord] = []
+    for line in lines[header_index + 1:]:
+        if not line.strip():
+            continue
+        fields = line.split("|")
+        if len(fields) != 5:
+            raise SecEdgarError("SEC daily master index contains an invalid row")
+        cik, _issuer_name, form, filed_on, file_name = fields
+        cik = cik.strip().zfill(10)
+        if not cik.isdigit() or not form.strip() or not file_name.strip():
+            raise SecEdgarError("SEC daily master index contains an invalid filing")
+        try:
+            records.append(SecDailyIndexRecord(cik, form.strip(), date.fromisoformat(filed_on.strip()), file_name.strip()))
+        except ValueError as error:
+            raise SecEdgarError("SEC daily master index contains an invalid filing date") from error
+    return records
 
 
 def submission_history_names(payload: bytes) -> list[str]:
@@ -252,6 +302,9 @@ class SecEdgarClient:
 
     def fetch_company_facts(self, cik: str) -> bytes:
         return self._fetch(COMPANY_FACTS_URL.format(cik=cik.zfill(10)))
+
+    def fetch_daily_master_index(self, filing_date: date) -> bytes:
+        return self._fetch(daily_master_index_url(filing_date))
 
     def _fetch(self, url: str) -> bytes:
         request = Request(url, headers={"Accept": "application/json", "User-Agent": self._user_agent})
