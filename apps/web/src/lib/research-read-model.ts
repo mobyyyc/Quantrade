@@ -18,6 +18,9 @@ export type DatedScore = {
   dataCutoffAt: string;
   dataCapabilityTier: "A" | "B" | "C";
   unavailableReason?: string;
+  predictedBenchmarkRelativeReturn?: string;
+  predictionBenchmarkTicker?: string;
+  predictionHorizonSessions?: number;
 };
 
 export type ModelCard = {
@@ -175,6 +178,13 @@ function scoreFromRow(row: Record<string, unknown>): DatedScore {
     ...(row.unavailable_reason
       ? { unavailableReason: String(row.unavailable_reason) }
       : {}),
+    ...(row.predicted_benchmark_relative_return === null || row.predicted_benchmark_relative_return === undefined
+      ? {}
+      : {
+          predictedBenchmarkRelativeReturn: String(row.predicted_benchmark_relative_return),
+          predictionBenchmarkTicker: String(row.prediction_benchmark_ticker),
+          predictionHorizonSessions: Number(row.prediction_horizon_sessions),
+        }),
   };
 }
 
@@ -182,7 +192,10 @@ export async function listDatedScores(scoreDate: string): Promise<DatedScore[]> 
   const result = await databasePool().query(
     `SELECT ss.score_snapshot_id, ss.security_id, s.issuer_name, l.ticker, ss.score_date::text AS score_date, ss.decision_at, ss.published_at, ss.score, ss.rank,
             eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at,
-            data_capability_tier, unavailable_reason
+            data_capability_tier, unavailable_reason,
+            prediction.predicted_benchmark_relative_return,
+            prediction.benchmark_ticker AS prediction_benchmark_ticker,
+            prediction.horizon_sessions AS prediction_horizon_sessions
      FROM quantrade.score_snapshots ss
      JOIN quantrade.daily_research_runs run
        ON run.score_date = ss.score_date
@@ -198,6 +211,8 @@ export async function listDatedScores(scoreDate: string): Promise<DatedScore[]> 
        ORDER BY valid_from DESC
        LIMIT 1
      ) l ON TRUE
+     LEFT JOIN quantrade.score_predictions prediction
+       ON prediction.score_snapshot_id = ss.score_snapshot_id
      WHERE ss.score_date = $1
        AND ss.model_version = (SELECT model_version FROM quantrade.model_deployments ORDER BY deployed_at DESC LIMIT 1)
      ORDER BY ss.eligible DESC, ss.rank ASC NULLS LAST, ss.security_id ASC`,
@@ -213,7 +228,10 @@ export async function getDatedScore(
   const result = await databasePool().query(
     `SELECT ss.score_snapshot_id, ss.security_id, s.issuer_name, l.ticker, ss.score_date::text AS score_date, ss.decision_at, ss.published_at, ss.score, ss.rank,
             eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at,
-            data_capability_tier, unavailable_reason
+            data_capability_tier, unavailable_reason,
+            prediction.predicted_benchmark_relative_return,
+            prediction.benchmark_ticker AS prediction_benchmark_ticker,
+            prediction.horizon_sessions AS prediction_horizon_sessions
      FROM quantrade.score_snapshots ss
      JOIN quantrade.daily_research_runs run
        ON run.score_date = ss.score_date
@@ -229,6 +247,8 @@ export async function getDatedScore(
        ORDER BY valid_from DESC
        LIMIT 1
      ) l ON TRUE
+     LEFT JOIN quantrade.score_predictions prediction
+       ON prediction.score_snapshot_id = ss.score_snapshot_id
      WHERE ss.security_id = $1 AND ss.score_date = $2
        AND ss.model_version = (SELECT model_version FROM quantrade.model_deployments ORDER BY deployed_at DESC LIMIT 1)
      ORDER BY ss.decision_at DESC

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatIssuerName, formatResearchDate, formatScore } from "@/lib/format";
+import { formatIssuerName, formatRelativeReturn, formatResearchDate, formatScore } from "@/lib/format";
 import type { DatedScore } from "@/lib/research-read-model";
 
 const BASKET_SIZE = 20;
@@ -17,6 +17,10 @@ export function ResearchBasket({
   if (positions.length < BASKET_SIZE) return null;
 
   const weight = 100 / positions.length;
+  const predictions = positions.flatMap((score) => score.predictedBenchmarkRelativeReturn ? [Number(score.predictedBenchmarkRelativeReturn)] : []);
+  const basketPrediction = predictions.length === positions.length
+    ? predictions.reduce((total, prediction) => total + prediction, 0) / predictions.length
+    : undefined;
   const titleId = `${from}-research-basket-title`;
 
   return (
@@ -26,7 +30,10 @@ export function ResearchBasket({
           <p className="eyebrow">MODEL BASKET</p>
           <h2 id={titleId}>20-session research basket</h2>
         </div>
-        <span className="research-basket-horizon">Review after 20 trading sessions</span>
+        <div className="research-basket-summary">
+          {basketPrediction === undefined ? <span>Estimate unavailable</span> : <><span>Estimated basket return vs SPY</span><strong>{formatRelativeReturn(basketPrediction)}</strong></>}
+          <small>20 trading sessions</small>
+        </div>
       </div>
       <div className="research-basket-context">
         <p>
@@ -40,12 +47,16 @@ export function ResearchBasket({
           <li key={score.scoreSnapshotId}>
             <Link
               href={`/stocks/${score.securityId}?date=${score.scoreDate}&from=${from}`}
-              aria-label={`${score.ticker}, rank ${score.rank}, score ${formatScore(score.score)} out of 100, ${weight}% model weight`}
+              aria-label={`${score.ticker}, rank ${score.rank}, score ${formatScore(score.score)} out of 100, ${score.predictedBenchmarkRelativeReturn ? `${formatRelativeReturn(score.predictedBenchmarkRelativeReturn)} estimated return versus SPY` : "estimated return unavailable"}, ${weight}% model weight`}
             >
               <span className="research-basket-position">{score.rank}</span>
               <span className="research-basket-company">
                 <strong>{score.ticker}</strong>
                 <span>{formatIssuerName(score.issuerName)}</span>
+              </span>
+              <span className="research-basket-prediction">
+                <strong>{score.predictedBenchmarkRelativeReturn ? formatRelativeReturn(score.predictedBenchmarkRelativeReturn) : "Unavailable"}</strong>
+                <small>est. vs SPY</small>
               </span>
               <span className="research-basket-score">{formatScore(score.score)}<small>/100</small></span>
               <span className="research-basket-weight">{weight}%</span>

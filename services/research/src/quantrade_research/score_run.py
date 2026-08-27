@@ -38,6 +38,7 @@ from .ranking import SectorClassification, build_sector_aware_percentile_ranks
 from .risk_liquidity import calculate_median_dollar_volume_20d, calculate_trailing_volatility_60d
 from .run_manifest import RunManifest, SourceInput
 from .scoring import PostgresScoreSnapshotRepository, TORONTO, generate_end_of_day_scores
+from .score_predictions import persist_score_predictions
 
 
 def _dotenv_values(path: Path) -> dict[str, str]:
@@ -332,13 +333,16 @@ def run_score_generation(*, settings: Settings, score_date: date, universe_code:
                                                data_capability_tier="B", manual=manual)
     finally:
         repository.close()
+    prediction_count = persist_score_predictions(
+        database_url=settings.database_url, snapshots=snapshots, scores=scores,
+    )
     contributions = build_model_feature_contributions(
         ranks=ranks, formation_date=score_date, universe_security_ids=security_ids,
         registry=registry, model=model,
     )
     explanation_count = _persist_explanations(settings.database_url, snapshots, contributions)
     cohort_note = f"; research_cohort={research_cohort_code}; survivorship_biased=true; static_sector_grouping=true" if research_cohort_code else ""
-    manifest = RunManifest.create(settings=settings, run_kind="score", code_revision=code_revision, data_capability_tier="B", decision_at=decision_at, status="completed", source_inputs=source_inputs, note=f"model={model.model_version}; universe={universe_code}; securities={len(security_ids)}; eligible={sum(score.eligible for score in scores)}; explanations_inserted={explanation_count}; benchmark={benchmark_ticker}{cohort_note}")
+    manifest = RunManifest.create(settings=settings, run_kind="score", code_revision=code_revision, data_capability_tier="B", decision_at=decision_at, status="completed", source_inputs=source_inputs, note=f"model={model.model_version}; universe={universe_code}; securities={len(security_ids)}; eligible={sum(score.eligible for score in scores)}; predictions_inserted={prediction_count}; explanations_inserted={explanation_count}; benchmark={benchmark_ticker}{cohort_note}")
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")
     return len(snapshots), sum(score.eligible for score in scores)
 

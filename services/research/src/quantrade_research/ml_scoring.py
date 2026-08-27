@@ -22,6 +22,7 @@ class ModelScore:
     eligible: bool
     normalized_score: Decimal | None
     display_score: Decimal | None
+    predicted_relative_return: Decimal | None
     unavailable_reason: str | None = None
 
 
@@ -100,11 +101,15 @@ def build_model_scores(*, ranks: Iterable[SectorPercentileRank], formation_date:
     normalized = {security_id: Decimal(index) / Decimal(denomin) for index, security_id in enumerate(ordered)}
     return tuple(
         ModelScore(
-            security_id, formation_date, model.model_version, model.feature_registry_hash,
-            security_id in normalized,
-            normalized.get(security_id),
-            (normalized[security_id] * Decimal("100")).quantize(Decimal("0.01")) if security_id in normalized else None,
-            unavailable.get(security_id),
+            security_id=security_id,
+            formation_date=formation_date,
+            model_version=model.model_version,
+            feature_registry_hash=model.feature_registry_hash,
+            eligible=security_id in normalized,
+            normalized_score=normalized.get(security_id),
+            display_score=(normalized[security_id] * Decimal("100")).quantize(Decimal("0.01")) if security_id in normalized else None,
+            predicted_relative_return=Decimal(str(raw[security_id])).quantize(Decimal("0.000000000001")) if security_id in raw else None,
+            unavailable_reason=unavailable.get(security_id),
         )
         for security_id in universe
     )

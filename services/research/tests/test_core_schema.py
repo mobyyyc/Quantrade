@@ -144,6 +144,15 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("REFERENCES quantrade.model_cards", sql)
         self.assertIn("model_artifacts_immutable", sql)
 
+    def test_raw_model_predictions_are_immutable_and_horizon_bound(self) -> None:
+        migration = MIGRATION.with_name("0023_add_score_predictions.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.score_predictions", sql)
+        self.assertIn("REFERENCES quantrade.score_snapshots", sql)
+        self.assertIn("horizon_sessions = 20", sql)
+        self.assertIn("benchmark_ticker = 'SPY'", sql)
+        self.assertIn("score_predictions_immutable", sql)
+
     def test_forward_readiness_snapshots_are_compact_and_immutable(self) -> None:
         migration = MIGRATION.with_name("0020_add_forward_readiness_snapshots.sql")
         sql = migration.read_text(encoding="utf-8")
