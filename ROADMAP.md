@@ -85,7 +85,7 @@ Each item is intended to fit a focused development session. A negative research 
 - [x] P9A.1: diagnose active-model errors by sector, stock-volatility regime, and point-in-time SPY trend regime on purged development folds only.
 - [x] P9A.2: pre-register one targeted hypothesis from the diagnostic evidence before fitting another challenger.
 - [x] P9A.3: materialize and audit the two pre-registered point-in-time SPY regime-interaction features without fitting the challenger.
-- [ ] P9A.4: fit and compare the single pre-registered regime-interaction challenger on the purged development folds.
+- [x] P9A.4: fit and compare the single pre-registered regime-interaction challenger on the purged development folds.
 - [ ] P9A.5: reject the challenger or freeze it for Phase 10 using the pre-registered gates without changing the active model.
 
 ## Phase 10: shadow confirmation and promotion

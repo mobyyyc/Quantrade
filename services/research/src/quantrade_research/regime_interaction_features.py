@@ -212,6 +212,16 @@ def _regime(raw_return: Decimal) -> str:
     return "range_bound"
 
 
+def benchmark_lineage_sha256(signals: Sequence[MarketTrendSignal]) -> str:
+    """Hash the distinct point-in-time SPY bars used by a collection of signals."""
+    used_bars = {bar for signal in signals for bar in signal.used_bars}
+    canonical = "\n".join(
+        f"{item.session_date.isoformat()}|{item.close_price}|{item.available_at.isoformat()}"
+        for item in sorted(used_bars, key=lambda value: (value.session_date, value.available_at))
+    )
+    return sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def materialize_regime_interaction_dataset(
     *, source: Path, source_manifest: Path, destination: Path, bars: Sequence[BenchmarkBar],
 ) -> dict[str, object]:
@@ -229,7 +239,6 @@ def materialize_regime_interaction_dataset(
 
     signals: dict[date, MarketTrendSignal] = {}
     excluded_dates: Counter[str] = Counter()
-    used_bars: set[BenchmarkBar] = set()
     for score_date, decision_at in sorted(decisions.items()):
         try:
             signal = calculate_market_trend_signal(
@@ -239,7 +248,6 @@ def materialize_regime_interaction_dataset(
             excluded_dates[str(error)] += 1
             continue
         signals[score_date] = signal
-        used_bars.update(signal.used_bars)
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     source_by_date: Counter[date] = Counter()
@@ -301,10 +309,6 @@ def materialize_regime_interaction_dataset(
         if temporary_path is not None and temporary_path.exists():
             temporary_path.unlink()
 
-    canonical_bars = "\n".join(
-        f"{item.session_date.isoformat()}|{item.close_price}|{item.available_at.isoformat()}"
-        for item in sorted(used_bars, key=lambda value: (value.session_date, value.available_at))
-    )
     regime_counts = Counter(_regime(item.raw_return) for item in signals.values())
     combined_registry_hash = sha256(
         f"{base_registry_hash}|{FEATURE_DEFINITION_SHA256}".encode("utf-8")
@@ -343,7 +347,7 @@ def materialize_regime_interaction_dataset(
         "base_feature_registry_hash": base_registry_hash,
         "interaction_definition_sha256": FEATURE_DEFINITION_SHA256,
         "combined_feature_registry_hash": combined_registry_hash,
-        "benchmark_lineage_sha256": sha256(canonical_bars.encode("utf-8")).hexdigest(),
+        "benchmark_lineage_sha256": benchmark_lineage_sha256(tuple(signals.values())),
         "content_sha256": sha256(destination.read_bytes()).hexdigest(),
         "limitations": source_metadata["limitations"],
     }
