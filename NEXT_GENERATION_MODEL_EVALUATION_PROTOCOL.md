@@ -45,6 +45,27 @@ Candidate and active inputs are compared after the same static Tier-B sector
 normalization. Missing inputs remain explicit exclusions. A rejected feature
 version cannot be rescued by imputation or by inspecting the holdout.
 
+## Fixed P9.4 candidate grid
+
+The model-family grid is fixed before comparison results are generated. Every
+challenger uses the six active inputs plus the two P9.3-approved candidates,
+`downside_volatility_60d@v1` and `return_on_assets_change_yoy@v1`.
+
+- Robust linear: Huber-loss iteratively reweighted ridge with delta `1.0` or
+  `1.5` and L2 penalty `0.01` or `0.10`.
+- Gradient boosted: deterministic ten-bin regression stumps, either 24 trees
+  at learning rate `0.05` or 36 trees at learning rate `0.03`; fitting uses a
+  deterministic maximum 100,000-row subsample.
+- Ranking-oriented: deterministic pairwise logistic linear ranker using ten
+  top-versus-bottom pairs per training date, 20 epochs, learning rate `0.03`,
+  and L2 penalty `0.001` or `0.01`. Its training-only scores are linearly
+  calibrated to the return target solely for the MAE/RMSE guardrails.
+
+The active reference is refit within every fold using its frozen elastic-net
+specification (`l1=0.001`, `l2=0.01`) and the original six features. All models
+are measured on the identical complete-row sample. No family, hyperparameter,
+feature, or threshold may be changed after seeing these results.
+
 ## Frozen measurements
 
 All returns are decimals. All cross-sectional rank calculations use the shared
