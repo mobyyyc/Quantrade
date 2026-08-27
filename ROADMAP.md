@@ -80,6 +80,11 @@ Each item is intended to fit a focused development session. A negative research 
 - [x] P9.4: compare robust linear, gradient-boosted, and ranking-oriented candidates on purged pre-holdout folds only.
 - [x] P9.5: close the freeze gate with a versioned no-freeze decision because no challenger qualified; leave the active model unchanged.
 
+## Phase 9A: error-led follow-on research
+
+- [x] P9A.1: diagnose active-model errors by sector, stock-volatility regime, and point-in-time SPY trend regime on purged development folds only.
+- [ ] P9A.2: pre-register one targeted hypothesis from the diagnostic evidence before fitting another challenger.
+
 ## Phase 10: shadow confirmation and promotion
 
 Phase 10 remains queued until a future pre-registered research cycle produces a
