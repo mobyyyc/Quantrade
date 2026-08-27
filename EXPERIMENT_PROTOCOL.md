@@ -70,7 +70,7 @@ Every reported result also includes 1, 10, and 20 basis-point one-way sensitivit
 ## Benchmark and measurements
 
 - Benchmark: SPY, held with the same formation and next-open execution convention.
-- Primary prediction measure: 21-trading-day stock return less the matching SPY return.
+- Primary prediction measure: 20-session stock return less the matching SPY return.
 - Portfolio measures: cumulative return, CAGR, annualized volatility, Sharpe ratio, Sortino ratio, maximum drawdown, Calmar ratio, turnover, exposure, and benchmark-relative return.
 - Ranking measures: Spearman rank information coefficient, hit rate, top-versus-bottom spread, factor coverage, factor correlation, and score stability.
 

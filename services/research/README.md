@@ -400,6 +400,14 @@ New deployment events are rejected unless the evidence URI and digest match an
 approved immutable decision. The original premature deployment remains in the
 append-only audit history but is superseded by the corrected event.
 
+## Next-generation challenger gates
+
+`NEXT_GENERATION_MODEL_EVALUATION_PROTOCOL.md` freezes the common-sample
+development measures, thresholds, and deterministic selection order before new
+features or model families are evaluated. The executable gate definitions are
+in `quantrade_research.next_generation_evaluation`. The consumed holdout is not
+an allowed input to challenger selection.
+
 ## End-of-day score generation
 
 P6.1 generates score snapshots at exactly 8:00 p.m. America/Toronto from

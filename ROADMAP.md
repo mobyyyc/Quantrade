@@ -74,7 +74,7 @@ Each item is intended to fit a focused development session. A negative research 
 
 ## Phase 9: next-generation model research
 
-- [ ] P9.1: pre-register ranking, spread, stability, turnover, cost, MAE, and RMSE comparison measures.
+- [x] P9.1: pre-register ranking, spread, stability, turnover, cost, MAE, and RMSE comparison measures.
 - [ ] P9.2: add free-data momentum, risk, liquidity, and fundamental-change candidates behind versioned feature definitions.
 - [ ] P9.3: run missingness, redundancy, stability, and point-in-time diagnostics; reject weak features explicitly.
 - [ ] P9.4: compare robust linear, gradient-boosted, and ranking-oriented candidates on purged pre-holdout folds only.
