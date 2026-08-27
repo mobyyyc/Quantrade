@@ -375,22 +375,19 @@ export async function getDailyOperationsStatus(): Promise<DailyOperationsStatus>
 
 export async function getForwardOutcomeReadiness(): Promise<ForwardOutcomeReadiness[]> {
   const result = await databasePool().query(
-    `WITH horizons AS (SELECT * FROM unnest(ARRAY[5, 20, 60]::smallint[]) AS horizon_sessions)
-     SELECT horizons.horizon_sessions,
-            COUNT(ss.score_snapshot_id) FILTER (WHERE outcome.status = 'completed') AS completed_labels,
-            COUNT(ss.score_snapshot_id) FILTER (WHERE outcome.status = 'withheld') AS withheld_labels,
-            COUNT(ss.score_snapshot_id) FILTER (WHERE outcome.score_snapshot_id IS NULL) AS pending_labels,
-            COUNT(DISTINCT ss.score_date) FILTER (WHERE outcome.status = 'completed') AS completed_score_dates,
-            MAX(outcome.outcome_date)::text AS latest_outcome_date
-     FROM horizons
-     LEFT JOIN quantrade.daily_research_runs run ON run.status = 'completed'
-     LEFT JOIN quantrade.score_snapshots ss
-       ON ss.score_date = run.score_date AND ss.decision_at = run.decision_at AND ss.eligible
-     LEFT JOIN quantrade.forward_score_outcomes outcome
-       ON outcome.score_snapshot_id = ss.score_snapshot_id
-      AND outcome.horizon_sessions = horizons.horizon_sessions
-     GROUP BY horizons.horizon_sessions
-     ORDER BY horizons.horizon_sessions ASC`,
+    `SELECT metric.horizon_sessions,
+            metric.completed_labels,
+            metric.withheld_labels,
+            metric.pending_labels,
+            metric.completed_score_dates,
+            metric.latest_outcome_date::text AS latest_outcome_date
+     FROM quantrade.forward_outcome_readiness_snapshots AS snapshot
+     JOIN quantrade.forward_outcome_readiness_metrics AS metric
+       ON metric.forward_outcome_readiness_snapshot_id = snapshot.forward_outcome_readiness_snapshot_id
+     WHERE snapshot.as_of_date = (
+       SELECT MAX(as_of_date) FROM quantrade.forward_outcome_readiness_snapshots
+     )
+     ORDER BY metric.horizon_sessions ASC`,
   );
   return result.rows.map((row) => ({
     horizonSessions: Number(row.horizon_sessions),

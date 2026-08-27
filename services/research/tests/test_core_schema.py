@@ -144,6 +144,13 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("REFERENCES quantrade.model_cards", sql)
         self.assertIn("model_artifacts_immutable", sql)
 
+    def test_forward_readiness_snapshots_are_compact_and_immutable(self) -> None:
+        migration = MIGRATION.with_name("0020_add_forward_readiness_snapshots.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.forward_outcome_readiness_snapshots", sql)
+        self.assertIn("CREATE TABLE quantrade.forward_outcome_readiness_metrics", sql)
+        self.assertIn("forward_outcome_readiness_metrics_immutable", sql)
+
     def test_holdout_and_experiment_governance_are_immutable(self) -> None:
         migration = MIGRATION.with_name("0007_add_experiment_governance.sql")
         sql = migration.read_text(encoding="utf-8")

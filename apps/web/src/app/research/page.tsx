@@ -54,12 +54,14 @@ export default async function ResearchPage() {
   let operations: DailyOperationsStatus = {};
   let unavailable = false;
   try {
-    card = await getModelCard("baseline_equal_weight_v1");
-    portfolio = await getLatestPaperPortfolio();
-    latestScores = await getLatestDatedScores();
-    recentRuns = await getRecentScoreRuns();
-    forwardReadiness = await getForwardOutcomeReadiness();
-    operations = await getDailyOperationsStatus();
+    [card, portfolio, latestScores, recentRuns, forwardReadiness, operations] = await Promise.all([
+      getModelCard("baseline_equal_weight_v1"),
+      getLatestPaperPortfolio(),
+      getLatestDatedScores(),
+      getRecentScoreRuns(),
+      getForwardOutcomeReadiness(),
+      getDailyOperationsStatus(),
+    ]);
   } catch (error) { unavailable = error instanceof ResearchReadModelError; }
   const coverage = latestScores?.scores ?? [];
   const eligibleCount = coverage.filter((score) => score.eligible).length;

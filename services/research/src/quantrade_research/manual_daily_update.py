@@ -12,6 +12,7 @@ import sys
 from typing import Iterator
 
 from .forward_outcomes import materialize_due_forward_score_outcomes
+from .forward_readiness_snapshot import materialize_forward_readiness_snapshot
 from .paper_portfolio import publish_due_paper_portfolios
 from .portfolio_outcomes import materialize_due_paper_portfolio_outcomes
 from .score_run import TORONTO, _dotenv_values, _settings
@@ -240,6 +241,7 @@ def main() -> None:
 
     try:
         forward_outcomes = materialize_due_forward_score_outcomes(settings=settings, as_of_date=score_date)
+        readiness_snapshot_created = materialize_forward_readiness_snapshot(settings=settings, as_of_date=score_date)
         outcomes = materialize_due_paper_portfolio_outcomes(settings=settings, as_of_date=score_date)
         published_portfolios = publish_due_paper_portfolios(settings=settings, execution_date=score_date)
     except Exception as error:
@@ -249,7 +251,8 @@ def main() -> None:
     published_note = ",".join(item.isoformat() for item in published_portfolios) or "none_due"
     outcome_note = ",".join(f"{item.horizon_sessions}d:{item.status}" for item in outcomes) or "none_due"
     forward_note = ",".join(f"{item.horizon_sessions}d:{item.status}" for item in forward_outcomes) or "none_due"
-    print(f"completed score_date={score_date}; {score_note}; forward_outcomes={forward_note}; paper_portfolios={published_note}; paper_outcomes={outcome_note}")
+    readiness_note = "created" if readiness_snapshot_created else "already_recorded"
+    print(f"completed score_date={score_date}; {score_note}; forward_outcomes={forward_note}; readiness_snapshot={readiness_note}; paper_portfolios={published_note}; paper_outcomes={outcome_note}")
 
 
 if __name__ == "__main__":
