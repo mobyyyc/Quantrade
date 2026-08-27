@@ -25,6 +25,26 @@ history only and cannot select, tune, calibrate, or rescue a challenger.
   point-in-time input or valid execution mark.
 - Require at least 90% feature coverage. Record every exclusion without repair.
 
+## Candidate feature diagnostics
+
+Before any P9.4 model comparison, `next_gen_feature_diagnostics_v1` evaluates
+the fixed `next_gen_free_v1` feature set on monthly development formations from
+January 2022 through June 2025. It does not read the locked holdout target.
+
+A candidate proceeds only when all of these frozen data-quality gates pass:
+
+- aggregate cohort coverage is at least 90% and every monthly formation has at
+  least 80% coverage;
+- median absolute monthly correlation with every active feature is no greater
+  than 0.90;
+- median consecutive monthly rank correlation is at least 0.10;
+- median top-20 month-to-month turnover is no greater than 0.90; and
+- point-in-time violations are zero.
+
+Candidate and active inputs are compared after the same static Tier-B sector
+normalization. Missing inputs remain explicit exclusions. A rejected feature
+version cannot be rescued by imputation or by inspecting the holdout.
+
 ## Frozen measurements
 
 All returns are decimals. All cross-sectional rank calculations use the shared
