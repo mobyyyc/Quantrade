@@ -55,6 +55,8 @@ and result hash
 
 ## Consequence
 
-P9.5 cannot freeze a challenger from this comparison. A future challenger must
-be based on a new pre-registered hypothesis and must pass the same gates without
+P9.5 closes with the versioned no-freeze decision in
+`NEXT_GENERATION_MODEL_FREEZE_DECISION.md`. No challenger artifact, model card,
+deployment, or shadow-scoring registration was created. A future challenger
+must be based on a new pre-registered hypothesis and pass the same gates without
 tuning against the consumed holdout.

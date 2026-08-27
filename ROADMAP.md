@@ -78,9 +78,13 @@ Each item is intended to fit a focused development session. A negative research 
 - [x] P9.2: add free-data momentum, risk, liquidity, and fundamental-change candidates behind versioned feature definitions.
 - [x] P9.3: run missingness, redundancy, stability, and point-in-time diagnostics; reject weak features explicitly.
 - [x] P9.4: compare robust linear, gradient-boosted, and ranking-oriented candidates on purged pre-holdout folds only.
-- [ ] P9.5: freeze one challenger with an immutable artifact, model card, and reproducibility record.
+- [x] P9.5: close the freeze gate with a versioned no-freeze decision because no challenger qualified; leave the active model unchanged.
 
 ## Phase 10: shadow confirmation and promotion
+
+Phase 10 remains queued until a future pre-registered research cycle produces a
+qualifying frozen challenger. Rejected Phase 9 candidates do not enter shadow
+scoring.
 
 - [ ] P10.1: score the active model and frozen challenger side by side without changing user-visible rankings.
 - [ ] P10.2: materialize new 20-session forward outcomes and compare both models under identical rules.
