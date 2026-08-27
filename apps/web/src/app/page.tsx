@@ -3,16 +3,18 @@ import { AppShell } from "@/components/app-shell";
 import { DailyUpdateControl } from "@/components/daily-update-control";
 import { WatchlistPreview } from "@/components/watchlist-preview";
 import { TodayRankingStream } from "@/components/today-ranking-stream";
-import { formatResearchDate, formatScore } from "@/lib/format";
-import { getLatestDatedScores, ResearchReadModelError } from "@/lib/research-read-model";
+import { formatIssuerName, formatResearchDate, formatScore, formatTorontoTime } from "@/lib/format";
+import { getLatestDatedScores, getTodayFilingActivity, ResearchReadModelError } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   let latest: Awaited<ReturnType<typeof getLatestDatedScores>> = null;
+  let filingActivity: Awaited<ReturnType<typeof getTodayFilingActivity>> = [];
   let unavailable = false;
   try {
     latest = await getLatestDatedScores();
+    filingActivity = latest ? await getTodayFilingActivity(latest.scoreDate) : [];
   } catch (error) {
     unavailable = error instanceof ResearchReadModelError;
   }
@@ -47,6 +49,26 @@ export default async function Home() {
             </section>
             <WatchlistPreview scores={latest.scores} scoreDate={latest.scoreDate} />
           </div>
+          <section className="content-section filing-activity" aria-labelledby="filing-activity-title">
+            <div className="section-heading">
+              <div><p className="eyebrow">MARKET ACTIVITY</p><h2 id="filing-activity-title">Today’s filings</h2></div>
+              <p className="section-context">SEC documents accepted on {formatResearchDate(latest.scoreDate)}.</p>
+            </div>
+            {filingActivity.length ? <ul className="filing-activity-list">
+              {filingActivity.map((activity) => {
+                const primaryForm = activity.forms.includes("10-Q") ? "10-Q" : activity.forms.includes("10-K") ? "10-K" : activity.forms.includes("8-K") ? "8-K" : activity.forms[0] ?? "SEC filing";
+                const label = activity.filingCount === 1
+                  ? `${primaryForm} filed`
+                  : `${activity.filingCount} SEC filings`;
+                return <li key={activity.securityId}>
+                  <Link href={`/stocks/${activity.securityId}?date=${latest.scoreDate}&from=today`} className="filing-activity-link" aria-label={`Open ${activity.ticker}. ${label}, accepted ${formatTorontoTime(activity.latestAcceptedAt)}.`}>
+                    <div className="filing-activity-identity"><strong>{activity.ticker}</strong><span>{formatIssuerName(activity.issuerName)}</span></div>
+                    <div className="filing-activity-detail"><strong>{label}</strong><span>{activity.forms.join(" · ")} · accepted {formatTorontoTime(activity.latestAcceptedAt)}</span></div>
+                  </Link>
+                </li>;
+              })}
+            </ul> : <p className="empty-inline">No SEC filings from this research universe were accepted today.</p>}
+          </section>
         </>
       ) : (
         <section className="empty-state">

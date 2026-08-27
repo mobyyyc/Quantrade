@@ -86,6 +86,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .content-section, .watchlist-preview { margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--line-soft); }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1.15rem; }
 .section-heading h2 { margin: 0; }
+.section-context { max-width: 27rem; margin: 0; color: var(--subtle); font-size: .82rem; line-height: 1.45; text-align: right; }
 .status-label { color: var(--muted); border: 1px solid var(--line); border-radius: 9999px; padding: .4rem .65rem; font-size: .78rem; box-shadow: var(--control-shadow); }
 
 .grouped-list, .score-list, .evidence-list, .compact-company-list { margin: 0; padding: 0; list-style: none; overflow: hidden; border: 1px solid var(--line); border-radius: 1.3rem; background: var(--surface); box-shadow: var(--surface-shadow); }
@@ -155,6 +156,16 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .score-list-today .score-row-value { padding-right: .25rem; }
 .today-virtual-list { position: relative; }
 .score-list-today .today-virtual-row { position: absolute; top: 0; right: 0; left: 0; height: 5.35rem; }
+
+.filing-activity { margin-top: 4.5rem; }
+.filing-activity-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: 0; padding: 0; list-style: none; }
+.filing-activity-list li { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface); box-shadow: var(--surface-shadow); }
+.filing-activity-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8rem 1rem; min-height: 5.65rem; padding: 1rem 1.1rem; transition: background-color 150ms var(--ease), border-color 150ms var(--ease); }
+.filing-activity-identity, .filing-activity-detail { display: grid; gap: .2rem; min-width: 0; }
+.filing-activity-identity strong, .filing-activity-detail strong { color: var(--foreground); letter-spacing: -.02em; }
+.filing-activity-identity > span, .filing-activity-detail > span { overflow: hidden; color: var(--muted); font-size: .78rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.filing-activity-detail { justify-items: end; text-align: right; }
+.filing-activity-detail strong { font-size: .88rem; }
 
 .daily-update-control { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-top: 4.5rem; padding: 1.35rem 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
 .daily-update-control h2 { margin-bottom: .35rem; }
@@ -402,6 +413,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .primary-link:hover, .primary-button:hover, .date-form button:hover { background: #e5e7eb; border-color: #e5e7eb; box-shadow: 0 6px 20px rgb(255 255 255 / .18), 0 1px 3px rgb(0 0 0 / .8); }
   .quiet-button:hover { border-color: #454545; background: var(--surface-strong); color: var(--foreground); }
   .score-row:hover, .watchlist-row:hover, .compact-company-list li:hover { background: var(--surface-raised); }
+  .filing-activity-list li:hover { border-color: #3a3a3a; background: var(--surface-raised); }
   .score-row-link:hover, .watchlist-company:hover strong { color: #d1d5db; }
   .search-results-multiple li:hover { border-color: #3a3a3a; background: var(--surface-raised); }
   .row-menu summary:hover { border-color: var(--line); background: var(--surface-raised); color: var(--foreground); }
@@ -414,6 +426,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .watchlist-preview-scroll-region { max-height: min(55vh, 34rem); }
   .today-ranking-scroll .scroll-fade-region { max-height: min(55vh, 34rem); }
   .score-list-today .score-row-link { grid-template-columns: 2rem minmax(0, 1fr) auto; padding-right: .1rem; }
+  .filing-activity-list { grid-template-columns: 1fr; }
   .rankings-layout { grid-template-columns: 1fr; gap: 2.5rem; }
   .rankings-results, .rankings-context { grid-column: 1; grid-row: auto; }
   .rankings-context { position: static; padding: 1rem 0; }
@@ -439,6 +452,11 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .daily-update-action { width: 100%; justify-items: start; }
   .daily-update-message { text-align: left; }
   .daily-update-summary { grid-template-columns: 1fr; gap: 1.1rem; }
+  .filing-activity { margin-top: 3.5rem; }
+  .section-heading:has(.section-context) { align-items: start; flex-direction: column; }
+  .section-context { max-width: none; text-align: left; }
+  .filing-activity-link { grid-template-columns: 1fr; gap: .6rem; }
+  .filing-activity-detail { justify-items: start; text-align: left; }
   .daily-update-summary dl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
   .daily-update-summary > .text-link { margin-left: -.85rem; }
   .operations-list { grid-template-columns: 1fr; }

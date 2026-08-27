@@ -54,6 +54,18 @@ export function formatPublicationTime(value?: string): string {
   }).format(date);
 }
 
+export function formatTorontoTime(value?: string): string {
+  if (!value) return "Unavailable";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unavailable";
+  return new Intl.DateTimeFormat("en-CA", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Toronto",
+    timeZoneName: "short",
+  }).format(date);
+}
+
 export function formatPercentile(value?: string): string {
   return value ? `${Math.round(Number(value) * 100)}th percentile` : "Unavailable";
 }
