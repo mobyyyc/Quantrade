@@ -15,7 +15,7 @@ from .score_run import _dotenv_values
 
 
 def evaluate_holdout_integrity(*, evaluation_document: dict[str, object], corporate_action_count: int) -> dict[str, object]:
-    """Reject approval whenever raw-price position accounting lacks action coverage."""
+    """Reject approval unless raw-price action coverage *and* accounting are evidenced."""
     if evaluation_document.get("status") != "execution_cost_evaluation_complete":
         raise DataQualityError("holdout evaluation document is incomplete")
     if evaluation_document.get("holdout_performance_evaluated") is not True:
@@ -25,6 +25,11 @@ def evaluate_holdout_integrity(*, evaluation_document: dict[str, object], corpor
         failures.append({
             "gate": "corporate_action_coverage",
             "reason": "No corporate-action records cover the raw-price holdout execution window; split/dividend position accounting cannot be verified.",
+        })
+    elif evaluation_document.get("corporate_action_position_accounting") != "verified":
+        failures.append({
+            "gate": "corporate_action_position_accounting",
+            "reason": "Corporate-action records are available, but the saved raw-price evaluation does not contain verified split/dividend position accounting.",
         })
     return {
         "status": "holdout_integrity_audit_complete",

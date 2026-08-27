@@ -5,6 +5,7 @@ from quantrade_research.quality import DataQualityError
 
 
 COMPLETE = {"status": "execution_cost_evaluation_complete", "holdout_performance_evaluated": True}
+ACCOUNTED = {**COMPLETE, "corporate_action_position_accounting": "verified"}
 
 
 class HoldoutIntegrityAuditTests(unittest.TestCase):
@@ -14,8 +15,13 @@ class HoldoutIntegrityAuditTests(unittest.TestCase):
         self.assertEqual(audit["approval_status"], "blocked_integrity")
         self.assertEqual(audit["failures"][0]["gate"], "corporate_action_coverage")
 
-    def test_allows_remaining_policy_review_when_coverage_exists(self) -> None:
+    def test_blocks_approval_when_saved_evaluation_has_no_action_accounting(self) -> None:
         audit = evaluate_holdout_integrity(evaluation_document=COMPLETE, corporate_action_count=3)
+        self.assertFalse(audit["approval_eligible"])
+        self.assertEqual(audit["failures"][0]["gate"], "corporate_action_position_accounting")
+
+    def test_allows_remaining_policy_review_when_coverage_and_accounting_exist(self) -> None:
+        audit = evaluate_holdout_integrity(evaluation_document=ACCOUNTED, corporate_action_count=3)
         self.assertTrue(audit["approval_eligible"])
         self.assertEqual(audit["approval_status"], "eligible_for_policy_review")
 
