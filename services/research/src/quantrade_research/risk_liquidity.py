@@ -68,7 +68,7 @@ def calculate_trailing_volatility_60d(
     )
 
 
-def _unadjusted_history(
+def eligible_unadjusted_history(
     observations: Iterable[FeaturePriceObservation],
     *,
     security_id: str,
@@ -119,7 +119,7 @@ def calculate_median_dollar_volume_20d(
     definition = _definition(registry, "median_dollar_volume_20d")
     if definition.required_inputs != ("daily_price_bars:unadjusted",):
         raise DataQualityError("median_dollar_volume_20d@v1 does not have the approved price input")
-    history = _unadjusted_history(
+    history = eligible_unadjusted_history(
         observations,
         security_id=security_id,
         formation_date=formation_date,

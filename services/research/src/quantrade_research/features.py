@@ -184,6 +184,61 @@ BASELINE_FEATURE_DEFINITIONS: tuple[FeatureDefinition, ...] = (
 )
 
 
+NEXT_GENERATION_CANDIDATE_SET_VERSION = "next_gen_free_v1"
+
+NEXT_GENERATION_CANDIDATE_DEFINITIONS: tuple[FeatureDefinition, ...] = (
+    FeatureDefinition(
+        key="short_term_reversal_20d",
+        version="v1",
+        family="momentum",
+        direction="lower_is_better",
+        display_name="20 day short-term reversal",
+        description="Recent split-adjusted return used to test whether short-term moves reverse.",
+        formula="C(t) / C(t-20) - 1, using split-adjusted closes.",
+        required_inputs=("daily_price_bars:split_adjusted",),
+        as_of_rule="Use 21 completed regular sessions available at or before decision_at; t is the formation session.",
+    ),
+    FeatureDefinition(
+        key="downside_volatility_60d",
+        version="v1",
+        family="risk",
+        direction="lower_is_better",
+        display_name="60 day downside volatility",
+        description="Annualized downside deviation of recent split-adjusted daily log returns.",
+        formula="sqrt(mean(min(log(C(t) / C(t-1)), 0)^2, 60 sessions) x 252).",
+        required_inputs=("daily_price_bars:split_adjusted",),
+        as_of_rule="Use 61 completed regular sessions available at or before decision_at; t is the formation session.",
+    ),
+    FeatureDefinition(
+        key="amihud_illiquidity_20d",
+        version="v1",
+        family="liquidity",
+        direction="lower_is_better",
+        display_name="20 day Amihud illiquidity",
+        description="Average absolute split-adjusted return per dollar of unadjusted trading volume.",
+        formula="mean(abs(C_adj(t) / C_adj(t-1) - 1) / (C_raw(t) x volume(t)), 20 sessions).",
+        required_inputs=("daily_price_bars:split_adjusted", "daily_price_bars:unadjusted"),
+        as_of_rule="Use 20 matching completed return and dollar-volume sessions available at or before decision_at; reject zero dollar volume.",
+    ),
+    FeatureDefinition(
+        key="return_on_assets_change_yoy",
+        version="v1",
+        family="profitability",
+        direction="higher_is_better",
+        display_name="Year-over-year return on assets change",
+        description="Change in reported annual return on assets between the two latest eligible fiscal years.",
+        formula="ROA(latest eligible annual filing) - ROA(previous eligible annual filing).",
+        required_inputs=("filing_facts:us-gaap:NetIncomeLoss|ProfitLoss", "filing_facts:us-gaap:Assets"),
+        as_of_rule="Use two distinct annual periods and their balance-sheet endpoints only when every selected SEC fact was public by decision_at.",
+    ),
+)
+
+
 def baseline_feature_registry() -> FeatureRegistry:
     """Create the approved v1 feature registry without calculating features."""
     return FeatureRegistry(BASELINE_FEATURE_DEFINITIONS)
+
+
+def next_generation_candidate_registry() -> FeatureRegistry:
+    """Create the isolated free-data candidate registry used by Phase 9 research."""
+    return FeatureRegistry(NEXT_GENERATION_CANDIDATE_DEFINITIONS)

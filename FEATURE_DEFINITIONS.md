@@ -20,6 +20,26 @@ unavailable; it must never be silently imputed or substituted.
 | `trailing_volatility_60d@v1` | Risk | Lower is better | Annualized standard deviation of 60 split-adjusted daily log returns. |
 | `median_dollar_volume_20d@v1` | Liquidity | Higher is better | Median unadjusted close multiplied by volume over 20 sessions. |
 
+## Phase 9 free-data candidates
+
+These definitions form the isolated `next_gen_free_v1` candidate set. They are
+available for pre-holdout diagnostics and challenger research only. They are
+not part of the active six-feature registry, do not change current scores, and
+must pass P9.3 diagnostics before any model may use them.
+
+| Key @ version | Family | Direction | Definition |
+| --- | --- | --- | --- |
+| `short_term_reversal_20d@v1` | Momentum | Lower is better | Split-adjusted 20-session return, testing whether the most recent move reverses. |
+| `downside_volatility_60d@v1` | Risk | Lower is better | Annualized downside deviation of 60 split-adjusted daily log returns. |
+| `amihud_illiquidity_20d@v1` | Liquidity | Lower is better | Mean absolute split-adjusted return per dollar of unadjusted trading volume over 20 sessions. |
+| `return_on_assets_change_yoy@v1` | Profitability change | Higher is better | Latest eligible annual ROA minus the previous eligible annual ROA. |
+
+All four use only existing free Alpaca or SEC inputs. The price candidates
+require complete, matching session windows. The fundamental-change candidate
+requires two distinct annual filings and both years' eligible balance-sheet
+endpoints. Missing, zero, late, or mismatched inputs make the candidate
+unavailable rather than imputed.
+
 ## Input and time rules
 
 - Price features use completed regular sessions only. Momentum, relative
