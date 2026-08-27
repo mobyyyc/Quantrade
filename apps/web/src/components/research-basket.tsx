@@ -45,14 +45,10 @@ function PreviousBasketResult({ result }: { result?: PreviousPaperPortfolioResul
 
   const relativeReturn = Number(result.benchmarkRelativeReturn);
   const difference = `${relativeReturn >= 0 ? "+" : "−"}${(Math.abs(relativeReturn) * 100).toFixed(2)} pp`;
-  const isPreview = result.previewKind === "current_top_20_retrospective";
 
   return (
-    <div className={`research-basket-result${isPreview ? " research-basket-result-preview" : ""}`}>
-      <span className="research-basket-result-label">
-        Previous basket result
-        {isPreview ? <b>UI preview</b> : null}
-      </span>
+    <div className="research-basket-result">
+      <span>Previous basket result</span>
       <strong className="research-basket-comparison">
         <span className={returnDirection(relativeReturn)}>{difference}</span>
         <span>vs SPY</span>
@@ -61,11 +57,7 @@ function PreviousBasketResult({ result }: { result?: PreviousPaperPortfolioResul
         <div><dt>Basket</dt><dd className={returnDirection(result.portfolioReturn)}>{formatRelativeReturn(result.portfolioReturn)}</dd></div>
         <div><dt>SPY</dt><dd className={returnDirection(result.benchmarkReturn)}>{formatRelativeReturn(result.benchmarkReturn)}</dd></div>
       </dl>
-      <small>
-        {isPreview
-          ? `Retrospective layout sample using the current top 20 selected on ${formatResearchDate(result.scoreDate)} and their preceding 20-session prices. This is look-ahead-biased, not official performance.`
-          : `20 sessions ending ${formatResearchDate(result.outcomeDate ?? "")}`}
-      </small>
+      <small>20 sessions ending {formatResearchDate(result.outcomeDate ?? "")}</small>
     </div>
   );
 }
@@ -95,30 +87,20 @@ export function ResearchBasket({
 
   const positions = portfolio.positions;
   const weight = 100 / BASKET_SIZE;
-  const isPreview = portfolio.previewKind === "current_top_20_retrospective";
   return (
-    <section className={`research-basket${isPreview ? " research-basket-preview" : ""}`} aria-labelledby={titleId}>
+    <section className="research-basket" aria-labelledby={titleId}>
       <div className="research-basket-heading">
         <div>
-          <p className="eyebrow">
-            MONTHLY MODEL PORTFOLIO
-            {isPreview ? <span className="research-basket-preview-tag">UI PREVIEW</span> : null}
-          </p>
-          <h2 id={titleId}>{isPreview ? "Current top 20, shown as a prior basket" : "Current 20-session research basket"}</h2>
+          <p className="eyebrow">MONTHLY MODEL PORTFOLIO</p>
+          <h2 id={titleId}>Current 20-session research basket</h2>
         </div>
         <PreviousBasketResult result={portfolio.previousResult} />
       </div>
       <div className="research-basket-context">
-        {isPreview ? (
-          <p>
-            For layout inspection only. This applies the top {BASKET_SIZE} names selected on {formatResearchDate(portfolio.scoreDate)} to the preceding 20-session price window, equally weighted at {weight}% each.
-          </p>
-        ) : (
-          <p>
-            Formed from the model&apos;s top {BASKET_SIZE} eligible names on {formatResearchDate(portfolio.scoreDate)}, equally weighted at {weight}% each,
-            then recorded at the next regular-session open on {formatResearchDate(portfolio.executionDate)}.
-          </p>
-        )}
+        <p>
+          Formed from the model&apos;s top {BASKET_SIZE} eligible names on {formatResearchDate(portfolio.scoreDate)}, equally weighted at {weight}% each,
+          then recorded at the next regular-session open on {formatResearchDate(portfolio.executionDate)}.
+        </p>
         <p>Research only, not personalized investment advice.</p>
       </div>
       <ol className="research-basket-list">
@@ -140,9 +122,7 @@ export function ResearchBasket({
         ))}
       </ol>
       <p className="research-basket-note">
-        {isPreview
-          ? "Preview data is calculated in memory and is not saved as an official portfolio or performance record. It disappears when a real monthly basket is available."
-          : "This basket stays fixed until the next scheduled monthly formation. Daily rankings are research context only and do not change its holdings."}
+        This basket stays fixed until the next scheduled monthly formation. Daily rankings are research context only and do not change its holdings.
       </p>
     </section>
   );

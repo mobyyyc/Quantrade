@@ -56,109 +56,12 @@ export type PreviousPaperPortfolioResult = {
   scoreDate: string;
   executionDate: string;
   status: "pending" | "completed" | "withheld";
-  previewKind?: "current_top_20_retrospective";
   outcomeDate?: string;
   portfolioReturn?: string;
   benchmarkReturn?: string;
   benchmarkRelativeReturn?: string;
   unavailableReason?: string;
 };
-
-async function getRetrospectivePreviousBasketPreview(scoreDate?: string): Promise<PreviousPaperPortfolioResult | undefined> {
-  const result = await databasePool().query(
-    `WITH latest_score_date AS (
-       SELECT COALESCE($1::date, MAX(score_date)) AS score_date
-       FROM quantrade.daily_research_runs
-       WHERE status = 'completed'
-     ), selected AS (
-       SELECT snapshot.security_id
-       FROM quantrade.score_snapshots snapshot
-       JOIN quantrade.daily_research_runs run
-         ON run.score_date = snapshot.score_date
-        AND run.decision_at = snapshot.decision_at
-        AND run.status = 'completed'
-       CROSS JOIN latest_score_date latest
-       WHERE snapshot.score_date = latest.score_date
-         AND snapshot.eligible
-         AND snapshot.model_version = (
-           SELECT model_version
-           FROM quantrade.model_deployments
-           ORDER BY deployed_at DESC
-           LIMIT 1
-         )
-       ORDER BY snapshot.rank ASC
-       LIMIT 20
-     ), benchmark_sessions AS (
-       SELECT session_date, close_price,
-              ROW_NUMBER() OVER (ORDER BY session_date DESC) AS reverse_session
-       FROM quantrade.benchmark_daily_price_bars
-       CROSS JOIN latest_score_date latest
-       WHERE benchmark_ticker = 'SPY'
-         AND session = 'regular'
-         AND adjustment_basis = 'split_adjusted'
-         AND session_date <= latest.score_date
-     ), window_dates AS (
-       SELECT MAX(session_date) FILTER (WHERE reverse_session = 21) AS start_date,
-              MAX(session_date) FILTER (WHERE reverse_session = 1) AS end_date,
-              MAX(close_price) FILTER (WHERE reverse_session = 21) AS benchmark_start,
-              MAX(close_price) FILTER (WHERE reverse_session = 1) AS benchmark_end
-       FROM benchmark_sessions
-       WHERE reverse_session <= 21
-     ), equity_endpoints AS (
-       SELECT selected.security_id,
-              MAX(bar.close_price) FILTER (WHERE bar.session_date = dates.start_date) AS start_price,
-              MAX(bar.close_price) FILTER (WHERE bar.session_date = dates.end_date) AS end_price
-       FROM selected
-       CROSS JOIN window_dates dates
-       LEFT JOIN quantrade.daily_price_bars bar
-         ON bar.security_id = selected.security_id
-        AND bar.session = 'regular'
-        AND bar.adjustment_basis = 'split_adjusted'
-        AND bar.session_date IN (dates.start_date, dates.end_date)
-       GROUP BY selected.security_id
-     )
-     SELECT latest.score_date::text, dates.start_date::text, dates.end_date::text,
-            COUNT(*) AS selected_count,
-            COUNT(*) FILTER (WHERE equity.start_price > 0 AND equity.end_price IS NOT NULL) AS complete_count,
-            AVG(equity.end_price / equity.start_price - 1)
-              FILTER (WHERE equity.start_price > 0 AND equity.end_price IS NOT NULL) AS portfolio_return,
-            CASE WHEN dates.benchmark_start > 0
-              THEN dates.benchmark_end / dates.benchmark_start - 1
-              ELSE NULL
-            END AS benchmark_return
-     FROM equity_endpoints equity
-     CROSS JOIN latest_score_date latest
-     CROSS JOIN window_dates dates
-     GROUP BY latest.score_date, dates.start_date, dates.end_date,
-              dates.benchmark_start, dates.benchmark_end`,
-    [scoreDate ?? null],
-  );
-  if (!result.rowCount) return undefined;
-  const row = result.rows[0];
-  if (
-    Number(row.selected_count) !== 20
-    || Number(row.complete_count) !== 20
-    || !row.score_date
-    || !row.start_date
-    || !row.end_date
-    || row.portfolio_return === null
-    || row.benchmark_return === null
-  ) return undefined;
-
-  const portfolioReturn = Number(row.portfolio_return);
-  const benchmarkReturn = Number(row.benchmark_return);
-  if (!Number.isFinite(portfolioReturn) || !Number.isFinite(benchmarkReturn)) return undefined;
-  return {
-    scoreDate: String(row.score_date),
-    executionDate: String(row.start_date),
-    outcomeDate: String(row.end_date),
-    status: "completed",
-    previewKind: "current_top_20_retrospective",
-    portfolioReturn: String(portfolioReturn),
-    benchmarkReturn: String(benchmarkReturn),
-    benchmarkRelativeReturn: String(portfolioReturn - benchmarkReturn),
-  };
-}
 
 export type PredictionContext = {
   modelVersion: string;
@@ -179,7 +82,6 @@ export type PaperPortfolio = {
   startingNav: string;
   modelVersion: string;
   formationProtocol: "monthly_last_session_next_open_v1";
-  previewKind?: "current_top_20_retrospective";
   predictionContext?: PredictionContext;
   previousResult?: PreviousPaperPortfolioResult;
   positions: Array<{
@@ -193,38 +95,6 @@ export type PaperPortfolio = {
   }>;
   outcomes: PaperPortfolioOutcome[];
 };
-
-async function getCurrentTopTwentyPortfolioPreview(scoreDate?: string): Promise<PaperPortfolio | null> {
-  const [latest, previousResult] = await Promise.all([
-    scoreDate
-      ? listDatedScores(scoreDate).then((scores) => ({ scoreDate, scores }))
-      : getLatestDatedScores(),
-    getRetrospectivePreviousBasketPreview(scoreDate),
-  ]);
-  const positions = latest?.scores.filter((score) => score.eligible).slice(0, 20) ?? [];
-  if (!latest || positions.length !== 20) return null;
-  return {
-    scoreDate: latest.scoreDate,
-    executionDate: previousResult?.executionDate ?? latest.scoreDate,
-    startingNav: "100000",
-    modelVersion: positions[0].modelVersion,
-    formationProtocol: "monthly_last_session_next_open_v1",
-    previewKind: "current_top_20_retrospective",
-    ...(previousResult ? { previousResult } : {}),
-    positions: positions.map((position) => ({
-      securityId: position.securityId,
-      ticker: position.ticker,
-      issuerName: position.issuerName,
-      quantity: "0",
-      rank: position.rank ?? 0,
-      score: position.score,
-      ...(position.predictedBenchmarkRelativeReturn === undefined
-        ? {}
-        : { predictedBenchmarkRelativeReturn: position.predictedBenchmarkRelativeReturn }),
-    })),
-    outcomes: [],
-  };
-}
 
 export type DailyPricePoint = {
   sessionDate: string;
@@ -702,7 +572,7 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
      LIMIT 1`,
     [throughScoreDate ?? null],
   );
-  if (!result.rowCount) return getCurrentTopTwentyPortfolioPreview(throughScoreDate);
+  if (!result.rowCount) return null;
   const row = result.rows[0] as Record<string, unknown>;
   const [positions, outcomes, previousResult] = await Promise.all([
     databasePool().query(
@@ -759,9 +629,6 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
   ]);
   const predictionContext = predictionContextFromRow(row);
   const previousRow = previousResult.rowCount ? previousResult.rows[0] : undefined;
-  const retrospectivePreview = previousRow
-    ? undefined
-    : await getRetrospectivePreviousBasketPreview(String(row.score_date));
   return {
     scoreDate: String(row.score_date),
     executionDate: String(row.execution_date),
@@ -780,7 +647,7 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
         ...(previousRow.benchmark_relative_return == null ? {} : { benchmarkRelativeReturn: String(previousRow.benchmark_relative_return) }),
         ...(previousRow.unavailable_reason ? { unavailableReason: String(previousRow.unavailable_reason) } : {}),
       },
-    } : retrospectivePreview ? { previousResult: retrospectivePreview } : {}),
+    } : {}),
     positions: positions.rows.map((item) => ({
       securityId: String(item.security_id),
       ticker: item.ticker ? String(item.ticker) : "Unavailable",
