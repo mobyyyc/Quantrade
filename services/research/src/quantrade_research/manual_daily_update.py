@@ -69,6 +69,25 @@ def _catch_up_start(database_url: str, score_date: date) -> date:
     return score_date if latest is None else min(score_date, latest + timedelta(days=1))
 
 
+def _sec_index_start_date(connection, score_date: date) -> date:
+    """Start filing discovery at the previous completed decision date, inclusive.
+
+    Rechecking that date catches documents accepted after the prior decision
+    cutoff. Accession deduplication prevents duplicate filing or fact writes.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """SELECT decision_at FROM quantrade.daily_research_runs
+               WHERE status = 'completed' AND score_date < %s AND decision_at IS NOT NULL
+               ORDER BY decision_at DESC LIMIT 1""",
+            (score_date,),
+        )
+        row = cursor.fetchone()
+    if row is None:
+        return score_date
+    return min(score_date, row[0].astimezone(TORONTO).date())
+
+
 @contextmanager
 def _daily_update_lock(database_url: str) -> Iterator[object]:
     """Hold a PostgreSQL advisory lock across all ingestion and scoring work."""
@@ -227,8 +246,11 @@ def main() -> None:
                     print(f"skipped score_date={score_date}; no regular NYSE session")
                     return
                 if ciks:
+                    index_start_date = _sec_index_start_date(connection, score_date)
                     _run([sys.executable, "-m", "quantrade_research.ingest_filings", "--ciks", ciks,
-                          "--code-revision", revision, "--incremental", "--daily-index-date", score_date.isoformat()], environment)
+                          "--code-revision", revision, "--incremental",
+                          "--daily-index-start-date", index_start_date.isoformat(),
+                          "--daily-index-end-date", score_date.isoformat()], environment)
                 decision_at = _set_decision_at(connection, score_date, retry_cutoff)
                 score_note = _run([sys.executable, "-m", "quantrade_research.score_run", "--score-date", score_date.isoformat(),
                                    "--code-revision", revision, "--manual", "--decision-at", decision_at.isoformat()], environment)

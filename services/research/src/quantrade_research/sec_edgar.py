@@ -8,6 +8,7 @@ from decimal import Decimal
 import json
 import re
 from typing import Any
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
@@ -30,6 +31,10 @@ EXCHANGE_MIC_BY_SEC_NAME = {
 
 class SecEdgarError(ValueError):
     """Raised when SEC reference data is unavailable or malformed."""
+
+
+class SecEdgarNotFoundError(SecEdgarError):
+    """Raised when an SEC resource is absent, such as a non-filing-day index."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -308,7 +313,12 @@ class SecEdgarClient:
 
     def _fetch(self, url: str) -> bytes:
         request = Request(url, headers={"Accept": "application/json", "User-Agent": self._user_agent})
-        with urlopen(request, timeout=self._timeout_seconds) as response:
-            if response.status != 200:
-                raise SecEdgarError(f"SEC returned HTTP {response.status}")
-            return response.read()
+        try:
+            with urlopen(request, timeout=self._timeout_seconds) as response:
+                if response.status != 200:
+                    raise SecEdgarError(f"SEC returned HTTP {response.status}")
+                return response.read()
+        except HTTPError as error:
+            if error.code == 404:
+                raise SecEdgarNotFoundError(f"SEC resource is unavailable: {url}") from error
+            raise SecEdgarError(f"SEC returned HTTP {error.code}: {url}") from error

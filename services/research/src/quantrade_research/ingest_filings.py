@@ -18,6 +18,7 @@ from .sec_edgar import (
     SUBMISSIONS_URL,
     SUBMISSION_HISTORY_URL,
     SecEdgarClient,
+    SecEdgarNotFoundError,
     merge_filings,
     parse_company_facts,
     parse_submission_history,
@@ -57,6 +58,13 @@ def _daily_index_candidates(ciks: list[str], index_ciks: set[str]) -> list[str]:
     return sorted(set(ciks).intersection(index_ciks))
 
 
+def _daily_index_dates(start_date: date, end_date: date) -> list[date]:
+    """Return every calendar date in the inclusive filing-discovery interval."""
+    if end_date < start_date:
+        raise ValueError("daily index end date must not precede the start date")
+    return [date.fromordinal(value) for value in range(start_date.toordinal(), end_date.toordinal() + 1)]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest SEC filing metadata and facts for one CIK")
     source = parser.add_mutually_exclusive_group(required=True)
@@ -66,7 +74,8 @@ def main() -> None:
     parser.add_argument("--code-revision", required=True)
     parser.add_argument("--include-history", action="store_true", help="Follow dated SEC submission-history references for historical fact eligibility")
     parser.add_argument("--incremental", action="store_true", help="Fetch Company Facts only when current submissions contain a new accession")
-    parser.add_argument("--daily-index-date", type=date.fromisoformat, help="Use the SEC daily master index to select changed CIKs for this filing date")
+    parser.add_argument("--daily-index-start-date", type=date.fromisoformat, help="Inclusive start date for SEC daily-index filing discovery")
+    parser.add_argument("--daily-index-end-date", type=date.fromisoformat, help="Inclusive end date for SEC daily-index filing discovery")
     parser.add_argument("--env-file", default=".env")
     parser.add_argument("--minimum-request-interval", type=float, default=0.12)
     arguments = parser.parse_args()
@@ -74,8 +83,10 @@ def main() -> None:
         parser.error("--minimum-request-interval must be non-negative")
     if arguments.incremental and arguments.include_history:
         parser.error("--incremental cannot be combined with --include-history")
-    if arguments.daily_index_date and not arguments.incremental:
-        parser.error("--daily-index-date requires --incremental")
+    if (arguments.daily_index_start_date or arguments.daily_index_end_date) and not arguments.incremental:
+        parser.error("daily-index date bounds require --incremental")
+    if bool(arguments.daily_index_start_date) != bool(arguments.daily_index_end_date):
+        parser.error("both --daily-index-start-date and --daily-index-end-date are required together")
     ciks = ([arguments.cik.zfill(10)] if arguments.cik else arguments.ciks
             if arguments.ciks else _ciks_from_file(arguments.ciks_file))
     requested_ciks = ciks
@@ -94,20 +105,27 @@ def main() -> None:
     refreshed_ciks = 0
     source_inputs: list[SourceInput] = []
     try:
-        if arguments.daily_index_date:
-            index_retrieved_at = datetime.now(timezone.utc)
-            index_payload = client.fetch_daily_master_index(arguments.daily_index_date)
-            index_url = daily_master_index_url(arguments.daily_index_date)
-            index_artifact = store.store(index_payload, index_retrieved_at, category="sec-daily-master-index")
-            repository.persist_raw_artifact(index_artifact, index_url)
-            source_inputs.append(SourceInput(
-                provider="sec_edgar", source_reference=index_url,
-                raw_artifact_uris=(index_artifact.storage_uri,),
-            ))
-            ciks = _daily_index_candidates(
-                ciks,
-                {record.cik for record in parse_daily_master_index(index_payload) if record.filed_on == arguments.daily_index_date},
-            )
+        missing_index_dates: list[date] = []
+        if arguments.daily_index_start_date:
+            indexed_ciks: set[str] = set()
+            for filing_date in _daily_index_dates(arguments.daily_index_start_date, arguments.daily_index_end_date):
+                try:
+                    index_payload = client.fetch_daily_master_index(filing_date)
+                except SecEdgarNotFoundError:
+                    missing_index_dates.append(filing_date)
+                    continue
+                index_retrieved_at = datetime.now(timezone.utc)
+                index_url = daily_master_index_url(filing_date)
+                index_artifact = store.store(index_payload, index_retrieved_at, category="sec-daily-master-index")
+                repository.persist_raw_artifact(index_artifact, index_url)
+                source_inputs.append(SourceInput(
+                    provider="sec_edgar", source_reference=index_url,
+                    raw_artifact_uris=(index_artifact.storage_uri,),
+                ))
+                indexed_ciks.update(
+                    record.cik for record in parse_daily_master_index(index_payload) if record.filed_on == filing_date
+                )
+            ciks = _daily_index_candidates(ciks, indexed_ciks)
         for index, cik in enumerate(ciks):
             retrieved_at = datetime.now(timezone.utc)
             submissions_payload = client.fetch_submissions(cik)
@@ -170,7 +188,9 @@ def main() -> None:
         source_inputs=tuple(source_inputs), status="completed",
         note=(f"ciks_requested={len(requested_ciks)}; ciks_checked={len(ciks)}; filings={total_filings}; facts={total_facts}; "
               f"incremental={arguments.incremental}; refreshed_ciks={refreshed_ciks}; "
-              f"daily_index_date={arguments.daily_index_date.isoformat() if arguments.daily_index_date else 'none'}; "
+              f"daily_index_start_date={arguments.daily_index_start_date.isoformat() if arguments.daily_index_start_date else 'none'}; "
+              f"daily_index_end_date={arguments.daily_index_end_date.isoformat() if arguments.daily_index_end_date else 'none'}; "
+              f"missing_daily_indexes={','.join(item.isoformat() for item in missing_index_dates) or 'none'}; "
               f"history_included={arguments.include_history}; filing_availability=acceptance_timestamp"),
     )
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")

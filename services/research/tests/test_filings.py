@@ -17,7 +17,7 @@ from quantrade_research.sec_edgar import (
     parse_submissions,
     submission_history_names,
 )
-from quantrade_research.ingest_filings import _daily_index_candidates, _new_accession_numbers
+from quantrade_research.ingest_filings import _daily_index_candidates, _daily_index_dates, _new_accession_numbers
 
 
 class FilingParserTests(unittest.TestCase):
@@ -29,6 +29,12 @@ class FilingParserTests(unittest.TestCase):
         self.assertEqual(
             _daily_index_candidates(["0000320193", "0001045810", "0001652044"], {record.cik for record in records}),
             ["0000320193", "0001045810"],
+        )
+
+    def test_keeps_weekend_dates_in_the_discovery_interval(self) -> None:
+        self.assertEqual(
+            _daily_index_dates(date(2026, 8, 21), date(2026, 8, 24)),
+            [date(2026, 8, 21), date(2026, 8, 22), date(2026, 8, 23), date(2026, 8, 24)],
         )
 
     def test_identifies_only_unseen_current_submission_accessions(self) -> None:
