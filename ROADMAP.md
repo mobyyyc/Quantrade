@@ -63,3 +63,30 @@ Each item is intended to fit a focused development session. A negative research 
 - [x] P7.2: write recovery and release runbooks.
 - [x] P7.3: add private watchlists and paper portfolio only after V1 stability.
 - [x] P7.4: research sentiment or paid data as isolated, gated additions.
+
+## Phase 8: current-model evidence and product alignment
+
+- [x] P8.1: report frozen-model predictions versus actual 2025–2026 holdout outcomes without tuning.
+- [ ] P8.2: align the visible model basket with the documented monthly formation and next-open execution protocol.
+- [ ] P8.3: add development-derived prediction uncertainty and calibration context without using the consumed holdout for fitting.
+- [ ] P8.4: synchronize model cards and governance records with the active private-beta deployment.
+
+## Phase 9: next-generation model research
+
+- [ ] P9.1: pre-register ranking, spread, stability, turnover, cost, MAE, and RMSE comparison measures.
+- [ ] P9.2: add free-data momentum, risk, liquidity, and fundamental-change candidates behind versioned feature definitions.
+- [ ] P9.3: run missingness, redundancy, stability, and point-in-time diagnostics; reject weak features explicitly.
+- [ ] P9.4: compare robust linear, gradient-boosted, and ranking-oriented candidates on purged pre-holdout folds only.
+- [ ] P9.5: freeze one challenger with an immutable artifact, model card, and reproducibility record.
+
+## Phase 10: shadow confirmation and promotion
+
+- [ ] P10.1: score the active model and frozen challenger side by side without changing user-visible rankings.
+- [ ] P10.2: materialize new 20-session forward outcomes and compare both models under identical rules.
+- [ ] P10.3: promote only after ranking quality, stability, costs, coverage, and data-quality gates pass.
+
+## Phase 11: verified historical data
+
+- [ ] P11.1: adopt dated historical index membership, delistings, and sector classifications from an approved source.
+- [ ] P11.2: build the isolated `sp500_verified_pit_v1` cohort without mixing it with Tier-B current survivors.
+- [ ] P11.3: repeat development and final confirmation before any unbiased historical-performance claim.
