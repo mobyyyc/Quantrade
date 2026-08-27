@@ -158,6 +158,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .score-list-today .today-virtual-row { position: absolute; top: 0; right: 0; left: 0; height: 5.35rem; }
 
 .research-basket { margin-top: 3.25rem; padding: 1.45rem 0 0; border-top: 1px solid var(--line-soft); }
+.research-basket-pending { display: grid; grid-template-columns: minmax(0, .72fr) minmax(18rem, 1.28fr); gap: 2rem; align-items: start; padding-bottom: .5rem; }
+.research-basket-pending h2 { margin: 0; }
+.research-basket-pending > p { max-width: 44rem; margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.6; }
 .rankings-results > .research-basket { margin: 0 0 3rem; }
 .research-basket-heading { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; }
 .research-basket-heading h2 { margin: 0; }
@@ -480,6 +483,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .daily-update-summary { grid-template-columns: 1fr; gap: 1.1rem; }
   .filing-activity { margin-top: 3.5rem; }
   .research-basket-heading, .research-basket-context { align-items: flex-start; flex-direction: column; gap: .8rem; }
+  .research-basket-pending { grid-template-columns: 1fr; gap: .8rem; }
   .research-basket-context p:last-child { text-align: left; }
   .research-basket-list { grid-template-columns: 1fr; }
   .research-basket-list li, .research-basket-list li:nth-child(odd), .research-basket-list li:nth-child(even) { padding: 0; border-right: 0; border-bottom: 1px solid var(--line-soft); }

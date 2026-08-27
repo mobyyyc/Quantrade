@@ -153,6 +153,13 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("benchmark_ticker = 'SPY'", sql)
         self.assertIn("score_predictions_immutable", sql)
 
+    def test_paper_portfolios_record_monthly_protocol_and_model(self) -> None:
+        migration = MIGRATION.with_name("0024_align_monthly_paper_portfolios.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("model_version TEXT REFERENCES quantrade.model_cards", sql)
+        self.assertIn("monthly_last_session_next_open_v1", sql)
+        self.assertIn("paper_portfolio_runs_official_monthly_idx", sql)
+
     def test_forward_readiness_snapshots_are_compact_and_immutable(self) -> None:
         migration = MIGRATION.with_name("0020_add_forward_readiness_snapshots.sql")
         sql = migration.read_text(encoding="utf-8")

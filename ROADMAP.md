@@ -67,7 +67,7 @@ Each item is intended to fit a focused development session. A negative research 
 ## Phase 8: current-model evidence and product alignment
 
 - [x] P8.1: report frozen-model predictions versus actual 2025–2026 holdout outcomes without tuning.
-- [ ] P8.2: align the visible model basket with the documented monthly formation and next-open execution protocol.
+- [x] P8.2: align the visible model basket with the documented monthly formation and next-open execution protocol.
 - [ ] P8.3: add development-derived prediction uncertainty and calibration context without using the consumed holdout for fitting.
 - [ ] P8.4: synchronize model cards and governance records with the active private-beta deployment.
 

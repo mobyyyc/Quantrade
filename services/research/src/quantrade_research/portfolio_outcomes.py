@@ -86,6 +86,7 @@ def materialize_due_paper_portfolio_outcomes(
             """SELECT paper_portfolio_run_id::text, execution_date, starting_nav, ending_cash, benchmark_ticker
                FROM quantrade.paper_portfolio_runs
                WHERE execution_date <= %s
+                 AND formation_protocol = 'monthly_last_session_next_open_v1'
                ORDER BY execution_date ASC""",
             (as_of_date,),
         )

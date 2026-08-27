@@ -108,6 +108,13 @@ progressive-disclosure sections.
 
 **Quant View:** A compact, dated summary that pairs score, signal, risk, data freshness, and two or three real factor contributors. It must always link to its methodology and must never resemble a trade recommendation button.
 
+### Rankings and Model Portfolio
+
+- Daily rankings are changing research context. They may identify candidates, but they never imply that the official portfolio rebalanced that day.
+- The model portfolio is a separate monthly object: the top 20 eligible active-model names from the final market session of a completed calendar month, equally weighted and recorded at the next regular-session open.
+- Portfolio copy must show both the formation date and execution date, and state that holdings remain fixed until the next scheduled monthly formation.
+- Never derive the visible model portfolio from whichever daily ranking happens to be on screen.
+
 ## Do's and Don'ts
 
 ### Do:
