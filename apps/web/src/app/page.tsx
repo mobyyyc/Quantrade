@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { DailyUpdateControl } from "@/components/daily-update-control";
 import { WatchlistPreview } from "@/components/watchlist-preview";
 import { TodayRankingStream } from "@/components/today-ranking-stream";
+import { ResearchBasket } from "@/components/research-basket";
 import { formatResearchDate, formatScore } from "@/lib/format";
 import { getLatestDatedScores, getTodayFilingSummary, ResearchReadModelError } from "@/lib/research-read-model";
 
@@ -46,6 +47,7 @@ export default async function Home() {
             <section className="content-section today-candidates">
               <div className="section-heading"><div><p className="eyebrow">TOP RANKED</p><h2>Highest scores</h2></div>{lead && <Link href={`/rankings?date=${latest.scoreDate}`} className="text-link">View rankings</Link>}</div>
               {lead ? <TodayRankingStream scores={eligibleScores} /> : <p className="empty-inline">No companies met every required quality condition on {formatResearchDate(latest.scoreDate)}.</p>}
+              {lead && <ResearchBasket scores={eligibleScores} scoreDate={latest.scoreDate} from="today" />}
             </section>
             <WatchlistPreview scores={latest.scores} scoreDate={latest.scoreDate} />
           </div>

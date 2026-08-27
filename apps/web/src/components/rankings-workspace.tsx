@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ScoreList } from "@/components/score-list";
+import { ResearchBasket } from "@/components/research-basket";
 import { formatIssuerName, formatPublicationTime, formatResearchDate, formatScore } from "@/lib/format";
 import type { DatedScore } from "@/lib/research-read-model";
 
@@ -32,6 +33,7 @@ export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previo
       <p>Only complete, dated inputs are ranked. Missing data is withheld rather than estimated.</p>
     </div>
     <div className="rankings-results">
+      <ResearchBasket scores={eligibleScores} scoreDate={scoreDate} from="rankings" />
       <div className="section-heading">
         <div><p className="eyebrow">CURRENT ORDER</p><h2 id="rankings-list-title">Highest scores</h2></div>
       </div>
