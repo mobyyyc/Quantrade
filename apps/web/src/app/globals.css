@@ -170,8 +170,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .research-basket-result-label { display: flex; align-items: center; justify-content: flex-end; gap: .45rem; }
 .research-basket-result-label b { padding: .18rem .42rem; border: 1px solid var(--line); border-radius: 9999px; background: var(--surface); color: var(--foreground); font-size: .58rem; font-weight: 720; letter-spacing: .03em; text-transform: uppercase; }
 .research-basket-result > strong { color: var(--foreground); font-size: 1.12rem; letter-spacing: -.035em; }
-.research-basket-result > strong.positive-change, .research-basket-result dd.positive-change { color: var(--positive); }
-.research-basket-result > strong.negative-change, .research-basket-result dd.negative-change { color: var(--negative); }
+.research-basket-comparison { display: flex; align-items: baseline; justify-content: flex-end; gap: .32rem; }
+.research-basket-comparison .positive-change, .research-basket-result dd.positive-change { color: var(--positive); }
+.research-basket-comparison .negative-change, .research-basket-result dd.negative-change { color: var(--negative); }
 .research-basket-result > dl { display: flex; gap: .7rem; margin: .15rem 0 0; }
 .research-basket-result > dl div { display: flex; gap: .25rem; align-items: baseline; }
 .research-basket-result dt { color: var(--subtle); font-size: .68rem; }

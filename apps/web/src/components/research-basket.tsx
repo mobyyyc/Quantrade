@@ -44,8 +44,7 @@ function PreviousBasketResult({ result }: { result?: PreviousPaperPortfolioResul
   }
 
   const relativeReturn = Number(result.benchmarkRelativeReturn);
-  const comparison = relativeReturn >= 0 ? "Outperformed SPY by" : "Underperformed SPY by";
-  const difference = `${(Math.abs(relativeReturn) * 100).toFixed(2)} pp`;
+  const difference = `${relativeReturn >= 0 ? "+" : "−"}${(Math.abs(relativeReturn) * 100).toFixed(2)} pp`;
   const isPreview = result.previewKind === "current_top_20_retrospective";
 
   return (
@@ -54,7 +53,10 @@ function PreviousBasketResult({ result }: { result?: PreviousPaperPortfolioResul
         Previous basket result
         {isPreview ? <b>UI preview</b> : null}
       </span>
-      <strong className={returnDirection(relativeReturn)}>{comparison} {difference}</strong>
+      <strong className="research-basket-comparison">
+        <span className={returnDirection(relativeReturn)}>{difference}</span>
+        <span>vs SPY</span>
+      </strong>
       <dl>
         <div><dt>Basket</dt><dd className={returnDirection(result.portfolioReturn)}>{formatRelativeReturn(result.portfolioReturn)}</dd></div>
         <div><dt>SPY</dt><dd className={returnDirection(result.benchmarkReturn)}>{formatRelativeReturn(result.benchmarkReturn)}</dd></div>
