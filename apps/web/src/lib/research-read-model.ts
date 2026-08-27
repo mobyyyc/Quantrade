@@ -83,13 +83,8 @@ export type ScoreRunSummary = {
   eligibleCount: number;
 };
 
-export type TodayFilingActivity = {
-  securityId: string;
-  issuerName: string;
-  ticker: string;
+export type TodayFilingSummary = {
   filingCount: number;
-  forms: string[];
-  latestAcceptedAt: string;
 };
 
 export type DailyOperationRunStatus = "running" | "completed" | "failed" | "skipped";
@@ -340,41 +335,14 @@ export async function getRecentScoreRuns(limit = 5): Promise<ScoreRunSummary[]> 
   }));
 }
 
-export async function getTodayFilingActivity(scoreDate: string): Promise<TodayFilingActivity[]> {
+export async function getTodayFilingSummary(scoreDate: string): Promise<TodayFilingSummary> {
   const result = await databasePool().query(
-    `WITH daily_filings AS (
-       SELECT f.security_id,
-              COUNT(*)::int AS filing_count,
-              ARRAY_AGG(DISTINCT f.form ORDER BY f.form) AS forms,
-              MAX(f.accepted_at) AS latest_accepted_at
-       FROM quantrade.filings f
-       WHERE (f.accepted_at AT TIME ZONE 'America/Toronto')::date = $1::date
-       GROUP BY f.security_id
-     )
-     SELECT daily_filings.security_id, s.issuer_name, l.ticker,
-            daily_filings.filing_count, daily_filings.forms, daily_filings.latest_accepted_at
-     FROM daily_filings
-     JOIN quantrade.securities s ON s.security_id = daily_filings.security_id
-     LEFT JOIN LATERAL (
-       SELECT ticker
-       FROM quantrade.listings
-       WHERE security_id = daily_filings.security_id
-         AND valid_from <= $1::date
-         AND (valid_to IS NULL OR valid_to > $1::date)
-       ORDER BY valid_from DESC
-       LIMIT 1
-     ) l ON TRUE
-     ORDER BY daily_filings.latest_accepted_at DESC, l.ticker ASC NULLS LAST`,
+    `SELECT COUNT(*)::int AS filing_count
+     FROM quantrade.filings
+     WHERE (accepted_at AT TIME ZONE 'America/Toronto')::date = $1::date`,
     [scoreDate],
   );
-  return result.rows.map((row) => ({
-    securityId: String(row.security_id),
-    issuerName: String(row.issuer_name),
-    ticker: row.ticker ? String(row.ticker) : "Unavailable",
-    filingCount: Number(row.filing_count),
-    forms: Array.isArray(row.forms) ? row.forms.map(String) : [],
-    latestAcceptedAt: new Date(String(row.latest_accepted_at)).toISOString(),
-  }));
+  return { filingCount: Number(result.rows[0]?.filing_count ?? 0) };
 }
 
 export async function getDailyOperationsStatus(): Promise<DailyOperationsStatus> {
