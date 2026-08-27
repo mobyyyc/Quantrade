@@ -52,6 +52,17 @@ export type PaperPortfolioOutcome = {
   unavailableReason?: string;
 };
 
+export type PreviousPaperPortfolioResult = {
+  scoreDate: string;
+  executionDate: string;
+  status: "pending" | "completed" | "withheld";
+  outcomeDate?: string;
+  portfolioReturn?: string;
+  benchmarkReturn?: string;
+  benchmarkRelativeReturn?: string;
+  unavailableReason?: string;
+};
+
 export type PredictionContext = {
   modelVersion: string;
   calibrationStatus: "supported" | "unsupported_nonpositive_slope";
@@ -72,6 +83,7 @@ export type PaperPortfolio = {
   modelVersion: string;
   formationProtocol: "monthly_last_session_next_open_v1";
   predictionContext?: PredictionContext;
+  previousResult?: PreviousPaperPortfolioResult;
   positions: Array<{
     securityId: string;
     ticker: string;
@@ -532,7 +544,8 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
   );
   if (!result.rowCount) return null;
   const row = result.rows[0] as Record<string, unknown>;
-  const positions = await databasePool().query(
+  const [positions, outcomes, previousResult] = await Promise.all([
+    databasePool().query(
     `SELECT p.security_id, p.quantity, s.issuer_name, l.ticker, snapshot.rank, snapshot.score,
             prediction.predicted_benchmark_relative_return
      FROM quantrade.paper_portfolio_positions p
@@ -558,17 +571,34 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
      ) l ON TRUE
      WHERE p.paper_portfolio_run_id = $1
      ORDER BY snapshot.rank ASC`,
-    [row.paper_portfolio_run_id, row.score_date, row.model_version],
-  );
-  const outcomes = await databasePool().query(
-    `SELECT horizon_sessions, status, outcome_date::text AS outcome_date,
+      [row.paper_portfolio_run_id, row.score_date, row.model_version],
+    ),
+    databasePool().query(
+      `SELECT horizon_sessions, status, outcome_date::text AS outcome_date,
             portfolio_return, benchmark_return, benchmark_relative_return, unavailable_reason
-     FROM quantrade.paper_portfolio_outcomes
-     WHERE paper_portfolio_run_id = $1
-     ORDER BY horizon_sessions ASC`,
-    [row.paper_portfolio_run_id],
-  );
+       FROM quantrade.paper_portfolio_outcomes
+       WHERE paper_portfolio_run_id = $1
+       ORDER BY horizon_sessions ASC`,
+      [row.paper_portfolio_run_id],
+    ),
+    databasePool().query(
+      `SELECT previous.score_date::text, previous.execution_date::text,
+              outcome.status, outcome.outcome_date::text AS outcome_date,
+              outcome.portfolio_return, outcome.benchmark_return,
+              outcome.benchmark_relative_return, outcome.unavailable_reason
+       FROM quantrade.paper_portfolio_runs previous
+       LEFT JOIN quantrade.paper_portfolio_outcomes outcome
+         ON outcome.paper_portfolio_run_id = previous.paper_portfolio_run_id
+        AND outcome.horizon_sessions = 20
+       WHERE previous.formation_protocol = 'monthly_last_session_next_open_v1'
+         AND previous.score_date < $1::date
+       ORDER BY previous.score_date DESC
+       LIMIT 1`,
+      [row.score_date],
+    ),
+  ]);
   const predictionContext = predictionContextFromRow(row);
+  const previousRow = previousResult.rowCount ? previousResult.rows[0] : undefined;
   return {
     scoreDate: String(row.score_date),
     executionDate: String(row.execution_date),
@@ -576,6 +606,18 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
     modelVersion: String(row.model_version),
     formationProtocol: "monthly_last_session_next_open_v1",
     ...(predictionContext ? { predictionContext } : {}),
+    ...(previousRow ? {
+      previousResult: {
+        scoreDate: String(previousRow.score_date),
+        executionDate: String(previousRow.execution_date),
+        status: previousRow.status ? previousRow.status as PreviousPaperPortfolioResult["status"] : "pending",
+        ...(previousRow.outcome_date ? { outcomeDate: String(previousRow.outcome_date) } : {}),
+        ...(previousRow.portfolio_return == null ? {} : { portfolioReturn: String(previousRow.portfolio_return) }),
+        ...(previousRow.benchmark_return == null ? {} : { benchmarkReturn: String(previousRow.benchmark_return) }),
+        ...(previousRow.benchmark_relative_return == null ? {} : { benchmarkRelativeReturn: String(previousRow.benchmark_relative_return) }),
+        ...(previousRow.unavailable_reason ? { unavailableReason: String(previousRow.unavailable_reason) } : {}),
+      },
+    } : {}),
     positions: positions.rows.map((item) => ({
       securityId: String(item.security_id),
       ticker: item.ticker ? String(item.ticker) : "Unavailable",
