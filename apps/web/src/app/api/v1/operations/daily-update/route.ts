@@ -24,8 +24,9 @@ function userFacingError(output: string): string {
 export async function POST() {
   const workspaceRoot = process.env.QUANTRADE_WORKSPACE_ROOT
     ?? (process.cwd().endsWith(path.join("apps", "web")) ? path.resolve(process.cwd(), "../..") : process.cwd());
+  const envFile = path.join(workspaceRoot, ".env");
   const result = await new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-    const child = spawn("py", ["-3.14", "-m", "quantrade_research.manual_daily_update"], {
+    const child = spawn("py", ["-3.14", "-m", "quantrade_research.manual_daily_update", "--env-file", envFile], {
       cwd: workspaceRoot,
       env: { ...process.env, PYTHONPATH: path.join(workspaceRoot, "services", "research", "src") },
       windowsHide: true,
