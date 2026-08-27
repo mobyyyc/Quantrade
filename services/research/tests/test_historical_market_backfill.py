@@ -56,6 +56,13 @@ class HistoricalMarketBackfillTests(unittest.TestCase):
             validate_free_track_backfill_window(date(2020, 12, 31), FREE_TRACK_HOLDOUT_END_DATE)
         validate_free_track_backfill_window(FREE_TRACK_START_DATE, FREE_TRACK_HOLDOUT_END_DATE)
 
+    def test_total_return_chunk_uses_provider_all_adjustment(self) -> None:
+        chunk = build_historical_market_chunks(
+            ["AAPL"], start_date=date(2025, 7, 1), end_date=date(2025, 7, 1),
+            adjustment_bases=("total_return_adjusted",),
+        )[0]
+        self.assertEqual(chunk.alpaca_adjustment, "all")
+
 
 if __name__ == "__main__":
     unittest.main()

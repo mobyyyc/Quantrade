@@ -25,6 +25,13 @@ class HoldoutIntegrityAuditTests(unittest.TestCase):
         self.assertTrue(audit["approval_eligible"])
         self.assertEqual(audit["approval_status"], "eligible_for_policy_review")
 
+    def test_allows_provider_total_return_accounting(self) -> None:
+        audit = evaluate_holdout_integrity(
+            evaluation_document={**COMPLETE, "corporate_action_position_accounting": "provider_total_return_adjusted_prices"},
+            corporate_action_count=3,
+        )
+        self.assertTrue(audit["approval_eligible"])
+
     def test_rejects_incomplete_evaluation_document(self) -> None:
         with self.assertRaisesRegex(DataQualityError, "incomplete"):
             evaluate_holdout_integrity(evaluation_document={}, corporate_action_count=1)

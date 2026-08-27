@@ -110,12 +110,13 @@ def build_execution_period_input(manifest: dict[str, object], source: HoldoutPri
             "benchmark_entry_price": str(benchmark_entry),
             "benchmark_exit_price": str(benchmark_exit),
             "corporate_action_security_ids": sorted(actions),
+            "corporate_action_position_accounting": getattr(source, "corporate_action_position_accounting", "not_verified"),
         })
     if prepared and prepared[-1] is not None:
         withheld.append({"formation_date": prepared[-1][0].isoformat(), "reason": "no following frozen rebalance execution date for an open-to-open exit"})
     return {
         "status": "execution_period_input_prepared",
-        "price_basis": "unadjusted regular-session opens",
+        "price_basis": getattr(source, "price_basis", "unadjusted regular-session opens"),
         "benchmark_ticker": "SPY",
         "periods": periods,
         "withheld_formations": withheld,
@@ -126,11 +127,19 @@ def build_execution_period_input(manifest: dict[str, object], source: HoldoutPri
 class PostgresHoldoutPriceSource:
     """Read-only PostgreSQL source for the pre-registered next-open convention."""
 
-    def __init__(self, database_url: str) -> None:
+    def __init__(self, database_url: str, *, adjustment_basis: str = "unadjusted") -> None:
         import psycopg
 
         self._database_url = database_url
         self._connection = psycopg.connect(database_url)
+        if adjustment_basis not in {"unadjusted", "total_return_adjusted"}:
+            raise DataQualityError("holdout source requires unadjusted or total-return-adjusted prices")
+        self._adjustment_basis = adjustment_basis
+        self.price_basis = f"{adjustment_basis} regular-session opens"
+        self.corporate_action_position_accounting = (
+            "provider_total_return_adjusted_prices"
+            if adjustment_basis == "total_return_adjusted" else "not_verified"
+        )
 
     def close(self) -> None:
         self._connection.close()
@@ -148,9 +157,9 @@ class PostgresHoldoutPriceSource:
             cursor.execute(
                 """SELECT session_date FROM quantrade.benchmark_daily_price_bars
                    WHERE benchmark_ticker = 'SPY' AND session = 'regular'
-                     AND adjustment_basis = 'unadjusted' AND session_date > %s
+                     AND adjustment_basis = %s AND session_date > %s
                    ORDER BY session_date ASC LIMIT 1""",
-                (formation_date,),
+                (self._adjustment_basis, formation_date),
             )
             row = cursor.fetchone()
         return row[0] if row else None
@@ -160,8 +169,8 @@ class PostgresHoldoutPriceSource:
             cursor.execute(
                 """SELECT security_id::text, open_price FROM quantrade.daily_price_bars
                    WHERE security_id = ANY(%s::uuid[]) AND session_date = %s
-                     AND session = 'regular' AND adjustment_basis = 'unadjusted'""",
-                (list(security_ids), session_date),
+                     AND session = 'regular' AND adjustment_basis = %s""",
+                (list(security_ids), session_date, self._adjustment_basis),
             )
             return {str(row[0]): row[1] for row in cursor.fetchall()}
 
@@ -170,8 +179,8 @@ class PostgresHoldoutPriceSource:
             cursor.execute(
                 """SELECT open_price FROM quantrade.benchmark_daily_price_bars
                    WHERE benchmark_ticker = 'SPY' AND session_date = %s
-                     AND session = 'regular' AND adjustment_basis = 'unadjusted'""",
-                (session_date,),
+                     AND session = 'regular' AND adjustment_basis = %s""",
+                (session_date, self._adjustment_basis),
             )
             row = cursor.fetchone()
         return row[0] if row else None
@@ -201,6 +210,7 @@ def main() -> None:
     parser.add_argument("--selection-manifest", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
+    parser.add_argument("--adjustment-basis", choices=("unadjusted", "total_return_adjusted"), default="unadjusted")
     parser.add_argument("--confirm-locked-holdout", action="store_true")
     arguments = parser.parse_args()
     require_locked_holdout_confirmation(arguments.confirm_locked_holdout)
@@ -209,7 +219,7 @@ def main() -> None:
     settings = _settings(arguments.env_file)
     settings.require_runtime_storage()
     assert settings.database_url is not None
-    source = PostgresHoldoutPriceSource(settings.database_url)
+    source = PostgresHoldoutPriceSource(settings.database_url, adjustment_basis=arguments.adjustment_basis)
     try:
         document = build_execution_period_input(load_selection_manifest(arguments.selection_manifest), source)
     finally:

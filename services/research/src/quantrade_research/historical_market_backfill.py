@@ -7,7 +7,7 @@ from datetime import date, datetime, time, timezone
 from hashlib import sha256
 import json
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 from zoneinfo import ZoneInfo
 
 from .alpaca import ALPACA_BARS_URL, AlpacaClient, AlpacaDailyBar, parse_daily_bars
@@ -41,7 +41,15 @@ class HistoricalMarketChunk:
 
     @property
     def alpaca_adjustment(self) -> str:
-        return "raw" if self.adjustment_basis == "unadjusted" else "split"
+        adjustments = {
+            "unadjusted": "raw",
+            "split_adjusted": "split",
+            "total_return_adjusted": "all",
+        }
+        try:
+            return adjustments[self.adjustment_basis]
+        except KeyError as error:
+            raise ValueError(f"unsupported adjustment basis {self.adjustment_basis}") from error
 
     @property
     def key(self) -> str:
@@ -80,17 +88,21 @@ def calendar_quarters(start_date: date, end_date: date) -> tuple[DateRange, ...]
 
 def build_historical_market_chunks(
     symbols: Iterable[str], *, start_date: date, end_date: date, batch_size: int = 100,
+    adjustment_bases: tuple[str, ...] = ("unadjusted", "split_adjusted"),
 ) -> tuple[HistoricalMarketChunk, ...]:
     cleaned = tuple(sorted({symbol.strip().upper() for symbol in symbols if symbol.strip()}))
     if not cleaned:
         raise ValueError("historical market backfill requires at least one symbol")
     if batch_size < 1 or batch_size > 100:
         raise ValueError("historical market backfill batch size must be between 1 and 100")
+    allowed_bases = {"unadjusted", "split_adjusted", "total_return_adjusted"}
+    if not adjustment_bases or any(basis not in allowed_bases for basis in adjustment_bases):
+        raise ValueError("historical market backfill has an unsupported adjustment basis")
     chunks: list[HistoricalMarketChunk] = []
     for period in calendar_quarters(start_date, end_date):
         for index in range(0, len(cleaned), batch_size):
             batch = cleaned[index:index + batch_size]
-            for basis in ("unadjusted", "split_adjusted"):
+            for basis in adjustment_bases:
                 chunks.append(HistoricalMarketChunk(period.start_date, period.end_date, batch, basis))
     return tuple(chunks)
 
@@ -261,9 +273,11 @@ class HistoricalMarketBackfillRepository:
 
 def execute_historical_market_chunks(
     *, database_url: str, raw_artifacts_uri: str, alpaca_key_id: str, alpaca_secret_key: str,
-    chunks: Iterable[HistoricalMarketChunk],
+    chunks: Iterable[HistoricalMarketChunk], market_rule_version: str = HISTORICAL_MARKET_RULE_VERSION,
+    benchmark_rule_version: str = HISTORICAL_BENCHMARK_RULE_VERSION,
+    bar_available_at: Callable[[date], datetime] = historical_eod_available_at,
 ) -> tuple[int, int, int]:
-    """Persist equity chunks and one matching raw/split SPY benchmark history per quarter."""
+    """Persist supplied equity bases and matching SPY histories per quarter."""
     chunk_list = tuple(chunks)
     if not chunk_list:
         return 0, 0, 0
@@ -276,7 +290,7 @@ def execute_historical_market_chunks(
     benchmark_count = 0
     try:
         rule_id = repository.availability_rule_id(
-            HISTORICAL_EOD_RULE_KEY, HISTORICAL_MARKET_RULE_VERSION, "market_bar",
+            HISTORICAL_EOD_RULE_KEY, market_rule_version, "market_bar",
         )
         market_run = ledger.start_or_resume_run(
             cohort_code=CURRENT_SURVIVORS_COHORT, availability_rule_id=rule_id, data_domain="market_bar",
@@ -301,7 +315,7 @@ def execute_historical_market_chunks(
                     artifact_id = repository.persist_raw_artifact(artifact, ALPACA_BARS_URL)
                     persisted = repository.upsert_daily_bars(
                         bars, chunk.adjustment_basis, artifact_id, ALPACA_BARS_URL,
-                        lambda bar: historical_eod_available_at(bar.session_date), rule_id,
+                        lambda bar: bar_available_at(bar.session_date), rule_id,
                     )
                     chunk_bars += persisted
                     chunk_pages += 1
@@ -315,12 +329,12 @@ def execute_historical_market_chunks(
             bar_count += chunk_bars
         ledger.complete_run(market_run)
         benchmark_rule_id = repository.availability_rule_id(
-            HISTORICAL_EOD_RULE_KEY, HISTORICAL_BENCHMARK_RULE_VERSION, "benchmark_bar",
+            HISTORICAL_EOD_RULE_KEY, benchmark_rule_version, "benchmark_bar",
         )
         benchmark_chunks = tuple(
             HistoricalMarketChunk(period_start, period_end, ("SPY",), basis)
             for period_start, period_end in sorted({(chunk.start_date, chunk.end_date) for chunk in chunk_list})
-            for basis in ("unadjusted", "split_adjusted")
+            for basis in sorted({chunk.adjustment_basis for chunk in chunk_list})
         )
         benchmark_run = ledger.start_or_resume_run(
             cohort_code=CURRENT_SURVIVORS_COHORT, availability_rule_id=benchmark_rule_id, data_domain="benchmark_bar",
@@ -344,7 +358,7 @@ def execute_historical_market_chunks(
                     artifact_id = repository.persist_raw_artifact(artifact, ALPACA_BARS_URL)
                     persisted = repository.upsert_benchmark_daily_bars(
                         bars, "SPY", chunk.adjustment_basis, artifact_id, ALPACA_BARS_URL,
-                        lambda bar: historical_eod_available_at(bar.session_date), benchmark_rule_id,
+                        lambda bar: bar_available_at(bar.session_date), benchmark_rule_id,
                     )
                     chunk_bars += persisted
                     chunk_pages += 1

@@ -32,6 +32,7 @@ class ExecutionPeriod:
     benchmark_entry_price: Decimal
     benchmark_exit_price: Decimal
     corporate_action_security_ids: frozenset[str] = frozenset()
+    corporate_action_position_accounting: str = "not_verified"
 
 
 def _return_before_costs(security_ids: Iterable[str], period: ExecutionPeriod) -> Decimal:
@@ -39,7 +40,7 @@ def _return_before_costs(security_ids: Iterable[str], period: ExecutionPeriod) -
     if len(selected) != PORTFOLIO_SIZE or len(set(selected)) != PORTFOLIO_SIZE:
         raise DataQualityError(f"portfolio requires exactly {PORTFOLIO_SIZE} unique frozen selections")
     affected = sorted(set(selected) & period.corporate_action_security_ids)
-    if affected:
+    if affected and period.corporate_action_position_accounting != "provider_total_return_adjusted_prices":
         raise DataQualityError(
             "held corporate action requires position accounting: " + ", ".join(affected)
         )
@@ -141,6 +142,7 @@ def _parse_period(document: dict[str, object]) -> ExecutionPeriod:
             Decimal(str(document["benchmark_entry_price"])),
             Decimal(str(document["benchmark_exit_price"])),
             frozenset(str(value) for value in document.get("corporate_action_security_ids", [])),
+            str(document.get("corporate_action_position_accounting", "not_verified")),
         )
     except (KeyError, TypeError, ValueError) as error:
         raise DataQualityError("invalid execution-period input") from error
@@ -184,6 +186,11 @@ def evaluate_manifest(manifest: dict[str, object], periods: Iterable[ExecutionPe
         "formation_period_count": len(results),
         "periods": results,
         "cost_case_summaries_bps": summaries,
+        "corporate_action_position_accounting": (
+            "provider_total_return_adjusted_prices"
+            if all(period.corporate_action_position_accounting == "provider_total_return_adjusted_prices" for period in periods)
+            else "not_verified"
+        ),
     }
 
 

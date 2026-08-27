@@ -26,7 +26,9 @@ def evaluate_holdout_integrity(*, evaluation_document: dict[str, object], corpor
             "gate": "corporate_action_coverage",
             "reason": "No corporate-action records cover the raw-price holdout execution window; split/dividend position accounting cannot be verified.",
         })
-    elif evaluation_document.get("corporate_action_position_accounting") != "verified":
+    elif evaluation_document.get("corporate_action_position_accounting") not in {
+        "verified", "provider_total_return_adjusted_prices",
+    }:
         failures.append({
             "gate": "corporate_action_position_accounting",
             "reason": "Corporate-action records are available, but the saved raw-price evaluation does not contain verified split/dividend position accounting.",

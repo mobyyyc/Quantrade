@@ -53,6 +53,15 @@ class ExecutionCostEvaluationTests(unittest.TestCase):
                 period=ExecutionPeriod(missing.formation_date, missing.execution_date, missing.exit_date, entry, missing.exit_prices, missing.benchmark_entry_price, missing.benchmark_exit_price),
             )
 
+    def test_accepts_actions_when_provider_total_return_prices_account_for_them(self) -> None:
+        accounted = ExecutionPeriod(
+            period().formation_date, period().execution_date, period().exit_date,
+            period().entry_prices, period().exit_prices, Decimal("500"), Decimal("550"),
+            frozenset({"id-00"}), "provider_total_return_adjusted_prices",
+        )
+        result = evaluate_period(baseline_ids=IDS, candidate_ids=IDS, period=accounted)
+        self.assertEqual(result["baseline_gross_return"], "0.1")
+
     def test_manifest_cannot_rerank_or_accept_unknown_formation(self) -> None:
         result = evaluate_manifest(manifest(), (period(),))
         self.assertTrue(result["holdout_performance_evaluated"])
