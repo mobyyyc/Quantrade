@@ -20,6 +20,9 @@ from .universe_symbols import canonical_ticker
 
 
 _LOCK_KEY = 7_136_202_600_824
+_PROXY_VARIABLES = (
+    "ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "all_proxy", "http_proxy", "https_proxy",
+)
 
 
 def _symbols(database_url: str, score_date: date) -> list[str]:
@@ -195,9 +198,22 @@ def _published_score_summary(
     return row[0], int(row[1]), int(row[2])
 
 
-def _run(command: list[str], environment: dict[str, str]) -> str:
-    completed = subprocess.run(command, env=environment, check=True, text=True, capture_output=True)
+def _run(command: list[str], environment: dict[str, str], *, operation: str) -> str:
+    try:
+        completed = subprocess.run(command, env=environment, check=True, text=True, capture_output=True)
+    except subprocess.CalledProcessError as error:
+        output = "\n".join(part.strip() for part in (error.stdout, error.stderr) if part and part.strip())
+        detail = output[-1500:] if output else f"exit code {error.returncode}"
+        raise RuntimeError(f"{operation} failed: {detail}") from error
     return completed.stdout.strip()
+
+
+def _sec_network_environment(environment: dict[str, str]) -> dict[str, str]:
+    """Avoid inherited dead local proxies for SEC's direct public endpoints only."""
+    result = dict(environment)
+    for key in _PROXY_VARIABLES:
+        result.pop(key, None)
+    return result
 
 
 def main() -> None:
@@ -238,9 +254,11 @@ def main() -> None:
                 start = _catch_up_start(settings.database_url, score_date)
                 if start <= score_date:
                     _run([sys.executable, "-m", "quantrade_research.ingest_market_data", "--symbols", symbols,
-                          "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision], environment)
+                          "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision], environment,
+                         operation="market-data ingestion")
                     _run([sys.executable, "-m", "quantrade_research.ingest_benchmark_data", "--ticker", "SPY",
-                          "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision], environment)
+                          "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision], environment,
+                         operation="benchmark-data ingestion")
                 if not _has_current_benchmark_session(settings.database_url, score_date):
                     _set_skipped(connection, score_date, "No regular SPY session was returned for this date.")
                     print(f"skipped score_date={score_date}; no regular NYSE session")
@@ -250,10 +268,12 @@ def main() -> None:
                     _run([sys.executable, "-m", "quantrade_research.ingest_filings", "--ciks", ciks,
                           "--code-revision", revision, "--incremental",
                           "--daily-index-start-date", index_start_date.isoformat(),
-                          "--daily-index-end-date", score_date.isoformat()], environment)
+                          "--daily-index-end-date", score_date.isoformat()], _sec_network_environment(environment),
+                         operation="SEC filing ingestion")
                 decision_at = _set_decision_at(connection, score_date, retry_cutoff)
                 score_note = _run([sys.executable, "-m", "quantrade_research.score_run", "--score-date", score_date.isoformat(),
-                                   "--code-revision", revision, "--manual", "--decision-at", decision_at.isoformat()], environment)
+                                   "--code-revision", revision, "--manual", "--decision-at", decision_at.isoformat()], environment,
+                                  operation="score publication")
                 snapshot_text, eligible_text = score_note.split("; ")
                 snapshots, eligible = int(snapshot_text.split("=")[1]), int(eligible_text.split("=")[1])
             _set_completed(connection, score_date, snapshots, eligible)

@@ -15,6 +15,9 @@ function userFacingError(output: string): string {
   if (output.includes("already running")) {
     return "A daily update is already running. Keep this page open and try again when it finishes.";
   }
+  if (output.includes("SEC filing ingestion failed")) {
+    return "SEC filing retrieval did not complete. Check your internet connection, then try the update again; no duplicate scores will be created.";
+  }
   return "The daily update did not complete. Check the local research service logs for details.";
 }
 

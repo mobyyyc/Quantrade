@@ -17,7 +17,9 @@ from quantrade_research.sec_edgar import (
     parse_submissions,
     submission_history_names,
 )
-from quantrade_research.ingest_filings import _daily_index_candidates, _daily_index_dates, _new_accession_numbers
+from quantrade_research.ingest_filings import (
+    _daily_index_candidates, _daily_index_dates, _incremental_ciks_after_index, _new_accession_numbers,
+)
 
 
 class FilingParserTests(unittest.TestCase):
@@ -43,6 +45,13 @@ class FilingParserTests(unittest.TestCase):
         self.assertEqual(
             _new_accession_numbers(filings, {"0000320193-26-000001"}),
             ["0000320193-26-000002"],
+        )
+
+    def test_uses_full_universe_when_the_daily_index_is_unavailable(self) -> None:
+        requested = ["0000320193", "0001045810", "0001652044"]
+        self.assertEqual(
+            _incremental_ciks_after_index(requested, {"0000320193"}, ["2026-08-27:SEC returned HTTP 403"]),
+            sorted(requested),
         )
 
     def test_links_company_facts_to_submission_acceptance_metadata(self) -> None:

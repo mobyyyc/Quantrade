@@ -18,6 +18,7 @@ from .sec_edgar import (
     SUBMISSIONS_URL,
     SUBMISSION_HISTORY_URL,
     SecEdgarClient,
+    SecEdgarError,
     SecEdgarNotFoundError,
     merge_filings,
     parse_company_facts,
@@ -56,6 +57,13 @@ def _new_accession_numbers(filings, known_accessions: set[str]) -> list[str]:
 def _daily_index_candidates(ciks: list[str], index_ciks: set[str]) -> list[str]:
     """Return only current-universe CIKs that appear in the SEC's daily index."""
     return sorted(set(ciks).intersection(index_ciks))
+
+
+def _incremental_ciks_after_index(
+    requested_ciks: list[str], index_ciks: set[str], index_errors: list[str],
+) -> list[str]:
+    """Use the safe full-universe submissions fallback if the daily index is unavailable."""
+    return sorted(set(requested_ciks)) if index_errors else _daily_index_candidates(requested_ciks, index_ciks)
 
 
 def _daily_index_dates(start_date: date, end_date: date) -> list[date]:
@@ -106,13 +114,18 @@ def main() -> None:
     source_inputs: list[SourceInput] = []
     try:
         missing_index_dates: list[date] = []
+        index_errors: list[str] = []
         if arguments.daily_index_start_date:
             indexed_ciks: set[str] = set()
             for filing_date in _daily_index_dates(arguments.daily_index_start_date, arguments.daily_index_end_date):
                 try:
                     index_payload = client.fetch_daily_master_index(filing_date)
+                    index_records = parse_daily_master_index(index_payload)
                 except SecEdgarNotFoundError:
                     missing_index_dates.append(filing_date)
+                    continue
+                except SecEdgarError as error:
+                    index_errors.append(f"{filing_date.isoformat()}:{error}")
                     continue
                 index_retrieved_at = datetime.now(timezone.utc)
                 index_url = daily_master_index_url(filing_date)
@@ -123,9 +136,9 @@ def main() -> None:
                     raw_artifact_uris=(index_artifact.storage_uri,),
                 ))
                 indexed_ciks.update(
-                    record.cik for record in parse_daily_master_index(index_payload) if record.filed_on == filing_date
+                    record.cik for record in index_records if record.filed_on == filing_date
                 )
-            ciks = _daily_index_candidates(ciks, indexed_ciks)
+            ciks = _incremental_ciks_after_index(ciks, indexed_ciks, index_errors)
         for index, cik in enumerate(ciks):
             retrieved_at = datetime.now(timezone.utc)
             submissions_payload = client.fetch_submissions(cik)
@@ -191,6 +204,7 @@ def main() -> None:
               f"daily_index_start_date={arguments.daily_index_start_date.isoformat() if arguments.daily_index_start_date else 'none'}; "
               f"daily_index_end_date={arguments.daily_index_end_date.isoformat() if arguments.daily_index_end_date else 'none'}; "
               f"missing_daily_indexes={','.join(item.isoformat() for item in missing_index_dates) or 'none'}; "
+              f"daily_index_fallback={'full_universe_submissions' if index_errors else 'none'}; "
               f"history_included={arguments.include_history}; filing_availability=acceptance_timestamp"),
     )
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")
