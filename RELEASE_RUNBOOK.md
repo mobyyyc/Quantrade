@@ -5,7 +5,11 @@
 - `DATABASE_URL`, durable raw-artifact storage, and a durable manifest
   directory are configured locally or in the release environment.
 - The required database migrations are applied in order.
-- The approved model card and feature definitions match the intended score run.
+- The effective model card is `private_beta_approved`, its immutable approval
+  decision passes every required gate, and the latest deployment cites that
+  decision's exact URI and SHA-256 digest.
+- The active artifact bytes, feature registry, and model version match their
+  immutable registry records.
 - The web application and research service use the same normalized database.
 
 ## Release gate

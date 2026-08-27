@@ -21,7 +21,9 @@ The empirical 10th-to-90th percentile error range around raw monthly basket outp
 - Lower residual: −6.12 percentage points.
 - Upper residual: +5.96 percentage points.
 
-The product labels the value as raw model output, displays this development error range, and states that the range is not a confidence interval or guarantee.
+The Research page retains this development diagnostic. The monthly basket does
+not present the raw output as an expected return; it reports only completed
+realized basket and SPY outcomes from the preceding official portfolio.
 
 ## Limitations
 

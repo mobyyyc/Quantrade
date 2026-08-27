@@ -70,7 +70,7 @@ Each item is intended to fit a focused development session. A negative research 
 - [x] P8.2: align the visible model basket with the documented monthly formation and next-open execution protocol.
 - [x] P8.3: add development-derived prediction uncertainty and calibration context without using the consumed holdout for fitting.
 - [x] P8.3a: replace user-facing basket forecasts with the preceding official basket's realized 20-session return beside SPY.
-- [ ] P8.4: synchronize model cards and governance records with the active private-beta deployment.
+- [x] P8.4: synchronize model cards and governance records with the active private-beta deployment.
 
 ## Phase 9: next-generation model research
 

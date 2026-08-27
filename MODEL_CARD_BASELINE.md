@@ -2,8 +2,10 @@
 
 ## Status
 
-**Research-only.** This baseline has not been run against the locked final
-holdout and is not approved for public performance claims or investment use.
+**Research-only comparator. Not active.** This baseline was evaluated once in
+the shared locked-holdout comparison. It underperformed SPY after the required
+20-bps sensitivity and is not approved for private-beta deployment, public
+performance claims, or investment use.
 
 ## Purpose
 
@@ -29,5 +31,5 @@ or a return forecast.
   checks; a failed check blocks the score rather than being repaired silently.
 - The model has no learned weights. Ridge and elastic-net candidates may only be
   compared after this baseline passes the private-beta approval gates.
-- The locked final holdout is 2025-07-01 through 2026-06-30 and may be evaluated
-  once after pre-holdout model selection is finalized.
+- The final holdout, 2025-07-01 through 2026-06-30, is consumed. Its result may
+  be reported but cannot be used to tune or retry this baseline.

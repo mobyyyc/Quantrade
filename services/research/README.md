@@ -374,8 +374,31 @@ python -m quantrade_research.register_research_model \
   --artifact data/derived/model-artifacts/tier_b_regularized_linear_development_v1.json
 ```
 
-The next explicit model task will build a separate, dated paper-tracking path
-that references this artifact. It must not silently change baseline rankings.
+This artifact was initially registered as research-only. Its later approval and
+deployment are recorded separately so the original freeze record remains intact.
+
+## Private-beta approval reconciliation
+
+The frozen artifact can receive an append-only private-beta decision only after
+the development experiment, training manifest, holdout selection, completed
+cost evaluation, and integrity audit form one matching hash chain. The command
+applies the fixed approval policy, records the decision, and appends a corrected
+deployment event without rewriting the original research-only model card:
+
+```bash
+python -m quantrade_research.approve_private_beta_model \
+  --model-artifact data/derived/model-artifacts/tier_b_regularized_linear_development_v1.json \
+  --experiment data/derived/experiments/tier_b_regularized_linear_development_v1.json \
+  --training-manifest data/derived/training/sp500_current_survivors_20d_v1.json \
+  --holdout-selection data/derived/holdout/tier_b_regularized_linear_holdout_selection_v1.json \
+  --holdout-evaluation data/derived/holdout/tier_b_regularized_linear_holdout_evaluation_total_return_v1.json \
+  --integrity-audit data/derived/holdout/tier_b_regularized_linear_holdout_integrity_audit_total_return_v1.json \
+  --decision data/derived/governance/tier_b_regularized_linear_private_beta_approval_v1.json
+```
+
+New deployment events are rejected unless the evidence URI and digest match an
+approved immutable decision. The original premature deployment remains in the
+append-only audit history but is superseded by the corrected event.
 
 ## End-of-day score generation
 

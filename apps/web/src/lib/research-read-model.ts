@@ -327,22 +327,37 @@ export async function getScoreHistory(
 
 export async function getModelCard(modelVersion: string): Promise<ModelCard | null> {
   const result = await databasePool().query(
-    `SELECT model_version, status, protocol_version, feature_registry_hash, data_capability_tier,
-            created_at, purpose, methodology, limitations, evaluation_uri
-     FROM quantrade.model_cards
-     WHERE model_version = $1`,
+    `SELECT card.model_version,
+            CASE WHEN decision.approved THEN 'private_beta_approved' ELSE card.status END AS status,
+            card.protocol_version, card.feature_registry_hash, card.data_capability_tier,
+            card.created_at, card.purpose, card.methodology, card.limitations,
+            COALESCE(decision.decision_uri, card.evaluation_uri) AS evaluation_uri
+     FROM quantrade.model_cards card
+     LEFT JOIN quantrade.model_approval_decisions decision
+       ON decision.model_version = card.model_version
+      AND decision.approval_scope = 'private_beta'
+     WHERE card.model_version = $1`,
     [modelVersion],
   );
   if (result.rowCount === 0) {
     return null;
   }
   const row = result.rows[0] as Record<string, unknown>;
-  const limitations = Array.isArray(row.limitations)
+  const storedLimitations = Array.isArray(row.limitations)
     ? row.limitations.map(String)
     : JSON.parse(String(row.limitations)) as string[];
+  const status = row.status as ModelCard["status"];
+  const limitations = status === "private_beta_approved"
+    ? [
+        "Private Tier-B research only; not an unbiased historical-performance or public-performance approval.",
+        ...storedLimitations.filter((limitation) => !limitation.startsWith("Research-only:")),
+        "The locked holdout is consumed and cannot be reused for tuning or calibration.",
+        "Approval does not guarantee that future stocks or baskets will outperform SPY.",
+      ]
+    : storedLimitations;
   return {
     modelVersion: String(row.model_version),
-    status: row.status as ModelCard["status"],
+    status,
     protocolVersion: String(row.protocol_version),
     featureRegistryHash: String(row.feature_registry_hash),
     dataCapabilityTier: row.data_capability_tier as ModelCard["dataCapabilityTier"],
@@ -356,17 +371,32 @@ export async function getModelCard(modelVersion: string): Promise<ModelCard | nu
 
 export async function getActiveModelCard(): Promise<ModelCard | null> {
   const result = await databasePool().query(
-    `SELECT card.model_version, card.status, card.protocol_version, card.feature_registry_hash, card.data_capability_tier,
-            card.created_at, card.purpose, card.methodology, card.limitations, card.evaluation_uri
+    `SELECT card.model_version,
+            CASE WHEN decision.approved THEN 'private_beta_approved' ELSE card.status END AS status,
+            card.protocol_version, card.feature_registry_hash, card.data_capability_tier,
+            card.created_at, card.purpose, card.methodology, card.limitations,
+            COALESCE(decision.decision_uri, card.evaluation_uri) AS evaluation_uri
      FROM quantrade.model_deployments deployment
      JOIN quantrade.model_cards card ON card.model_version = deployment.model_version
+     LEFT JOIN quantrade.model_approval_decisions decision
+       ON decision.model_version = card.model_version
+      AND decision.approval_scope = deployment.approval_scope
      ORDER BY deployment.deployed_at DESC LIMIT 1`,
   );
   if (result.rowCount === 0) return null;
   const row = result.rows[0] as Record<string, unknown>;
-  const limitations = Array.isArray(row.limitations) ? row.limitations.map(String) : JSON.parse(String(row.limitations)) as string[];
+  const storedLimitations = Array.isArray(row.limitations) ? row.limitations.map(String) : JSON.parse(String(row.limitations)) as string[];
+  const status = row.status as ModelCard["status"];
+  const limitations = status === "private_beta_approved"
+    ? [
+        "Private Tier-B research only; not an unbiased historical-performance or public-performance approval.",
+        ...storedLimitations.filter((limitation) => !limitation.startsWith("Research-only:")),
+        "The locked holdout is consumed and cannot be reused for tuning or calibration.",
+        "Approval does not guarantee that future stocks or baskets will outperform SPY.",
+      ]
+    : storedLimitations;
   return {
-    modelVersion: String(row.model_version), status: "private_beta_approved",
+    modelVersion: String(row.model_version), status,
     protocolVersion: String(row.protocol_version), featureRegistryHash: String(row.feature_registry_hash),
     dataCapabilityTier: row.data_capability_tier as ModelCard["dataCapabilityTier"], createdAt: new Date(String(row.created_at)).toISOString(),
     purpose: String(row.purpose), methodology: String(row.methodology), limitations,

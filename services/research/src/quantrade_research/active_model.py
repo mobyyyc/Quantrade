@@ -83,9 +83,29 @@ def deploy_model(*, database_url: str, model_version: str, approval_evidence_uri
     import psycopg
 
     with psycopg.connect(database_url) as connection, connection.cursor() as cursor:
-        cursor.execute("SELECT 1 FROM quantrade.model_artifacts WHERE model_version = %s", (model_version,))
-        if cursor.fetchone() is None:
-            raise DataQualityError(f"model artifact is not registered: {model_version}")
+        cursor.execute(
+            """SELECT decision.decision_uri, decision.decision_sha256
+               FROM quantrade.model_artifacts artifact
+               JOIN quantrade.model_approval_decisions decision
+                 ON decision.model_version = artifact.model_version
+                AND decision.approval_scope = 'private_beta'
+                AND decision.approved
+               WHERE artifact.model_version = %s""",
+            (model_version,),
+        )
+        decision = cursor.fetchone()
+        if decision is None:
+            raise DataQualityError(f"model lacks an approved private-beta governance decision: {model_version}")
+        decision_uri, expected_hash = (str(value) for value in decision)
+        if approval_evidence_uri != decision_uri:
+            raise DataQualityError("deployment evidence does not match the approved governance decision")
+        evidence_path = _path_from_file_uri(decision_uri)
+        try:
+            evidence_hash = sha256(evidence_path.read_bytes()).hexdigest()
+        except OSError as error:
+            raise DataQualityError("approved governance decision is unreadable") from error
+        if evidence_hash != expected_hash:
+            raise DataQualityError("approved governance decision does not match its immutable registry record")
         cursor.execute(
             """INSERT INTO quantrade.model_deployments
                    (model_version, approval_scope, approval_evidence_uri, deployed_by)

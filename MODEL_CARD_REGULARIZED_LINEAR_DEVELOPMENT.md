@@ -2,9 +2,10 @@
 
 ## Status
 
-**Development-only research result. Not approved, not deployed, and not
-evaluated on the locked holdout.** It must not influence the daily Quantrade
-score, rankings, portfolio choices, or any performance claim.
+**Frozen source model. Private-beta approved through a separate immutable
+decision.** This original card remains `research_only` so its development-time
+state is not rewritten. The effective lifecycle status comes from the linked
+private-beta approval decision and corrected deployment event.
 
 ## Purpose
 
@@ -57,23 +58,21 @@ small and must not be over-interpreted.
 
 - This is a current-survivors Tier-B dataset; delisted companies and historical
   membership changes are absent.
-- The model has not undergone the required like-for-like comparison against an
-  approved `baseline_equal_weight_v1`.
-- No transaction-cost, liquidity, portfolio-construction, or holdout diagnostic
-  has been run for this model.
-- The final development fit is stored only as a research artifact. It is not a
-  production inference artifact.
+- The like-for-like holdout comparison and 1/5/10/20-bps cost sensitivities are
+  complete. The 20-bps candidate result passed the private-beta cost gate.
+- Holdout integrity passed using provider total-return-adjusted prices and the
+  recorded corporate-action coverage audit.
+- The final development artifact is the active private-beta inference artifact;
+  its bytes and SHA-256 digest remain unchanged.
+- Approval is Tier B and private only. It is not an unbiased historical result,
+  a public-performance approval, an expected-return calibration, or a guarantee.
 
 ## Required next gates
 
-1. Freeze this model specification and the feature schema.
-2. Use the committed `REGULARIZED_MODEL_COMPARISON_PROTOCOL.md` like-for-like
-   baseline comparison and portfolio mapping without reading the final holdout.
-3. Perform the single locked-holdout evaluation only after the review approves
-   that frozen protocol.
-4. Apply the approval policy, including point-in-time, coverage, liquidity, and
-   20-bps cost-sensitivity gates. Tier B can never authorize a public
-   performance claim.
+The frozen specification, shared comparison, single holdout evaluation,
+integrity audit, and private-beta policy review are complete. Future work uses
+new forward paper outcomes or a separately pre-registered challenger. The
+consumed holdout cannot be reopened for tuning.
 
 ## Reproducibility record
 
@@ -81,3 +80,6 @@ The local immutable result is
 `data/derived/experiments/tier_b_regularized_linear_development_v1.json`; the
 append-only database experiment key is
 `tier_b_regularized_linear_development_v1`.
+
+The effective approval record is
+`data/derived/governance/tier_b_regularized_linear_private_beta_approval_v1.json`.

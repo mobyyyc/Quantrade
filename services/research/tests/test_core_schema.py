@@ -169,6 +169,15 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("monthly_formation_count INTEGER NOT NULL", sql)
         self.assertIn("model_prediction_contexts_immutable", sql)
 
+    def test_model_approvals_are_immutable_and_required_for_new_deployments(self) -> None:
+        migration = MIGRATION.with_name("0026_add_model_approval_decisions.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.model_approval_decisions", sql)
+        self.assertIn("model_approval_decisions_immutable", sql)
+        self.assertIn("DROP CONSTRAINT model_deployments_model_version_key", sql)
+        self.assertIn("model_deployments_require_approval", sql)
+        self.assertIn("matching approved governance decision", sql)
+
     def test_forward_readiness_snapshots_are_compact_and_immutable(self) -> None:
         migration = MIGRATION.with_name("0020_add_forward_readiness_snapshots.sql")
         sql = migration.read_text(encoding="utf-8")

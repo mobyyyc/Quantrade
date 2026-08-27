@@ -2,13 +2,12 @@
 
 ## Status and boundary
 
-This plan is pre-registered before any holdout rows are read for the
-regularized-linear candidate. The final holdout is locked from 2025-07-01
-through 2026-06-30, inclusive, under `tier_b_20d_v1`.
+This is the preserved pre-registration for the one completed holdout review.
+The final holdout was 2025-07-01 through 2026-06-30, inclusive, under
+`tier_b_20d_v1`, and is now consumed.
 
-Do not execute this plan until the baseline-comparison protocol is frozen and
-explicitly approved. The holdout may be evaluated once; it cannot be reused for
-feature changes, hyperparameter selection, or retrying a failed gate.
+Do not execute this plan again. The holdout cannot be reused for feature
+changes, hyperparameter selection, calibration, or retrying a failed gate.
 
 ## Frozen candidate
 
