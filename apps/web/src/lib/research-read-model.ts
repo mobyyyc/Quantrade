@@ -52,12 +52,26 @@ export type PaperPortfolioOutcome = {
   unavailableReason?: string;
 };
 
+export type PredictionContext = {
+  modelVersion: string;
+  calibrationStatus: "supported" | "unsupported_nonpositive_slope";
+  calibrationIntercept?: string;
+  calibrationSlope?: string;
+  residualLowerQuantile: string;
+  residualUpperQuantile: string;
+  developmentValidationStart: string;
+  developmentValidationEnd: string;
+  validationExampleCount: number;
+  monthlyFormationCount: number;
+};
+
 export type PaperPortfolio = {
   scoreDate: string;
   executionDate: string;
   startingNav: string;
   modelVersion: string;
   formationProtocol: "monthly_last_session_next_open_v1";
+  predictionContext?: PredictionContext;
   positions: Array<{
     securityId: string;
     ticker: string;
@@ -466,14 +480,53 @@ export async function getForwardOutcomeReadiness(): Promise<ForwardOutcomeReadin
   }));
 }
 
+function predictionContextFromRow(row: Record<string, unknown>): PredictionContext | undefined {
+  if (!row.context_model_version) return undefined;
+  return {
+    modelVersion: String(row.context_model_version),
+    calibrationStatus: row.calibration_status as PredictionContext["calibrationStatus"],
+    ...(row.calibration_intercept === null ? {} : { calibrationIntercept: String(row.calibration_intercept) }),
+    ...(row.calibration_slope === null ? {} : { calibrationSlope: String(row.calibration_slope) }),
+    residualLowerQuantile: String(row.residual_lower_quantile),
+    residualUpperQuantile: String(row.residual_upper_quantile),
+    developmentValidationStart: String(row.development_validation_start),
+    developmentValidationEnd: String(row.development_validation_end),
+    validationExampleCount: Number(row.validation_example_count),
+    monthlyFormationCount: Number(row.monthly_formation_count),
+  };
+}
+
+export async function getActivePredictionContext(): Promise<PredictionContext | null> {
+  const result = await databasePool().query(
+    `SELECT context.model_version AS context_model_version, context.calibration_status,
+            context.calibration_intercept, context.calibration_slope,
+            context.residual_lower_quantile, context.residual_upper_quantile,
+            context.development_validation_start::text, context.development_validation_end::text,
+            context.validation_example_count, context.monthly_formation_count
+     FROM quantrade.model_deployments deployment
+     JOIN quantrade.model_prediction_contexts context
+       ON context.model_version = deployment.model_version
+     ORDER BY deployment.deployed_at DESC
+     LIMIT 1`,
+  );
+  return result.rowCount ? predictionContextFromRow(result.rows[0]) ?? null : null;
+}
+
 export async function getLatestPaperPortfolio(throughScoreDate?: string): Promise<PaperPortfolio | null> {
   const result = await databasePool().query(
     `SELECT paper_portfolio_run_id, score_date::text, execution_date::text, starting_nav,
-            model_version, formation_protocol
-     FROM quantrade.paper_portfolio_runs
-     WHERE formation_protocol = 'monthly_last_session_next_open_v1'
-       AND ($1::date IS NULL OR score_date <= $1::date)
-     ORDER BY score_date DESC
+            portfolio.model_version, formation_protocol,
+            context.model_version AS context_model_version, context.calibration_status,
+            context.calibration_intercept, context.calibration_slope,
+            context.residual_lower_quantile, context.residual_upper_quantile,
+            context.development_validation_start::text, context.development_validation_end::text,
+            context.validation_example_count, context.monthly_formation_count
+     FROM quantrade.paper_portfolio_runs portfolio
+     LEFT JOIN quantrade.model_prediction_contexts context
+       ON context.model_version = portfolio.model_version
+     WHERE portfolio.formation_protocol = 'monthly_last_session_next_open_v1'
+       AND ($1::date IS NULL OR portfolio.score_date <= $1::date)
+     ORDER BY portfolio.score_date DESC
      LIMIT 1`,
     [throughScoreDate ?? null],
   );
@@ -515,12 +568,14 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
      ORDER BY horizon_sessions ASC`,
     [row.paper_portfolio_run_id],
   );
+  const predictionContext = predictionContextFromRow(row);
   return {
     scoreDate: String(row.score_date),
     executionDate: String(row.execution_date),
     startingNav: String(row.starting_nav),
     modelVersion: String(row.model_version),
     formationProtocol: "monthly_last_session_next_open_v1",
+    ...(predictionContext ? { predictionContext } : {}),
     positions: positions.rows.map((item) => ({
       securityId: String(item.security_id),
       ticker: item.ticker ? String(item.ticker) : "Unavailable",

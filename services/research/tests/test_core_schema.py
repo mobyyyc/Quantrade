@@ -160,6 +160,15 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("monthly_last_session_next_open_v1", sql)
         self.assertIn("paper_portfolio_runs_official_monthly_idx", sql)
 
+    def test_model_prediction_context_is_development_only_and_immutable(self) -> None:
+        migration = MIGRATION.with_name("0025_add_model_prediction_contexts.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.model_prediction_contexts", sql)
+        self.assertIn("holdout_used BOOLEAN NOT NULL CHECK (holdout_used = FALSE)", sql)
+        self.assertIn("unsupported_nonpositive_slope", sql)
+        self.assertIn("monthly_formation_count INTEGER NOT NULL", sql)
+        self.assertIn("model_prediction_contexts_immutable", sql)
+
     def test_forward_readiness_snapshots_are_compact_and_immutable(self) -> None:
         migration = MIGRATION.with_name("0020_add_forward_readiness_snapshots.sql")
         sql = migration.read_text(encoding="utf-8")

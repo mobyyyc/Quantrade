@@ -39,6 +39,12 @@ export function formatRelativeReturn(value: string | number): string {
   return `${percentage >= 0 ? "+" : "−"}${Math.abs(percentage).toFixed(2)}%`;
 }
 
+export function formatPercentagePoints(value: string | number): string {
+  const percentage = Number(value) * 100;
+  if (!Number.isFinite(percentage)) return "Unavailable";
+  return `${percentage >= 0 ? "+" : "−"}${Math.abs(percentage).toFixed(2)} pp`;
+}
+
 export function formatIssuerName(value: string): string {
   if (value !== value.toLocaleUpperCase("en-US")) {
     return value;

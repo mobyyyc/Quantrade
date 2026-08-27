@@ -114,6 +114,7 @@ progressive-disclosure sections.
 - The model portfolio is a separate monthly object: the top 20 eligible active-model names from the final market session of a completed calendar month, equally weighted and recorded at the next regular-session open.
 - Portfolio copy must show both the formation date and execution date, and state that holdings remain fixed until the next scheduled monthly formation.
 - Never derive the visible model portfolio from whichever daily ranking happens to be on screen.
+- Forecast percentages must distinguish raw model output from a calibrated estimate. When development validation does not support calibration, say so directly and show an empirical development error range without presenting it as a confidence guarantee.
 
 ## Do's and Don'ts
 
