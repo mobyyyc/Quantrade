@@ -199,6 +199,7 @@ export async function listDatedScores(scoreDate: string): Promise<DatedScore[]> 
        LIMIT 1
      ) l ON TRUE
      WHERE ss.score_date = $1
+       AND ss.model_version = (SELECT model_version FROM quantrade.model_deployments ORDER BY deployed_at DESC LIMIT 1)
      ORDER BY ss.eligible DESC, ss.rank ASC NULLS LAST, ss.security_id ASC`,
     [scoreDate],
   );
@@ -229,6 +230,7 @@ export async function getDatedScore(
        LIMIT 1
      ) l ON TRUE
      WHERE ss.security_id = $1 AND ss.score_date = $2
+       AND ss.model_version = (SELECT model_version FROM quantrade.model_deployments ORDER BY deployed_at DESC LIMIT 1)
      ORDER BY ss.decision_at DESC
      LIMIT 1`,
     [securityId, scoreDate],
@@ -251,6 +253,7 @@ export async function getScoreHistory(
          AND run.decision_at = ss.decision_at
          AND run.status = 'completed'
         WHERE ss.security_id = $1
+          AND ss.model_version = (SELECT model_version FROM quantrade.model_deployments ORDER BY deployed_at DESC LIMIT 1)
           AND ss.score_date <= $2
           AND ss.eligible
         ORDER BY ss.score_date DESC
@@ -291,6 +294,26 @@ export async function getModelCard(modelVersion: string): Promise<ModelCard | nu
     purpose: String(row.purpose),
     methodology: String(row.methodology),
     limitations,
+    ...(row.evaluation_uri ? { evaluationUri: String(row.evaluation_uri) } : {}),
+  };
+}
+
+export async function getActiveModelCard(): Promise<ModelCard | null> {
+  const result = await databasePool().query(
+    `SELECT card.model_version, card.status, card.protocol_version, card.feature_registry_hash, card.data_capability_tier,
+            card.created_at, card.purpose, card.methodology, card.limitations, card.evaluation_uri
+     FROM quantrade.model_deployments deployment
+     JOIN quantrade.model_cards card ON card.model_version = deployment.model_version
+     ORDER BY deployment.deployed_at DESC LIMIT 1`,
+  );
+  if (result.rowCount === 0) return null;
+  const row = result.rows[0] as Record<string, unknown>;
+  const limitations = Array.isArray(row.limitations) ? row.limitations.map(String) : JSON.parse(String(row.limitations)) as string[];
+  return {
+    modelVersion: String(row.model_version), status: "private_beta_approved",
+    protocolVersion: String(row.protocol_version), featureRegistryHash: String(row.feature_registry_hash),
+    dataCapabilityTier: row.data_capability_tier as ModelCard["dataCapabilityTier"], createdAt: new Date(String(row.created_at)).toISOString(),
+    purpose: String(row.purpose), methodology: String(row.methodology), limitations,
     ...(row.evaluation_uri ? { evaluationUri: String(row.evaluation_uri) } : {}),
   };
 }

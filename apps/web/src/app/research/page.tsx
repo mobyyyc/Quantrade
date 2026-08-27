@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { formatPublicationTime, formatResearchDate } from "@/lib/format";
-import { getDailyOperationsStatus, getForwardOutcomeReadiness, getLatestDatedScores, getLatestPaperPortfolio, getModelCard, getRecentScoreRuns, ML_DATASET_MINIMUM_COMPLETED_LABELS, ML_DATASET_MINIMUM_SCORE_DATES, ResearchReadModelError, type DailyOperationRunStatus, type DailyOperationsStatus, type DatedScore, type ForwardOutcomeReadiness, type ScoreRunSummary } from "@/lib/research-read-model";
+import { getActiveModelCard, getDailyOperationsStatus, getForwardOutcomeReadiness, getLatestDatedScores, getLatestPaperPortfolio, getRecentScoreRuns, ML_DATASET_MINIMUM_COMPLETED_LABELS, ML_DATASET_MINIMUM_SCORE_DATES, ResearchReadModelError, type DailyOperationRunStatus, type DailyOperationsStatus, type DatedScore, type ForwardOutcomeReadiness, type ScoreRunSummary } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +55,7 @@ export default async function ResearchPage() {
   let unavailable = false;
   try {
     [card, portfolio, latestScores, recentRuns, forwardReadiness, operations] = await Promise.all([
-      getModelCard("baseline_equal_weight_v1"),
+      getActiveModelCard(),
       getLatestPaperPortfolio(),
       getLatestDatedScores(),
       getRecentScoreRuns(),

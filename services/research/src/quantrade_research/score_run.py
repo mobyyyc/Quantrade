@@ -17,9 +17,8 @@ from pathlib import Path
 from typing import Callable, Iterable
 from zoneinfo import ZoneInfo
 
-from .baseline import build_equal_weight_baseline
+from .active_model import load_active_model
 from .config import Settings
-from .explanations import BaselineFeatureContribution, build_baseline_feature_contributions
 from .feature_diagnostics import FeatureOutcome
 from .features import FeatureRegistry, baseline_feature_registry
 from .fundamentals import (
@@ -33,6 +32,7 @@ from .momentum import (
     calculate_momentum_12_1,
     calculate_relative_strength_6m,
 )
+from .ml_scoring import ModelFeatureContribution, build_model_feature_contributions, build_model_scores
 from .quality import DataQualityError
 from .ranking import SectorClassification, build_sector_aware_percentile_ranks
 from .risk_liquidity import calculate_median_dollar_volume_20d, calculate_trailing_volatility_60d
@@ -254,7 +254,7 @@ def _source_inputs(connection, snapshot_id: str, security_ids: Iterable[str], fo
     )
 
 
-def _persist_explanations(database_url: str, snapshots, contributions: Iterable[BaselineFeatureContribution]) -> int:
+def _persist_explanations(database_url: str, snapshots, contributions: Iterable[ModelFeatureContribution]) -> int:
     snapshot_ids = {snapshot.security_id: snapshot for snapshot in snapshots}
     inserted = 0
     import psycopg
@@ -287,7 +287,7 @@ def run_score_generation(*, settings: Settings, score_date: date, universe_code:
                          code_revision: str, manual: bool = False,
                          decision_at: datetime | None = None,
                          research_cohort_code: str | None = None) -> tuple[int, int]:
-    """Calculate, rank, persist, and explain one valid end-of-day baseline run."""
+    """Calculate, rank, persist, and explain one active end-of-day model run."""
     settings.require_runtime_storage()
     assert settings.database_url is not None and settings.raw_artifacts_uri is not None
     decision_at = decision_at or (datetime.now(TORONTO) if manual else _decision_at(score_date))
@@ -320,7 +320,11 @@ def run_score_generation(*, settings: Settings, score_date: date, universe_code:
         universe_security_ids=security_ids, registry=registry,
         allow_static_tier_b_grouping=research_cohort_code is not None,
     )
-    scores = build_equal_weight_baseline(ranks, formation_date=score_date, universe_security_ids=security_ids, registry=registry)
+    model = load_active_model(settings.database_url)
+    scores = build_model_scores(
+        ranks=ranks, formation_date=score_date, universe_security_ids=security_ids,
+        registry=registry, model=model,
+    )
     repository = PostgresScoreSnapshotRepository(settings.database_url)
     try:
         snapshots = generate_end_of_day_scores(scores, repository, score_date=score_date, decision_at=decision_at,
@@ -328,16 +332,19 @@ def run_score_generation(*, settings: Settings, score_date: date, universe_code:
                                                data_capability_tier="B", manual=manual)
     finally:
         repository.close()
-    contributions = build_baseline_feature_contributions(scores, ranks, formation_date=score_date, universe_security_ids=security_ids, registry=registry)
+    contributions = build_model_feature_contributions(
+        ranks=ranks, formation_date=score_date, universe_security_ids=security_ids,
+        registry=registry, model=model,
+    )
     explanation_count = _persist_explanations(settings.database_url, snapshots, contributions)
     cohort_note = f"; research_cohort={research_cohort_code}; survivorship_biased=true; static_sector_grouping=true" if research_cohort_code else ""
-    manifest = RunManifest.create(settings=settings, run_kind="score", code_revision=code_revision, data_capability_tier="B", decision_at=decision_at, status="completed", source_inputs=source_inputs, note=f"universe={universe_code}; securities={len(security_ids)}; eligible={sum(score.eligible for score in scores)}; explanations_inserted={explanation_count}; benchmark={benchmark_ticker}{cohort_note}")
+    manifest = RunManifest.create(settings=settings, run_kind="score", code_revision=code_revision, data_capability_tier="B", decision_at=decision_at, status="completed", source_inputs=source_inputs, note=f"model={model.model_version}; universe={universe_code}; securities={len(security_ids)}; eligible={sum(score.eligible for score in scores)}; explanations_inserted={explanation_count}; benchmark={benchmark_ticker}{cohort_note}")
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")
     return len(snapshots), sum(score.eligible for score in scores)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate one point-in-time baseline score snapshot")
+    parser = argparse.ArgumentParser(description="Generate one point-in-time active-model score snapshot")
     parser.add_argument("--score-date", type=date.fromisoformat, required=True)
     parser.add_argument("--universe-code", default="sp500")
     parser.add_argument("--benchmark-ticker", default="SPY")

@@ -79,7 +79,7 @@ class PostgresScoreSnapshotRepository:
     def get(self, identity: tuple[str, datetime, str, str, str]) -> GeneratedScoreSnapshot | None:
         with self._connection.cursor() as cursor:
             cursor.execute(
-                """SELECT security_id, score_date, decision_at, published_at, score, rank, eligible, signal,
+                """SELECT security_id::text, score_date, decision_at, published_at, score, rank, eligible, signal,
                           model_version, feature_version, protocol_version, data_cutoff_at,
                           data_capability_tier, unavailable_reason
                    FROM quantrade.score_snapshots
@@ -179,7 +179,14 @@ def generate_end_of_day_scores(
         existing = repository.get(snapshot.identity())
         if existing is not None:
             if existing != snapshot:
-                raise DataQualityError(f"conflicting score snapshot already exists for {snapshot.security_id}")
+                different = [
+                    field for field in GeneratedScoreSnapshot.__dataclass_fields__
+                    if getattr(existing, field) != getattr(snapshot, field)
+                ]
+                raise DataQualityError(
+                    f"conflicting score snapshot already exists for {snapshot.security_id}: "
+                    + ",".join(different)
+                )
             snapshots.append(existing)
             continue
         if repository.insert_if_absent(snapshot):
