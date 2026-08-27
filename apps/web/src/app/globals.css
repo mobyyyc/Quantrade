@@ -164,6 +164,8 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .research-basket-summary { display: grid; grid-template-columns: auto auto; gap: .08rem .55rem; align-items: baseline; text-align: right; }
 .research-basket-summary > span { color: var(--muted); font-size: .72rem; }
 .research-basket-summary > strong { color: var(--foreground); font-size: 1.12rem; letter-spacing: -.035em; }
+.research-basket-summary > strong.positive-change, .research-basket-prediction strong.positive-change { color: var(--positive); }
+.research-basket-summary > strong.negative-change, .research-basket-prediction strong.negative-change { color: var(--negative); }
 .research-basket-summary > small { grid-column: 1 / -1; color: var(--subtle); font-size: .7rem; }
 .research-basket-context { display: flex; justify-content: space-between; gap: 2rem; margin-top: 1rem; }
 .research-basket-context p { max-width: 43rem; margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.55; }

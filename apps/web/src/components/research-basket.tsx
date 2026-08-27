@@ -4,6 +4,14 @@ import type { DatedScore } from "@/lib/research-read-model";
 
 const BASKET_SIZE = 20;
 
+function predictionDirection(value: string | number | undefined): "positive-change" | "negative-change" | undefined {
+  if (value === undefined) return undefined;
+  const prediction = Number(value);
+  if (prediction > 0) return "positive-change";
+  if (prediction < 0) return "negative-change";
+  return undefined;
+}
+
 export function ResearchBasket({
   scores,
   scoreDate,
@@ -31,7 +39,7 @@ export function ResearchBasket({
           <h2 id={titleId}>20-session research basket</h2>
         </div>
         <div className="research-basket-summary">
-          {basketPrediction === undefined ? <span>Estimate unavailable</span> : <><span>Estimated basket return vs SPY</span><strong>{formatRelativeReturn(basketPrediction)}</strong></>}
+          {basketPrediction === undefined ? <span>Estimate unavailable</span> : <><span>Estimated basket return vs SPY</span><strong className={predictionDirection(basketPrediction)}>{formatRelativeReturn(basketPrediction)}</strong></>}
           <small>20 trading sessions</small>
         </div>
       </div>
@@ -55,7 +63,7 @@ export function ResearchBasket({
                 <span>{formatIssuerName(score.issuerName)}</span>
               </span>
               <span className="research-basket-prediction">
-                <strong>{score.predictedBenchmarkRelativeReturn ? formatRelativeReturn(score.predictedBenchmarkRelativeReturn) : "Unavailable"}</strong>
+                <strong className={predictionDirection(score.predictedBenchmarkRelativeReturn)}>{score.predictedBenchmarkRelativeReturn ? formatRelativeReturn(score.predictedBenchmarkRelativeReturn) : "Unavailable"}</strong>
                 <small>est. vs SPY</small>
               </span>
               <span className="research-basket-score">{formatScore(score.score)}<small>/100</small></span>
