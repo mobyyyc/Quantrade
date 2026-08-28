@@ -267,6 +267,7 @@ def main() -> None:
                     index_start_date = _sec_index_start_date(connection, score_date)
                     _run([sys.executable, "-m", "quantrade_research.ingest_filings", "--ciks", ciks,
                           "--code-revision", revision, "--incremental",
+                          "--compact-receipts",
                           "--daily-index-start-date", index_start_date.isoformat(),
                           "--daily-index-end-date", score_date.isoformat()], _sec_network_environment(environment),
                          operation="SEC filing ingestion")

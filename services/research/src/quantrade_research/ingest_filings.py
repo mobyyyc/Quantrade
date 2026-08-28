@@ -8,7 +8,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 import time
 
-from .filings import PostgresFilingRepository, persist_sec_filings
+from .filings import PostgresFilingRepository, StoredSource, persist_sec_filings
 from .ingest_security_master import _file_path_from_uri
 from .run_manifest import RunManifest, SourceInput
 from .sec_edgar import (
@@ -27,6 +27,24 @@ from .sec_edgar import (
     submission_history_names,
 )
 from .security_master import FileRawArtifactStore
+
+
+_SEC_PARSER_VERSION = "sec_edgar_parser_v1"
+
+
+def _record_source(
+    repository: PostgresFilingRepository, store: FileRawArtifactStore, payload: bytes,
+    retrieved_at: datetime, source_reference: str, *, response_category: str,
+    raw_category: str, compact_receipts: bool,
+) -> StoredSource:
+    if compact_receipts:
+        return repository.persist_compact_receipt(
+            payload, source_reference, response_category, retrieved_at,
+            parser_version=_SEC_PARSER_VERSION,
+        )
+    return repository.persist_raw_artifact(
+        store.store(payload, retrieved_at, category=raw_category), source_reference,
+    )
 
 
 def _ciks_from_file(path: str) -> list[str]:
@@ -98,6 +116,7 @@ def main() -> None:
     parser.add_argument("--incremental", action="store_true", help="Fetch Company Facts only when current submissions contain a new accession")
     parser.add_argument("--daily-index-start-date", type=date.fromisoformat, help="Inclusive start date for SEC daily-index filing discovery")
     parser.add_argument("--daily-index-end-date", type=date.fromisoformat, help="Inclusive end date for SEC daily-index filing discovery")
+    parser.add_argument("--compact-receipts", action="store_true", help="Store source metadata receipts without routine payload files")
     parser.add_argument("--daily-index-attempts", type=int, default=3, help="Bounded SEC daily-index request attempts")
     parser.add_argument("--daily-index-retry-seconds", type=float, default=0.5, help="Base backoff between SEC daily-index attempts")
     parser.add_argument("--env-file", default=".env")
@@ -111,6 +130,8 @@ def main() -> None:
         parser.error("--daily-index-retry-seconds must be non-negative")
     if arguments.incremental and arguments.include_history:
         parser.error("--incremental cannot be combined with --include-history")
+    if arguments.compact_receipts and arguments.include_history:
+        parser.error("--compact-receipts cannot be combined with --include-history")
     if (arguments.daily_index_start_date or arguments.daily_index_end_date) and not arguments.incremental:
         parser.error("daily-index date bounds require --incremental")
     if bool(arguments.daily_index_start_date) != bool(arguments.daily_index_end_date):
@@ -153,11 +174,14 @@ def main() -> None:
                     ) from error
                 index_retrieved_at = datetime.now(timezone.utc)
                 index_url = daily_master_index_url(filing_date)
-                index_artifact = store.store(index_payload, index_retrieved_at, category="sec-daily-master-index")
-                repository.persist_raw_artifact(index_artifact, index_url)
+                index_source = _record_source(
+                    repository, store, index_payload, index_retrieved_at, index_url,
+                    response_category="sec_daily_index", raw_category="sec-daily-master-index",
+                    compact_receipts=arguments.compact_receipts,
+                )
                 source_inputs.append(SourceInput(
                     provider="sec_edgar", source_reference=index_url,
-                    raw_artifact_uris=(index_artifact.storage_uri,),
+                    raw_artifact_uris=(index_source.storage_uri,),
                 ))
                 indexed_ciks.update(
                     record.cik for record in index_records if record.filed_on == filing_date
@@ -167,17 +191,20 @@ def main() -> None:
             retrieved_at = datetime.now(timezone.utc)
             submissions_payload = client.fetch_submissions(cik)
             filings_groups = [parse_submissions(submissions_payload)]
-            artifacts: list[tuple[object, str]] = []
-            submissions_artifact = store.store(submissions_payload, retrieved_at, category="sec-submissions")
-            artifacts.append((submissions_artifact, SUBMISSIONS_URL.format(cik=cik)))
+            submissions_reference = SUBMISSIONS_URL.format(cik=cik)
+            submissions_source = _record_source(
+                repository, store, submissions_payload, retrieved_at, submissions_reference,
+                response_category="sec_submissions", raw_category="sec-submissions",
+                compact_receipts=arguments.compact_receipts,
+            )
+            artifacts: list[StoredSource] = [submissions_source]
             known_accessions = repository.known_accession_numbers(
                 cik, [filing.accession_number for filing in filings_groups[0]],
             ) if arguments.incremental else set()
             if arguments.incremental and not _new_accession_numbers(filings_groups[0], known_accessions):
-                repository.persist_raw_artifact(submissions_artifact, SUBMISSIONS_URL.format(cik=cik))
                 source_inputs.append(SourceInput(
-                    provider="sec_edgar", source_reference=SUBMISSIONS_URL.format(cik=cik),
-                    raw_artifact_uris=(submissions_artifact.storage_uri,),
+                    provider="sec_edgar", source_reference=submissions_reference,
+                    raw_artifact_uris=(submissions_source.storage_uri,),
                 ))
                 if index + 1 < len(ciks):
                     time.sleep(arguments.minimum_request_interval)
@@ -188,34 +215,38 @@ def main() -> None:
                     history_retrieved_at = datetime.now(timezone.utc)
                     history_payload = client.fetch_submission_history(history_name)
                     filings_groups.append(parse_submission_history(history_payload))
-                    artifacts.append((
-                        store.store(history_payload, history_retrieved_at, category="sec-submission-history"),
+                    artifacts.append(_record_source(
+                        repository, store, history_payload, history_retrieved_at,
                         SUBMISSION_HISTORY_URL.format(name=history_name),
+                        response_category="sec_submissions", raw_category="sec-submission-history",
+                        compact_receipts=arguments.compact_receipts,
                     ))
             time.sleep(arguments.minimum_request_interval)
             facts_payload = client.fetch_company_facts(cik)
             filings = merge_filings(*filings_groups)
             facts = parse_company_facts(facts_payload, {filing.accession_number: filing for filing in filings})
-            facts_artifact = store.store(facts_payload, retrieved_at, category="sec-company-facts")
             facts_reference = COMPANY_FACTS_URL.format(cik=cik)
-            submissions_artifact, submissions_reference = artifacts[0]
+            facts_source = _record_source(
+                repository, store, facts_payload, retrieved_at, facts_reference,
+                response_category="sec_company_facts", raw_category="sec-company-facts",
+                compact_receipts=arguments.compact_receipts,
+            )
             source_by_accession = {
                 filing.accession_number: artifacts[group_index]
                 for group_index, group in enumerate(filings_groups)
                 for filing in group
             }
             report = persist_sec_filings(
-                repository, cik, filings, facts, submissions_artifact, facts_artifact,
-                submissions_reference, facts_reference, source_by_accession,
+                repository, cik, filings, facts, submissions_source, facts_source, source_by_accession,
             )
             total_filings += report.filings
             total_facts += report.facts
             refreshed_ciks += 1
             source_inputs.extend(
-                SourceInput(provider="sec_edgar", source_reference=source_reference, raw_artifact_uris=(artifact.storage_uri,))
-                for artifact, source_reference in artifacts
+                SourceInput(provider="sec_edgar", source_reference=source.source_reference, raw_artifact_uris=(source.storage_uri,))
+                for source in artifacts
             )
-            source_inputs.append(SourceInput(provider="sec_edgar", source_reference=facts_reference, raw_artifact_uris=(facts_artifact.storage_uri,)))
+            source_inputs.append(SourceInput(provider="sec_edgar", source_reference=facts_reference, raw_artifact_uris=(facts_source.storage_uri,)))
             if index + 1 < len(ciks):
                 time.sleep(arguments.minimum_request_interval)
     finally:
@@ -229,6 +260,7 @@ def main() -> None:
               f"daily_index_end_date={arguments.daily_index_end_date.isoformat() if arguments.daily_index_end_date else 'none'}; "
               f"missing_daily_indexes={','.join(item.isoformat() for item in missing_index_dates) or 'none'}; "
               "daily_index_fallback=none; "
+              f"receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}; "
               f"history_included={arguments.include_history}; filing_availability=acceptance_timestamp"),
     )
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")

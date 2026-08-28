@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import date
+from datetime import date, datetime, timezone
 import sys
 import unittest
 
@@ -17,8 +17,10 @@ from quantrade_research.sec_edgar import (
     parse_submissions,
     submission_history_names,
 )
+from quantrade_research.filings import StoredSource
 from quantrade_research.ingest_filings import (
     _daily_index_candidates, _daily_index_dates, _fetch_daily_master_index_with_retry, _new_accession_numbers,
+    _record_source,
 )
 
 
@@ -78,6 +80,28 @@ class FilingParserTests(unittest.TestCase):
             _fetch_daily_master_index_with_retry(
                 UnavailableClient(), date(2026, 8, 27), attempts=2, retry_seconds=0, sleep=lambda _seconds: None,
             )
+
+    def test_compact_receipt_mode_never_writes_a_payload_file(self) -> None:
+        expected = StoredSource("artifact-id", "receipt://sec-edgar/reference/hash", "https://data.sec.gov/example", "receipt-id")
+
+        class Repository:
+            def persist_compact_receipt(self, payload, source_reference, response_category, retrieved_at, *, parser_version):
+                self.request = (payload, source_reference, response_category, retrieved_at, parser_version)
+                return expected
+
+        class FileStore:
+            def store(self, *args, **kwargs):
+                raise AssertionError("compact receipt mode must not write a payload file")
+
+        repository = Repository()
+        result = _record_source(
+            repository, FileStore(), b'{"filings":{}}', datetime(2026, 8, 27, tzinfo=timezone.utc),
+            "https://data.sec.gov/example", response_category="sec_submissions", raw_category="sec-submissions",
+            compact_receipts=True,
+        )
+        self.assertEqual(result, expected)
+        self.assertEqual(repository.request[2], "sec_submissions")
+        self.assertEqual(repository.request[4], "sec_edgar_parser_v1")
 
     def test_links_company_facts_to_submission_acceptance_metadata(self) -> None:
         submissions = b'{"filings":{"recent":{"form":["10-Q"],"accessionNumber":["0000320193-26-000001"],"filingDate":["2026-08-01"],"acceptanceDateTime":["2026-08-01T20:15:00.000Z"],"reportDate":["2026-06-30"]}}}'
