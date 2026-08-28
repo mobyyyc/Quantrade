@@ -67,4 +67,3 @@ result to rescue this version.
 Any future challenger requires a new evidence-led hypothesis, a new versioned
 pre-registration, and a development-only comparison. It may not use this
 rejected result as authorization to tune against the consumed holdout.
-
