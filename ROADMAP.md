@@ -95,10 +95,18 @@ development-only research program. It does not reopen the consumed July
 2025–June 2026 holdout. Its main unit is the monthly portfolio formation date;
 daily training remains a documented sensitivity test only.
 
+Phase 9B uses a lean SEC architecture. Existing canonical facts are frozen in
+place and future observations are append-only. The five-minute SEC buffer is
+applied by the point-in-time resolver. The project must not duplicate the full
+canonical fact store; it persists only compact monthly feature values and the
+lineage required to reproduce them.
+
 - [x] P9B.1: publish a versioned protocol that fixes monthly formation at the final market session, 8:00 p.m. Toronto decision time, next-open execution, label-safe pre-July-2025 development dates, a 20-session label-overlap purge, top-20 equal weighting, and cost scenarios.
 - [x] P9B.2: audit point-in-time accounting construction and availability for amendments, TTM flows, balance-sheet facts, split-adjusted share counts, and a conservative SEC publication-latency rule before adding features. See `MONTHLY_FEATURE_FAMILY_DATA_READINESS_AUDIT.md`.
-- [ ] P9B.2a: copy legacy SEC facts into the new immutable observation store through a resumable, chunked Tier-B snapshot process; measure and record its coverage before any accounting candidate reads it.
-- [ ] P9B.3: materialize and audit a small, economically distinct feature-family set: short-term reversal; asset growth; net share issuance; and one pre-registered quality specification. Record coverage, business-model exclusions, missingness, redundancy, and source lineage.
+- [ ] P9B.2a: freeze existing canonical SEC facts at the database layer: permit inserts, reject updates/deletes, verify ingestion remains idempotent, and retire the unnecessary full-store snapshot path. The 5,000-row pilot snapshot is excluded from research inputs.
+- [ ] P9B.2b: implement one point-in-time SEC resolver. Legacy frozen facts use accession acceptance plus five minutes under an explicit Tier-B assumption; future observations use the later of acceptance-plus-five-minutes and actual observation time. Amendments remain separate accessions, and a later observation never rewrites an earlier decision.
+- [ ] P9B.2c: audit only the concepts and comparable periods needed at monthly formations for asset growth, split-reconciled net share issuance, and the two pre-registered quality alternatives. Select the one quality specification by pre-result coverage and data validity, not performance.
+- [ ] P9B.3: materialize and audit a compact monthly feature panel—not a second SEC store—for short-term reversal, asset growth, net share issuance, and the selected quality specification. Each value records the selected accession/fact lineage, rule version, exclusions, and a deterministic hash.
 - [ ] P9B.4: compare market-wide centered percentile inputs with the existing static-sector percentile transformation as Tier-B robustness only. Do not allow static current-sector results alone to select a production candidate.
 - [ ] P9B.5: build a versioned monthly development dataset and nested chronological out-of-fold panel. Give each formation date equal aggregate weight and exclude every label whose 20-session outcome reaches July 2025.
 - [ ] P9B.6: compare a fixed candidate set on the same out-of-fold panel: active elastic net, equal-weight signed family composite, ridge, low-L1 elastic net, and robust ridge-like regression. Pairwise ranking or constrained ridge require a separate pre-registration.

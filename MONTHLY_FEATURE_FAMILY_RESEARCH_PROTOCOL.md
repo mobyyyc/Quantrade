@@ -1,12 +1,14 @@
-# Monthly Feature-Family Research Protocol: `tier_b_monthly_feature_family_v1`
+# Monthly Feature-Family Research Protocol: `tier_b_monthly_feature_family_v2`
 
 ## Registration status
 
-Pre-registered on 2026-08-28 before Phase 9B feature materialization,
-candidate fitting, or result inspection. This protocol governs the entire
-Phase 9B research program. A feature, transformation, model family, parameter,
-portfolio size, cost assumption, or gate may not be changed after its relevant
-out-of-fold result is inspected.
+Revised and pre-registered on 2026-08-28 before Phase 9B feature
+materialization, candidate fitting, or result inspection. Version 2 supersedes
+version 1 only to replace the unnecessary full SEC-store copy with the lean
+freeze-and-resolve architecture. The feature scope, validation design, model
+set, portfolio construction, and decision gates are unchanged. A feature,
+transformation, model family, parameter, portfolio size, cost assumption, or
+gate may not be changed after its relevant out-of-fold result is inspected.
 
 The active `tier_b_regularized_linear_development_v1` model remains the live
 private-beta model throughout this program. Phase 9B does not change published
@@ -44,15 +46,19 @@ calendar month and make the research decision at 8:00 p.m. America/Toronto.
 - Price inputs may use regular-session bars through the formation close only
   when their recorded `available_at` is no later than that decision time.
 - Filing-derived inputs may use only accession-level facts with the required
-  filing acceptance time and source lineage. P9B.2 must audit implementation
-  of a conservative five-minute SEC publication buffer. Until that audit
-  passes, any proposed feature requiring the buffer is fail-closed rather than
-  silently assuming immediate availability.
+  filing acceptance time and source lineage. Eligibility uses a conservative
+  five-minute SEC publication buffer. Frozen legacy facts use acceptance plus
+  five minutes under the disclosed Tier-B historical assumption. Future
+  append-only observations use the later of acceptance-plus-five-minutes and
+  the actual observation time.
 - Amendments and restatements must be accession-aware. A later amendment may
   affect decisions only after its own allowed availability time; it must not
   overwrite what was knowable before acceptance.
 - TTM flow features must be constructed from point-in-time annual and
   comparable year-to-date components, not from a later restated aggregate.
+- Existing canonical SEC facts are frozen in place; they are not duplicated
+  into a second full fact store. The research artifact persists only the
+  selected monthly feature values and their accession/fact lineage.
 
 ## Label and execution policy
 

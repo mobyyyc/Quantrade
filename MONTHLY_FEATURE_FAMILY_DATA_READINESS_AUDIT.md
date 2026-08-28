@@ -46,7 +46,7 @@ These counts demonstrate useful coverage; they do **not** establish that every i
 
 No historical accounting feature may be added to a candidate dataset until all applicable gates pass:
 
-1. **Append-only SEC fact versions.** Store each parsed fact observation with its receipt/content hash, accession, parser version, retrieval time, and an immutable value. The as-of loader must choose the latest observation whose *filing availability* is at or before the decision and whose observation itself was not created from a later revision snapshot.
+1. **Append-only SEC facts.** Freeze existing canonical facts against updates/deletes and store each future changed observation with its receipt/content hash, accession, parser version, retrieval time, and immutable value. Do not duplicate the entire legacy store. The as-of loader must prevent a future observation from entering an earlier decision.
 2. **Amendment metadata.** Preserve the submitted form verbatim, derive the base form separately, and record a best-effort amendment/original relationship. The selector must make the amendment eligible only after its own buffered time.
 3. **Five-minute rule.** Add a versioned availability rule for `accepted_at + 5 minutes`; make it the sole SEC rule for P9B accounting candidates. Feature explanations, snapshots, manifests, and exports must name its rule version/hash.
 4. **Period-aware flow builder.** Build tested helpers for annual flows and TTM flows. They must reject overlapping, duplicate, incomplete, unit-inconsistent, future-available, or extension-concept inputs.
@@ -55,14 +55,14 @@ No historical accounting feature may be added to a candidate dataset until all a
 
 ## Implemented after this audit
 
-The first two safeguards are now implemented in migration `0028_add_sec_fact_versioning.sql`:
+The forward-looking storage safeguards are implemented in migration `0028_add_sec_fact_versioning.sql`:
 
 - an append-only `filing_fact_observations` table stores immutable parsed values with source lineage and an observation hash;
-- all new SEC observations use the versioned `sec_filing_acceptance_buffered@v1` rule, which makes them eligible five minutes after SEC acceptance;
+- new SEC observations record the versioned `sec_filing_acceptance_buffered@v1` rule; the resolver must conservatively use the later of acceptance-plus-five-minutes and actual observation time;
 - future ingestion preserves an original submitted form and an amendment flag, while retaining the existing canonical form for compatibility;
-- the old mutable canonical `filing_facts` rows remain for the already-approved baseline only. New monthly accounting research must read the append-only observation table.
+- the importer no longer overwrites a canonical fact on conflict. A database-level update/delete guard is still required to freeze the legacy table completely.
 
-The existing canonical facts are deliberately **not** copied by the schema migration: copying 1.8 million rows in one transaction would block ordinary database work. A later resumable, chunked operation will create clearly labelled `legacy_snapshot` observations. It will not claim to reconstruct every historical provider revision; that limitation remains part of Tier-B provenance.
+The database contains roughly 21.1 million canonical fact rows. A resumable snapshot runner was proven with a 5,000-row pilot, but a full copy is unnecessary for the revised architecture and must not be used as a research input. Existing facts will instead be frozen in place. Only compact monthly feature values and their selected lineage will be materialized. The legacy data still cannot reconstruct a provider revision that was never captured; that limitation remains part of Tier-B provenance.
 
 ## Consequence for P9B.3
 
