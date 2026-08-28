@@ -197,6 +197,13 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("observation_hash CHAR(64) NOT NULL", sql)
         self.assertIn("filing_fact_observations_immutable", sql)
 
+    def test_sec_fact_snapshot_runs_are_resumable_and_terminal_immutable(self) -> None:
+        migration = MIGRATION.with_name("0029_add_sec_fact_snapshot_runs.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.sec_fact_snapshot_runs", sql)
+        self.assertIn("last_filing_fact_id UUID", sql)
+        self.assertIn("terminal SEC fact snapshot runs are immutable", sql)
+
     def test_forward_readiness_snapshots_are_compact_and_immutable(self) -> None:
         migration = MIGRATION.with_name("0020_add_forward_readiness_snapshots.sql")
         sql = migration.read_text(encoding="utf-8")
