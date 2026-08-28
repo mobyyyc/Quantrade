@@ -62,7 +62,7 @@ The forward-looking storage safeguards are implemented in migration `0028_add_se
 - future ingestion preserves an original submitted form and an amendment flag, while retaining the existing canonical form for compatibility;
 - the importer no longer overwrites a canonical fact on conflict. A database-level update/delete guard is still required to freeze the legacy table completely.
 
-The database contains roughly 21.1 million canonical fact rows. A resumable snapshot runner was proven with a 5,000-row pilot, but a full copy is unnecessary for the revised architecture and must not be used as a research input. Existing facts will instead be frozen in place. Only compact monthly feature values and their selected lineage will be materialized. The legacy data still cannot reconstruct a provider revision that was never captured; that limitation remains part of Tier-B provenance.
+The database contains roughly 21.1 million canonical fact rows. A resumable snapshot runner was proven with a 5,000-row pilot, but a full copy is unnecessary for the revised architecture. Migration `0030_freeze_canonical_sec_facts.sql` removes the pilot rows and progress ledger, prevents future legacy snapshots, and blocks updates/deletes on canonical facts while continuing to allow inserts. Only compact monthly feature values and their selected lineage will be materialized. The legacy data still cannot reconstruct a provider revision that was never captured; that limitation remains part of Tier-B provenance.
 
 ## Consequence for P9B.3
 

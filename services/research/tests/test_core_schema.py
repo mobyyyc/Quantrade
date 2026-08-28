@@ -204,6 +204,14 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("last_filing_fact_id UUID", sql)
         self.assertIn("terminal SEC fact snapshot runs are immutable", sql)
 
+    def test_canonical_sec_facts_are_frozen_and_bulk_copy_is_retired(self) -> None:
+        migration = MIGRATION.with_name("0030_freeze_canonical_sec_facts.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("DELETE FROM quantrade.filing_fact_observations", sql)
+        self.assertIn("DROP TABLE quantrade.sec_fact_snapshot_runs", sql)
+        self.assertIn("canonical SEC filing facts are append-only", sql)
+        self.assertIn("BEFORE UPDATE OR DELETE ON quantrade.filing_facts", sql)
+
     def test_forward_readiness_snapshots_are_compact_and_immutable(self) -> None:
         migration = MIGRATION.with_name("0020_add_forward_readiness_snapshots.sql")
         sql = migration.read_text(encoding="utf-8")
