@@ -18,7 +18,7 @@ from quantrade_research.sec_edgar import (
     submission_history_names,
 )
 from quantrade_research.ingest_filings import (
-    _daily_index_candidates, _daily_index_dates, _incremental_ciks_after_index, _new_accession_numbers,
+    _daily_index_candidates, _daily_index_dates, _fetch_daily_master_index_with_retry, _new_accession_numbers,
 )
 
 
@@ -47,12 +47,37 @@ class FilingParserTests(unittest.TestCase):
             ["0000320193-26-000002"],
         )
 
-    def test_uses_full_universe_when_the_daily_index_is_unavailable(self) -> None:
-        requested = ["0000320193", "0001045810", "0001652044"]
+    def test_retries_the_daily_index_without_a_cohort_wide_fallback(self) -> None:
+        class UnstableClient:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def fetch_daily_master_index(self, filing_date: date) -> bytes:
+                self.calls += 1
+                if self.calls < 3:
+                    raise SecEdgarError("SEC returned HTTP 503")
+                return b"ready"
+
+        client = UnstableClient()
+        pauses: list[float] = []
         self.assertEqual(
-            _incremental_ciks_after_index(requested, {"0000320193"}, ["2026-08-27:SEC returned HTTP 403"]),
-            sorted(requested),
+            _fetch_daily_master_index_with_retry(
+                client, date(2026, 8, 27), attempts=3, retry_seconds=0.25, sleep=pauses.append,
+            ),
+            b"ready",
         )
+        self.assertEqual(client.calls, 3)
+        self.assertEqual(pauses, [0.25, 0.5])
+
+    def test_daily_index_failure_is_explicit_after_bounded_retries(self) -> None:
+        class UnavailableClient:
+            def fetch_daily_master_index(self, filing_date: date) -> bytes:
+                raise SecEdgarError("SEC returned HTTP 503")
+
+        with self.assertRaisesRegex(SecEdgarError, "after 2 attempts"):
+            _fetch_daily_master_index_with_retry(
+                UnavailableClient(), date(2026, 8, 27), attempts=2, retry_seconds=0, sleep=lambda _seconds: None,
+            )
 
     def test_links_company_facts_to_submission_acceptance_metadata(self) -> None:
         submissions = b'{"filings":{"recent":{"form":["10-Q"],"accessionNumber":["0000320193-26-000001"],"filingDate":["2026-08-01"],"acceptanceDateTime":["2026-08-01T20:15:00.000Z"],"reportDate":["2026-06-30"]}}}'

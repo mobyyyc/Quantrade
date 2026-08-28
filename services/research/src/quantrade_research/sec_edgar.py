@@ -8,7 +8,7 @@ from decimal import Decimal
 import json
 import re
 from typing import Any
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
@@ -322,3 +322,5 @@ class SecEdgarClient:
             if error.code == 404:
                 raise SecEdgarNotFoundError(f"SEC resource is unavailable: {url}") from error
             raise SecEdgarError(f"SEC returned HTTP {error.code}: {url}") from error
+        except (URLError, TimeoutError) as error:
+            raise SecEdgarError(f"SEC request failed: {url}: {error}") from error
