@@ -88,11 +88,28 @@ Each item is intended to fit a focused development session. A negative research 
 - [x] P9A.4: fit and compare the single pre-registered regime-interaction challenger on the purged development folds.
 - [x] P9A.5: reject the challenger or freeze it for Phase 10 using the pre-registered gates without changing the active model.
 
+## Phase 9B: monthly feature-family research reset
+
+Phase 9B replaces ad hoc follow-on challenger search with a single
+development-only research program. It does not reopen the consumed July
+2025–June 2026 holdout. Its main unit is the monthly portfolio formation date;
+daily training remains a documented sensitivity test only.
+
+- [ ] P9B.1: publish a versioned protocol that fixes monthly formation at the final market session, 8:00 p.m. Toronto decision time, next-open execution, label-safe pre-July-2025 development dates, a 20-session label-overlap purge, top-20 equal weighting, and cost scenarios.
+- [ ] P9B.2: audit point-in-time accounting construction and availability for amendments, TTM flows, balance-sheet facts, split-adjusted share counts, and a conservative SEC publication-latency rule before adding features.
+- [ ] P9B.3: materialize and audit a small, economically distinct feature-family set: short-term reversal; asset growth; net share issuance; and one pre-registered quality specification. Record coverage, business-model exclusions, missingness, redundancy, and source lineage.
+- [ ] P9B.4: compare market-wide centered percentile inputs with the existing static-sector percentile transformation as Tier-B robustness only. Do not allow static current-sector results alone to select a production candidate.
+- [ ] P9B.5: build a versioned monthly development dataset and nested chronological out-of-fold panel. Give each formation date equal aggregate weight and exclude every label whose 20-session outcome reaches July 2025.
+- [ ] P9B.6: compare a fixed candidate set on the same out-of-fold panel: active elastic net, equal-weight signed family composite, ridge, low-L1 elastic net, and robust ridge-like regression. Pairwise ranking or constrained ridge require a separate pre-registration.
+- [ ] P9B.7: evaluate rank IC, top-20 next-open benchmark-relative return after fixed cost cases, turnover, coverage, factor-sign stability, rank stability, and pre-defined SPY trend/volatility diagnostics. Record every rejection.
+- [ ] P9B.8: freeze one qualifying candidate or issue a no-freeze decision. Do not impose a minimum number of non-zero features; broader participation must arise from stable incremental evidence.
+
 ## Phase 10: shadow confirmation and promotion
 
-Phase 10 remains queued until a future pre-registered research cycle produces a
-qualifying frozen challenger. Rejected Phase 9 candidates do not enter shadow
-scoring.
+Phase 10 remains queued until Phase 9B produces a qualifying frozen challenger.
+Rejected candidates do not enter shadow scoring. The next genuinely untouched
+confirmation period is forward data collected after the frozen candidate, not
+the consumed historical holdout.
 
 - [ ] P10.1: score the active model and frozen challenger side by side without changing user-visible rankings.
 - [ ] P10.2: materialize new 20-session forward outcomes and compare both models under identical rules.
