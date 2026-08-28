@@ -42,6 +42,16 @@ def buffered_filing_availability(accepted_at: datetime) -> datetime:
     return accepted_at.astimezone(timezone.utc) + SEC_FILING_AVAILABILITY_BUFFER
 
 
+def observed_filing_availability(accepted_at: datetime, observed_at: datetime) -> datetime:
+    """Return the conservative eligibility time for a newly observed SEC fact."""
+    if observed_at.tzinfo is None or observed_at.utcoffset() is None:
+        raise ValueError("SEC observation timestamp must include a UTC offset")
+    return max(
+        buffered_filing_availability(accepted_at),
+        observed_at.astimezone(timezone.utc),
+    )
+
+
 def _fact_observation_hash(fact: SecFilingFact, source: StoredSource) -> str:
     payload = "|".join((
         fact.accession_number, fact.taxonomy, fact.concept, fact.unit,
@@ -217,7 +227,7 @@ class PostgresFilingRepository:
                        ON CONFLICT (observation_hash) DO NOTHING""",
                     (filing_ids[fact.accession_number], security_id, fact.taxonomy, fact.concept, fact.unit,
                      fact.value, fact.period_start, fact.period_end, fact.fiscal_year, fact.fiscal_period,
-                     buffered_filing_availability(filing.accepted_at), availability_rule_id,
+                     observed_filing_availability(filing.accepted_at, ingested_at), availability_rule_id,
                      source.raw_artifact_id, source.source_reference, source.source_receipt_id, ingested_at,
                      _fact_observation_hash(fact, source)),
                 )
