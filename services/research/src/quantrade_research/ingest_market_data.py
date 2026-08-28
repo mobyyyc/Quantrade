@@ -29,6 +29,15 @@ def _symbols(value: str) -> list[str]:
     return symbols
 
 
+def _symbols_to_fetch(
+    repository: PostgresMarketDataRepository, symbols: list[str], start: date, end: date,
+    adjustment_basis: str, only_missing: bool,
+) -> list[str]:
+    if not only_missing:
+        return symbols
+    return repository.symbols_missing_daily_bars(symbols, start, end, adjustment_basis)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest Alpaca daily bars and corporate actions")
     parser.add_argument("--symbols", type=_symbols, required=True)
@@ -39,6 +48,10 @@ def main() -> None:
     parser.add_argument(
         "--compact-receipts", action="store_true",
         help="Store source metadata receipts without routine payload files",
+    )
+    parser.add_argument(
+        "--only-missing", action="store_true",
+        help="Request only listings that lack a bar for a known SPY session",
     )
     arguments = parser.parse_args()
     if arguments.batch_size < 1:
@@ -58,46 +71,61 @@ def main() -> None:
     artifact_uris: list[str] = []
     bar_count = 0
     action_count = 0
+    bar_request_symbols = 0
+    skipped_existing_symbols = 0
+    bar_pages = 0
     try:
         availability_rule_id = repository.availability_rule_id("alpaca_retrieval", "v1", "market_bar")
-        batches = [arguments.symbols[index:index + arguments.batch_size] for index in range(0, len(arguments.symbols), arguments.batch_size)]
+        batches = [
+            arguments.symbols[index:index + arguments.batch_size]
+            for index in range(0, len(arguments.symbols), arguments.batch_size)
+        ]
         for symbols in batches:
-          for adjustment in ("raw", "split"):
+            for adjustment, basis in (("raw", "unadjusted"), ("split", "split_adjusted")):
+                request_symbols = _symbols_to_fetch(
+                    repository, symbols, arguments.start, arguments.end, basis, arguments.only_missing,
+                )
+                skipped_existing_symbols += len(symbols) - len(request_symbols)
+                if not request_symbols:
+                    continue
+                bar_request_symbols += len(request_symbols)
+                token = None
+                while True:
+                    retrieved_at = datetime.now(timezone.utc)
+                    payload = client.fetch_daily_bars(request_symbols, arguments.start, arguments.end, adjustment, token)
+                    bars, token = parse_daily_bars(payload)
+                    bar_pages += 1
+                    source = record_market_source(
+                        repository, artifact_store, payload, retrieved_at, ALPACA_BARS_URL,
+                        response_category="alpaca_daily_bars", raw_category="market-data",
+                        compact_receipts=arguments.compact_receipts, parser_version=_ALPACA_PARSER_VERSION,
+                    )
+                    artifact_uris.append(source.storage_uri)
+                    bar_count += repository.upsert_daily_bars(
+                        bars, basis,
+                        source.raw_artifact_id, ALPACA_BARS_URL, retrieved_at, availability_rule_id,
+                        source_receipt_id=source.source_receipt_id,
+                        skip_existing=arguments.only_missing,
+                    )
+                    if token is None:
+                        break
             token = None
             while True:
                 retrieved_at = datetime.now(timezone.utc)
-                payload = client.fetch_daily_bars(symbols, arguments.start, arguments.end, adjustment, token)
-                bars, token = parse_daily_bars(payload)
+                payload = client.fetch_corporate_actions(symbols, arguments.start, arguments.end, token)
+                actions, token = parse_corporate_actions(payload)
                 source = record_market_source(
-                    repository, artifact_store, payload, retrieved_at, ALPACA_BARS_URL,
-                    response_category="alpaca_daily_bars", raw_category="market-data",
+                    repository, artifact_store, payload, retrieved_at, ALPACA_CORPORATE_ACTIONS_URL,
+                    response_category="alpaca_corporate_actions", raw_category="corporate-actions",
                     compact_receipts=arguments.compact_receipts, parser_version=_ALPACA_PARSER_VERSION,
                 )
                 artifact_uris.append(source.storage_uri)
-                bar_count += repository.upsert_daily_bars(
-                    bars, "unadjusted" if adjustment == "raw" else "split_adjusted",
-                    source.raw_artifact_id, ALPACA_BARS_URL, retrieved_at, availability_rule_id,
-                    source_receipt_id=source.source_receipt_id,
+                action_count += repository.upsert_corporate_actions(
+                    actions, source.raw_artifact_id, ALPACA_CORPORATE_ACTIONS_URL, retrieved_at,
+                    source_receipt_id=source.source_receipt_id, retain_provider_payload=not arguments.compact_receipts,
                 )
                 if token is None:
                     break
-          token = None
-          while True:
-            retrieved_at = datetime.now(timezone.utc)
-            payload = client.fetch_corporate_actions(symbols, arguments.start, arguments.end, token)
-            actions, token = parse_corporate_actions(payload)
-            source = record_market_source(
-                repository, artifact_store, payload, retrieved_at, ALPACA_CORPORATE_ACTIONS_URL,
-                response_category="alpaca_corporate_actions", raw_category="corporate-actions",
-                compact_receipts=arguments.compact_receipts, parser_version=_ALPACA_PARSER_VERSION,
-            )
-            artifact_uris.append(source.storage_uri)
-            action_count += repository.upsert_corporate_actions(
-                actions, source.raw_artifact_id, ALPACA_CORPORATE_ACTIONS_URL, retrieved_at,
-                source_receipt_id=source.source_receipt_id, retain_provider_payload=not arguments.compact_receipts,
-            )
-            if token is None:
-                break
     finally:
         repository.close()
 
@@ -110,8 +138,12 @@ def main() -> None:
             SourceInput(provider="alpaca", source_reference=ALPACA_BARS_URL, raw_artifact_uris=tuple(artifact_uris)),
         ),
         status="completed",
-        note=(f"daily_bars={bar_count}; corporate_actions={action_count}; adjustment_bases=unadjusted,split_adjusted; "
-              f"receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}"),
+        note=(
+            f"daily_bars={bar_count}; corporate_actions={action_count}; adjustment_bases=unadjusted,split_adjusted; "
+            f"request_mode={'missing_only' if arguments.only_missing else 'range'}; "
+            f"bar_request_symbols={bar_request_symbols}; skipped_existing_symbols={skipped_existing_symbols}; "
+            f"bar_pages={bar_pages}; receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}"
+        ),
     )
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")
     print(manifest.note)

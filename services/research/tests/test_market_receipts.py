@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import unittest
 
+from quantrade_research.ingest_benchmark_data import _should_fetch_adjustment
+from quantrade_research.ingest_market_data import _symbols_to_fetch
 from quantrade_research.market_data import CompactMarketReceipt, record_market_source
 
 
@@ -35,6 +37,34 @@ class MarketReceiptTests(unittest.TestCase):
         self.assertEqual(result.source_receipt_id, "receipt-id")
         self.assertEqual(repository.request[2], "alpaca_daily_bars")
         self.assertEqual(repository.request[4], "alpaca_parser_v1")
+
+    def test_missing_only_stock_plan_skips_symbols_with_complete_bars(self) -> None:
+        class Repository:
+            def symbols_missing_daily_bars(self, symbols, start, end, adjustment_basis):
+                self.request = (symbols, start, end, adjustment_basis)
+                return ["AAPL"]
+
+        repository = Repository()
+        result = _symbols_to_fetch(
+            repository, ["AAPL", "MSFT"], date(2026, 8, 27), date(2026, 8, 27),
+            "split_adjusted", only_missing=True,
+        )
+        self.assertEqual(result, ["AAPL"])
+        self.assertEqual(repository.request[3], "split_adjusted")
+
+    def test_missing_only_benchmark_plan_skips_an_existing_adjustment(self) -> None:
+        class Repository:
+            def benchmark_bar_exists(self, ticker, session_date, adjustment_basis):
+                self.request = (ticker, session_date, adjustment_basis)
+                return True
+
+        repository = Repository()
+        self.assertFalse(_should_fetch_adjustment(
+            repository, "SPY", date(2026, 8, 27), "split_adjusted", only_missing=True,
+        ))
+        self.assertTrue(_should_fetch_adjustment(
+            repository, "SPY", date(2026, 8, 27), "split_adjusted", only_missing=False,
+        ))
 
 
 if __name__ == "__main__":  # pragma: no cover

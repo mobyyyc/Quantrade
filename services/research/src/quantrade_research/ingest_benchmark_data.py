@@ -17,6 +17,13 @@ from .security_master import FileRawArtifactStore
 _ALPACA_PARSER_VERSION = "alpaca_parser_v1"
 
 
+def _should_fetch_adjustment(
+    repository: PostgresMarketDataRepository, ticker: str, end: date,
+    adjustment_basis: str, only_missing: bool,
+) -> bool:
+    return not only_missing or not repository.benchmark_bar_exists(ticker, end, adjustment_basis)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest split-adjusted and raw benchmark daily bars")
     parser.add_argument("--ticker", default="SPY")
@@ -27,6 +34,10 @@ def main() -> None:
     parser.add_argument(
         "--compact-receipts", action="store_true",
         help="Store source metadata receipts without routine payload files",
+    )
+    parser.add_argument(
+        "--only-missing", action="store_true",
+        help="Skip an adjustment basis already recorded for the requested end date",
     )
     arguments = parser.parse_args()
     if arguments.start > arguments.end:
@@ -43,12 +54,18 @@ def main() -> None:
     store = FileRawArtifactStore(settings.raw_artifacts_uri)
     artifact_uris: list[str] = []
     count = 0
+    fetched_adjustments = 0
+    skipped_existing_adjustments = 0
     repository = PostgresMarketDataRepository(settings.database_url)
     try:
         availability_rule_id = repository.availability_rule_id(
             "alpaca_retrieval", "v1-benchmark", "benchmark_bar",
         )
         for adjustment, basis in (("raw", "unadjusted"), ("split", "split_adjusted")):
+            if not _should_fetch_adjustment(repository, ticker, arguments.end, basis, arguments.only_missing):
+                skipped_existing_adjustments += 1
+                continue
+            fetched_adjustments += 1
             token = None
             while True:
                 retrieved_at = datetime.now(timezone.utc)
@@ -63,6 +80,7 @@ def main() -> None:
                 count += repository.upsert_benchmark_daily_bars(
                     bars, ticker, basis, source.raw_artifact_id, ALPACA_BARS_URL,
                     retrieved_at, availability_rule_id, source_receipt_id=source.source_receipt_id,
+                    skip_existing=arguments.only_missing,
                 )
                 if token is None:
                     break
@@ -82,6 +100,8 @@ def main() -> None:
         ),
         note=(
             f"benchmark={ticker}; daily_bars={count}; adjustment_bases=unadjusted,split_adjusted; "
+            f"request_mode={'missing_only' if arguments.only_missing else 'range'}; "
+            f"fetched_adjustments={fetched_adjustments}; skipped_existing_adjustments={skipped_existing_adjustments}; "
             f"receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}"
         ),
     )

@@ -133,6 +133,59 @@ class PostgresMarketDataRepository:
             raise ValueError(f"availability rule {rule_key}@{rule_version} is unavailable for {data_domain}")
         return str(row[0])
 
+    def symbols_missing_daily_bars(
+        self, tickers: list[str], start_date, end_date, adjustment_basis: str,
+    ) -> list[str]:
+        """Return requested active listings without a bar for every known SPY session.
+
+        SPY is the trading-session authority for the research system. The daily
+        runner ingests it first, so this query makes stock requests strictly
+        additive while preserving any already recorded observation.
+        """
+        if not tickers:
+            return []
+        with self._connection.cursor() as cursor:
+            cursor.execute(
+                """WITH requested(ticker) AS (SELECT unnest(%s::text[])),
+                         sessions AS (
+                           SELECT session_date FROM quantrade.benchmark_daily_price_bars
+                           WHERE benchmark_ticker = 'SPY' AND session = 'regular'
+                             AND adjustment_basis = 'split_adjusted'
+                             AND session_date BETWEEN %s AND %s
+                         )
+                   SELECT requested.ticker
+                   FROM requested
+                   JOIN quantrade.listings listing
+                     ON listing.ticker = requested.ticker AND listing.valid_to IS NULL
+                   WHERE EXISTS (
+                     SELECT 1 FROM sessions
+                   )
+                     AND EXISTS (
+                       SELECT 1 FROM sessions
+                       LEFT JOIN quantrade.daily_price_bars bar
+                         ON bar.security_id = listing.security_id
+                        AND bar.session_date = sessions.session_date
+                        AND bar.session = 'regular'
+                        AND bar.adjustment_basis = %s
+                       WHERE bar.security_id IS NULL
+                     )
+                   ORDER BY requested.ticker""",
+                (tickers, start_date, end_date, adjustment_basis),
+            )
+            return [str(row[0]) for row in cursor.fetchall()]
+
+    def benchmark_bar_exists(self, ticker: str, session_date, adjustment_basis: str) -> bool:
+        with self._connection.cursor() as cursor:
+            cursor.execute(
+                """SELECT EXISTS (
+                       SELECT 1 FROM quantrade.benchmark_daily_price_bars
+                       WHERE benchmark_ticker = %s AND session_date = %s AND session = 'regular'
+                         AND adjustment_basis = %s
+                   )""",
+                (ticker, session_date, adjustment_basis),
+            )
+            return bool(cursor.fetchone()[0])
+
     def _security_id(self, cursor, ticker: str, on_date) -> object:
         cursor.execute(
             """
@@ -165,65 +218,73 @@ class PostgresMarketDataRepository:
         self, bars: list[AlpacaDailyBar], adjustment_basis: str, raw_artifact_id: str,
         source_reference: str, available_at: datetime | Callable[[AlpacaDailyBar], datetime],
         availability_rule_id: str, *, source_receipt_id: str | None = None,
+        skip_existing: bool = False,
     ) -> int:
+        persisted = 0
+        conflict_clause = """DO NOTHING""" if skip_existing else """DO UPDATE SET
+            open_price = EXCLUDED.open_price, high_price = EXCLUDED.high_price,
+            low_price = EXCLUDED.low_price, close_price = EXCLUDED.close_price,
+            volume = EXCLUDED.volume, observed_at = EXCLUDED.observed_at,
+            available_at = EXCLUDED.available_at, availability_rule_id = EXCLUDED.availability_rule_id,
+            ingested_at = EXCLUDED.ingested_at,
+            raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference,
+            source_receipt_id = COALESCE(EXCLUDED.source_receipt_id, quantrade.daily_price_bars.source_receipt_id)"""
         with self._connection.cursor() as cursor:
             for bar in bars:
                 security_id = self._security_id(cursor, bar.ticker, bar.session_date)
                 bar_available_at = available_at(bar) if callable(available_at) else available_at
                 cursor.execute(
-                    """
+                    f"""
                     INSERT INTO quantrade.daily_price_bars
                         (security_id, session_date, session, currency, open_price, high_price, low_price,
                          close_price, volume, adjustment_basis, observed_at, available_at, availability_rule_id, ingested_at,
                          raw_artifact_id, source_reference, source_receipt_id)
                     VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (security_id, session_date, session, adjustment_basis)
-                    DO UPDATE SET open_price = EXCLUDED.open_price, high_price = EXCLUDED.high_price,
-                        low_price = EXCLUDED.low_price, close_price = EXCLUDED.close_price,
-                        volume = EXCLUDED.volume, observed_at = EXCLUDED.observed_at,
-                        available_at = EXCLUDED.available_at, availability_rule_id = EXCLUDED.availability_rule_id,
-                        ingested_at = EXCLUDED.ingested_at,
-                        raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference,
-                        source_receipt_id = COALESCE(EXCLUDED.source_receipt_id, quantrade.daily_price_bars.source_receipt_id)
-                    """,
+                    {conflict_clause}""",
                     (security_id, bar.session_date, bar.open_price, bar.high_price, bar.low_price,
                      bar.close_price, bar.volume, adjustment_basis, bar.observed_at, bar_available_at,
                      availability_rule_id, datetime.now(timezone.utc), raw_artifact_id, source_reference, source_receipt_id),
                 )
+                persisted += cursor.rowcount
         self._connection.commit()
-        return len(bars)
+        return persisted
 
     def upsert_benchmark_daily_bars(
         self, bars: list[AlpacaDailyBar], benchmark_ticker: str, adjustment_basis: str,
         raw_artifact_id: str, source_reference: str,
         available_at: datetime | Callable[[AlpacaDailyBar], datetime], availability_rule_id: str,
-        *, source_receipt_id: str | None = None,
+        *, source_receipt_id: str | None = None, skip_existing: bool = False,
     ) -> int:
+        persisted = 0
+        conflict_clause = "DO NOTHING" if skip_existing else """DO UPDATE SET
+            open_price = EXCLUDED.open_price, high_price = EXCLUDED.high_price,
+            low_price = EXCLUDED.low_price, close_price = EXCLUDED.close_price,
+            volume = EXCLUDED.volume, observed_at = EXCLUDED.observed_at,
+            available_at = EXCLUDED.available_at,
+            availability_rule_id = EXCLUDED.availability_rule_id,
+            ingested_at = EXCLUDED.ingested_at,
+            raw_artifact_id = EXCLUDED.raw_artifact_id,
+            source_reference = EXCLUDED.source_reference,
+            source_receipt_id = COALESCE(EXCLUDED.source_receipt_id, quantrade.benchmark_daily_price_bars.source_receipt_id)"""
         with self._connection.cursor() as cursor:
             for bar in bars:
                 bar_available_at = available_at(bar) if callable(available_at) else available_at
                 cursor.execute(
-                    """INSERT INTO quantrade.benchmark_daily_price_bars
+                    f"""INSERT INTO quantrade.benchmark_daily_price_bars
                            (benchmark_ticker, session_date, session, currency, open_price, high_price, low_price,
                             close_price, volume, adjustment_basis, observed_at, available_at, availability_rule_id,
                             ingested_at, raw_artifact_id, source_reference, source_receipt_id)
                        VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                        ON CONFLICT (benchmark_ticker, session_date, session, adjustment_basis)
-                       DO UPDATE SET open_price = EXCLUDED.open_price, high_price = EXCLUDED.high_price,
-                           low_price = EXCLUDED.low_price, close_price = EXCLUDED.close_price,
-                           volume = EXCLUDED.volume, observed_at = EXCLUDED.observed_at,
-                           available_at = EXCLUDED.available_at,
-                           availability_rule_id = EXCLUDED.availability_rule_id,
-                           ingested_at = EXCLUDED.ingested_at,
-                           raw_artifact_id = EXCLUDED.raw_artifact_id,
-                           source_reference = EXCLUDED.source_reference,
-                           source_receipt_id = COALESCE(EXCLUDED.source_receipt_id, quantrade.benchmark_daily_price_bars.source_receipt_id)""",
+                       {conflict_clause}""",
                     (benchmark_ticker, bar.session_date, bar.open_price, bar.high_price, bar.low_price,
                      bar.close_price, bar.volume, adjustment_basis, bar.observed_at, bar_available_at,
                      availability_rule_id, datetime.now(timezone.utc), raw_artifact_id, source_reference, source_receipt_id),
                 )
+                persisted += cursor.rowcount
         self._connection.commit()
-        return len(bars)
+        return persisted
 
     def upsert_corporate_actions(
         self, actions: list[AlpacaCorporateAction], raw_artifact_id: str, source_reference: str,
