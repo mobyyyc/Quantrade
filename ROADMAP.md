@@ -113,9 +113,27 @@ lineage required to reproduce them.
 - [x] P9B.7: evaluate rank IC, top-20 next-open benchmark-relative return at 5/10/25/50 bp costs, turnover, coverage, factor-sign stability, rank stability, and pre-defined SPY trend/volatility diagnostics. Every candidate rejection is recorded in `MONTHLY_FEATURE_FAMILY_DECISION.md`.
 - [x] P9B.8: issue a versioned no-freeze decision. No market-wide challenger cleared every frozen gate, so the active private-beta model remains unchanged; no minimum non-zero-feature condition was imposed.
 
+## Phase 9C: point-in-time weekly rank research
+
+Phase 9C responds to the Phase 9B no-freeze result by correcting the label,
+quarterly accounting construction, missing-data policy, ranking objective, and
+effective-time validation before adding model complexity. Weekly formations
+support training, but calendar months remain the independent weighting and
+inference unit; the visible research basket remains monthly.
+
+- [x] P9C.0: translate the external research report into a project-specific protocol, explicitly preserve the consumed holdout, separate deployed/reference/portfolio effects, and document the report's non-portable bibliography limitation.
+- [ ] P9C.1: run the no-download data-feasibility audit for corporate-action-aware wealth labels, point-in-time quarterly/TTM SEC reconstruction, endpoint shares, historical SIC/FF12, market-feature coverage, and weekly calendar weights; then freeze admissible scope and numeric gates before inspecting outcomes.
+- [ ] P9C.2: implement the deterministic stock-and-SPY wealth ledger for ordinary dividends and splits, withholding labels that cross unresolved complex actions.
+- [ ] P9C.3: implement the fail-closed point-in-time standalone-quarter and true-TTM SEC engine with full selected-fact lineage and no weighted-average-share primary fallback.
+- [ ] P9C.4: freeze and materialize the approved six economic families with neutral missing ranks, separately measured informative coverage, and calendar-month-normalized weekly sample weights.
+- [ ] P9C.5: build the label-safe weekly development dataset and nested chronological folds; preserve July 2025–June 2026 as report-only.
+- [ ] P9C.6: replay the exact deployed artifact and an active-family refit, then fit no more than the pre-registered ridge-rank, pairwise-linear, and optional low-DF additive challengers.
+- [ ] P9C.7: attribute model versus portfolio effects under both exact Top 20 and Top-20-entry/Top-30-retention rules, with identical construction for every comparison.
+- [ ] P9C.8: run monthly block-bootstrap, cost, turnover, stability, coverage, and regime diagnostics; issue an immutable freeze or no-freeze decision without relaxing gates.
+
 ## Phase 10: shadow confirmation and promotion
 
-Phase 10 remains queued until Phase 9B produces a qualifying frozen challenger.
+Phase 10 remains queued until Phase 9C produces a qualifying frozen challenger.
 Rejected candidates do not enter shadow scoring. The next genuinely untouched
 confirmation period is forward data collected after the frozen candidate, not
 the consumed historical holdout.
