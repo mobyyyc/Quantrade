@@ -20,7 +20,7 @@ from quantrade_research.sec_edgar import (
 from quantrade_research.filings import StoredSource
 from quantrade_research.ingest_filings import (
     _daily_index_candidates, _daily_index_dates, _fetch_daily_master_index_with_retry, _new_accession_numbers,
-    _record_source,
+    _new_filings, _record_source, _requires_company_facts,
 )
 
 
@@ -48,6 +48,18 @@ class FilingParserTests(unittest.TestCase):
             _new_accession_numbers(filings, {"0000320193-26-000001"}),
             ["0000320193-26-000002"],
         )
+        self.assertEqual(
+            [filing.accession_number for filing in _new_filings(filings, {"0000320193-26-000001"})],
+            ["0000320193-26-000002"],
+        )
+
+    def test_requests_company_facts_only_for_new_financial_filings(self) -> None:
+        filings = parse_submissions(
+            b'{"filings":{"recent":{"form":["8-K","10-Q/A"],"accessionNumber":["0000320193-26-000001","0000320193-26-000002"],"filingDate":["2026-08-01","2026-08-02"],"acceptanceDateTime":["2026-08-01T20:15:00Z","2026-08-02T20:15:00Z"],"reportDate":["","2026-06-30"]}}}'
+        )
+        self.assertEqual([filing.form for filing in filings], ["8-K", "10-Q"])
+        self.assertFalse(_requires_company_facts([filings[0]]))
+        self.assertTrue(_requires_company_facts([filings[1]]))
 
     def test_retries_the_daily_index_without_a_cohort_wide_fallback(self) -> None:
         class UnstableClient:

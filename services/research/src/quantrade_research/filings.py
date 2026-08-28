@@ -16,7 +16,7 @@ class FilingIngestionReport:
     filings: int
     facts: int
     submissions_artifact_uri: str
-    facts_artifact_uri: str
+    facts_artifact_uri: str | None
 
     def manifest_note(self) -> str:
         return f"filings={self.filings}; facts={self.facts}; filing_availability=acceptance_timestamp"
@@ -185,7 +185,7 @@ class PostgresFilingRepository:
 
 def persist_sec_filings(
     repository, cik: str, filings: list[SecFilingMetadata], facts: list[SecFilingFact],
-    submissions_source: StoredSource, facts_source: StoredSource,
+    submissions_source: StoredSource, facts_source: StoredSource | None,
     submission_sources: Mapping[str, StoredSource] | None = None,
 ) -> FilingIngestionReport:
     ingested_at = datetime.now(timezone.utc)
@@ -193,5 +193,10 @@ def persist_sec_filings(
     filing_ids = repository.upsert_filings(
         cik, filings, submissions_source, ingested_at, submission_sources,
     )
-    fact_count = repository.upsert_facts(cik, facts, filing_map, filing_ids, facts_source, ingested_at)
-    return FilingIngestionReport(len(filings), fact_count, submissions_source.storage_uri, facts_source.storage_uri)
+    fact_count = 0 if facts_source is None else repository.upsert_facts(
+        cik, facts, filing_map, filing_ids, facts_source, ingested_at,
+    )
+    return FilingIngestionReport(
+        len(filings), fact_count, submissions_source.storage_uri,
+        facts_source.storage_uri if facts_source else None,
+    )

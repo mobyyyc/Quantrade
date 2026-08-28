@@ -30,6 +30,7 @@ from .security_master import FileRawArtifactStore
 
 
 _SEC_PARSER_VERSION = "sec_edgar_parser_v1"
+_MODEL_RELEVANT_FINANCIAL_FORMS = frozenset({"10-K", "10-Q", "20-F", "40-F"})
 
 
 def _record_source(
@@ -70,6 +71,23 @@ def _ciks(value: str) -> list[str]:
 def _new_accession_numbers(filings, known_accessions: set[str]) -> list[str]:
     """Return stable new accessions from a submissions response."""
     return sorted({filing.accession_number for filing in filings} - known_accessions)
+
+
+def _new_filings(filings, known_accessions: set[str]):
+    """Return only newly discovered submission records in SEC response order."""
+    seen: set[str] = set()
+    new_filings = []
+    for filing in filings:
+        if filing.accession_number in known_accessions or filing.accession_number in seen:
+            continue
+        seen.add(filing.accession_number)
+        new_filings.append(filing)
+    return new_filings
+
+
+def _requires_company_facts(filings) -> bool:
+    """Company Facts is useful only for new annual/interim financial filings."""
+    return any(filing.form in _MODEL_RELEVANT_FINANCIAL_FORMS for filing in filings)
 
 
 def _daily_index_candidates(ciks: list[str], index_ciks: set[str]) -> list[str]:
@@ -152,6 +170,8 @@ def main() -> None:
     total_filings = 0
     total_facts = 0
     refreshed_ciks = 0
+    new_accession_count = 0
+    company_facts_requests = 0
     source_inputs: list[SourceInput] = []
     try:
         missing_index_dates: list[date] = []
@@ -221,16 +241,23 @@ def main() -> None:
                         response_category="sec_submissions", raw_category="sec-submission-history",
                         compact_receipts=arguments.compact_receipts,
                     ))
-            time.sleep(arguments.minimum_request_interval)
-            facts_payload = client.fetch_company_facts(cik)
             filings = merge_filings(*filings_groups)
-            facts = parse_company_facts(facts_payload, {filing.accession_number: filing for filing in filings})
+            if arguments.incremental:
+                filings = _new_filings(filings, known_accessions)
+            new_accession_count += len(filings)
+            facts = []
+            facts_source = None
             facts_reference = COMPANY_FACTS_URL.format(cik=cik)
-            facts_source = _record_source(
-                repository, store, facts_payload, retrieved_at, facts_reference,
-                response_category="sec_company_facts", raw_category="sec-company-facts",
-                compact_receipts=arguments.compact_receipts,
-            )
+            if not arguments.incremental or _requires_company_facts(filings):
+                time.sleep(arguments.minimum_request_interval)
+                facts_payload = client.fetch_company_facts(cik)
+                facts = parse_company_facts(facts_payload, {filing.accession_number: filing for filing in filings})
+                facts_source = _record_source(
+                    repository, store, facts_payload, retrieved_at, facts_reference,
+                    response_category="sec_company_facts", raw_category="sec-company-facts",
+                    compact_receipts=arguments.compact_receipts,
+                )
+                company_facts_requests += 1
             source_by_accession = {
                 filing.accession_number: artifacts[group_index]
                 for group_index, group in enumerate(filings_groups)
@@ -246,7 +273,8 @@ def main() -> None:
                 SourceInput(provider="sec_edgar", source_reference=source.source_reference, raw_artifact_uris=(source.storage_uri,))
                 for source in artifacts
             )
-            source_inputs.append(SourceInput(provider="sec_edgar", source_reference=facts_reference, raw_artifact_uris=(facts_source.storage_uri,)))
+            if facts_source:
+                source_inputs.append(SourceInput(provider="sec_edgar", source_reference=facts_reference, raw_artifact_uris=(facts_source.storage_uri,)))
             if index + 1 < len(ciks):
                 time.sleep(arguments.minimum_request_interval)
     finally:
@@ -255,7 +283,8 @@ def main() -> None:
         settings=settings, run_kind="ingestion", code_revision=arguments.code_revision, data_capability_tier="B",
         source_inputs=tuple(source_inputs), status="completed",
         note=(f"ciks_requested={len(requested_ciks)}; ciks_checked={len(ciks)}; filings={total_filings}; facts={total_facts}; "
-              f"incremental={arguments.incremental}; refreshed_ciks={refreshed_ciks}; "
+              f"incremental={arguments.incremental}; refreshed_ciks={refreshed_ciks}; new_accessions={new_accession_count}; "
+              f"company_facts_requests={company_facts_requests}; "
               f"daily_index_start_date={arguments.daily_index_start_date.isoformat() if arguments.daily_index_start_date else 'none'}; "
               f"daily_index_end_date={arguments.daily_index_end_date.isoformat() if arguments.daily_index_end_date else 'none'}; "
               f"missing_daily_indexes={','.join(item.isoformat() for item in missing_index_dates) or 'none'}; "

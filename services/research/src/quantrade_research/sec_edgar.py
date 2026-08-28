@@ -19,6 +19,7 @@ COMPANY_FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
 DAILY_MASTER_INDEX_URL = "https://www.sec.gov/Archives/edgar/daily-index/{year}/QTR{quarter}/master.{stamp}.idx"
 
 _SUBMISSION_HISTORY_NAME = re.compile(r"^CIK\d{10}-submissions-\d{3}\.json$")
+_CANONICAL_FILING_FORMS = {"10-K", "10-Q", "8-K", "20-F", "40-F"}
 
 EXCHANGE_MIC_BY_SEC_NAME = {
     "Nasdaq": "XNAS",
@@ -144,6 +145,12 @@ def _optional_date(value: object) -> date | None:
     return date.fromisoformat(value) if isinstance(value, str) and value else None
 
 
+def _canonical_filing_form(value: str) -> str:
+    """Keep supported amendment facts in their model-relevant base form."""
+    base_form = value.removesuffix("/A")
+    return base_form if base_form in _CANONICAL_FILING_FORMS else "other"
+
+
 def _parse_submission_rows(rows: object) -> list[SecFilingMetadata]:
     try:
         forms, accessions, filed, accepted, reports = (
@@ -158,7 +165,7 @@ def _parse_submission_rows(rows: object) -> list[SecFilingMetadata]:
     for form, accession, filing_date, acceptance, report_date in zip(forms, accessions, filed, accepted, reports, strict=True):
         if not isinstance(accession, str) or not isinstance(form, str):
             raise SecEdgarError("SEC submissions payload contains an invalid filing")
-        filings.append(SecFilingMetadata(accession, form if form in {"10-K", "10-Q", "8-K", "20-F", "40-F"} else "other", _timestamp(filing_date + "T00:00:00Z"), _timestamp(acceptance), _optional_date(report_date)))
+        filings.append(SecFilingMetadata(accession, _canonical_filing_form(form), _timestamp(filing_date + "T00:00:00Z"), _timestamp(acceptance), _optional_date(report_date)))
     return filings
 
 
