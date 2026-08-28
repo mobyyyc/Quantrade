@@ -2,12 +2,30 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from hashlib import sha256
 import json
 from typing import Callable
 
 from .alpaca import AlpacaCorporateAction, AlpacaDailyBar
-from .security_master import RawArtifact
+from .security_master import FileRawArtifactStore, RawArtifact
+
+
+@dataclass(frozen=True, slots=True)
+class CompactMarketReceipt:
+    raw_artifact_id: str
+    storage_uri: str
+    source_receipt_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class MarketSource:
+    """Immutable source reference used by normalized market-data rows."""
+
+    raw_artifact_id: str
+    storage_uri: str
+    source_receipt_id: str | None = None
 
 
 class PostgresMarketDataRepository:
@@ -56,6 +74,53 @@ class PostgresMarketDataRepository:
         self._connection.commit()
         return identifier
 
+    def persist_compact_receipt(
+        self, payload: bytes, source_reference: str, response_category: str,
+        retrieved_at: datetime, *, parser_version: str,
+    ) -> CompactMarketReceipt:
+        """Persist market-source metadata without retaining the response payload."""
+        content_sha256 = sha256(payload).hexdigest()
+        source_key = sha256(source_reference.encode("utf-8")).hexdigest()
+        storage_uri = f"receipt://alpaca/{source_key}/{content_sha256}"
+        with self._connection.cursor() as cursor:
+            cursor.execute(
+                """INSERT INTO quantrade.raw_artifacts
+                       (provider, source_reference, storage_uri, retrieved_at, content_sha256)
+                   VALUES ('alpaca', %s, %s, %s, %s)
+                   ON CONFLICT (storage_uri) DO UPDATE SET storage_uri = EXCLUDED.storage_uri
+                   RETURNING raw_artifact_id""",
+                (source_reference, storage_uri, retrieved_at, content_sha256),
+            )
+            raw_artifact_id = str(cursor.fetchone()[0])
+            cursor.execute(
+                """INSERT INTO quantrade.source_receipts
+                       (provider, source_reference, response_category, content_sha256, byte_count, parser_version,
+                        payload_retained, content_type)
+                   VALUES ('alpaca', %s, %s, %s, %s, %s, FALSE, 'application/json')
+                   ON CONFLICT (provider, source_reference, content_sha256, parser_version) DO NOTHING
+                   RETURNING source_receipt_id""",
+                (source_reference, response_category, content_sha256, len(payload), parser_version),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                cursor.execute(
+                    """SELECT source_receipt_id FROM quantrade.source_receipts
+                       WHERE provider = 'alpaca' AND source_reference = %s
+                         AND content_sha256 = %s AND parser_version = %s""",
+                    (source_reference, content_sha256, parser_version),
+                )
+                row = cursor.fetchone()
+            source_receipt_id = str(row[0])
+            cursor.execute(
+                """INSERT INTO quantrade.source_receipt_retrievals
+                       (source_receipt_id, retrieved_at, retrieval_context)
+                   VALUES (%s, %s, jsonb_build_object('retention_mode', 'metadata_only'))
+                   ON CONFLICT (source_receipt_id, retrieved_at) DO NOTHING""",
+                (source_receipt_id, retrieved_at),
+            )
+        self._connection.commit()
+        return CompactMarketReceipt(raw_artifact_id, storage_uri, source_receipt_id)
+
     def availability_rule_id(self, rule_key: str, rule_version: str, data_domain: str) -> str:
         with self._connection.cursor() as cursor:
             cursor.execute(
@@ -99,7 +164,7 @@ class PostgresMarketDataRepository:
     def upsert_daily_bars(
         self, bars: list[AlpacaDailyBar], adjustment_basis: str, raw_artifact_id: str,
         source_reference: str, available_at: datetime | Callable[[AlpacaDailyBar], datetime],
-        availability_rule_id: str,
+        availability_rule_id: str, *, source_receipt_id: str | None = None,
     ) -> int:
         with self._connection.cursor() as cursor:
             for bar in bars:
@@ -110,19 +175,20 @@ class PostgresMarketDataRepository:
                     INSERT INTO quantrade.daily_price_bars
                         (security_id, session_date, session, currency, open_price, high_price, low_price,
                          close_price, volume, adjustment_basis, observed_at, available_at, availability_rule_id, ingested_at,
-                         raw_artifact_id, source_reference)
-                    VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         raw_artifact_id, source_reference, source_receipt_id)
+                    VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (security_id, session_date, session, adjustment_basis)
                     DO UPDATE SET open_price = EXCLUDED.open_price, high_price = EXCLUDED.high_price,
                         low_price = EXCLUDED.low_price, close_price = EXCLUDED.close_price,
                         volume = EXCLUDED.volume, observed_at = EXCLUDED.observed_at,
                         available_at = EXCLUDED.available_at, availability_rule_id = EXCLUDED.availability_rule_id,
                         ingested_at = EXCLUDED.ingested_at,
-                        raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference
+                        raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference,
+                        source_receipt_id = COALESCE(EXCLUDED.source_receipt_id, quantrade.daily_price_bars.source_receipt_id)
                     """,
                     (security_id, bar.session_date, bar.open_price, bar.high_price, bar.low_price,
                      bar.close_price, bar.volume, adjustment_basis, bar.observed_at, bar_available_at,
-                     availability_rule_id, datetime.now(timezone.utc), raw_artifact_id, source_reference),
+                     availability_rule_id, datetime.now(timezone.utc), raw_artifact_id, source_reference, source_receipt_id),
                 )
         self._connection.commit()
         return len(bars)
@@ -131,6 +197,7 @@ class PostgresMarketDataRepository:
         self, bars: list[AlpacaDailyBar], benchmark_ticker: str, adjustment_basis: str,
         raw_artifact_id: str, source_reference: str,
         available_at: datetime | Callable[[AlpacaDailyBar], datetime], availability_rule_id: str,
+        *, source_receipt_id: str | None = None,
     ) -> int:
         with self._connection.cursor() as cursor:
             for bar in bars:
@@ -139,8 +206,8 @@ class PostgresMarketDataRepository:
                     """INSERT INTO quantrade.benchmark_daily_price_bars
                            (benchmark_ticker, session_date, session, currency, open_price, high_price, low_price,
                             close_price, volume, adjustment_basis, observed_at, available_at, availability_rule_id,
-                            ingested_at, raw_artifact_id, source_reference)
-                       VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ingested_at, raw_artifact_id, source_reference, source_receipt_id)
+                       VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                        ON CONFLICT (benchmark_ticker, session_date, session, adjustment_basis)
                        DO UPDATE SET open_price = EXCLUDED.open_price, high_price = EXCLUDED.high_price,
                            low_price = EXCLUDED.low_price, close_price = EXCLUDED.close_price,
@@ -149,15 +216,21 @@ class PostgresMarketDataRepository:
                            availability_rule_id = EXCLUDED.availability_rule_id,
                            ingested_at = EXCLUDED.ingested_at,
                            raw_artifact_id = EXCLUDED.raw_artifact_id,
-                           source_reference = EXCLUDED.source_reference""",
+                           source_reference = EXCLUDED.source_reference,
+                           source_receipt_id = COALESCE(EXCLUDED.source_receipt_id, quantrade.benchmark_daily_price_bars.source_receipt_id)""",
                     (benchmark_ticker, bar.session_date, bar.open_price, bar.high_price, bar.low_price,
                      bar.close_price, bar.volume, adjustment_basis, bar.observed_at, bar_available_at,
-                     availability_rule_id, datetime.now(timezone.utc), raw_artifact_id, source_reference),
+                     availability_rule_id, datetime.now(timezone.utc), raw_artifact_id, source_reference, source_receipt_id),
                 )
         self._connection.commit()
         return len(bars)
 
-    def upsert_corporate_actions(self, actions: list[AlpacaCorporateAction], raw_artifact_id: str, source_reference: str, available_at: datetime | Callable[[AlpacaCorporateAction], datetime], *, skip_unmapped: bool = False) -> int:
+    def upsert_corporate_actions(
+        self, actions: list[AlpacaCorporateAction], raw_artifact_id: str, source_reference: str,
+        available_at: datetime | Callable[[AlpacaCorporateAction], datetime], *,
+        skip_unmapped: bool = False, source_receipt_id: str | None = None,
+        retain_provider_payload: bool = True,
+    ) -> int:
         persisted = 0
         with self._connection.cursor() as cursor:
             for action in actions:
@@ -173,18 +246,36 @@ class PostgresMarketDataRepository:
                     INSERT INTO quantrade.corporate_actions
                         (security_id, provider_action_id, action_type, process_date, effective_date,
                          cash_amount, ratio_numerator, ratio_denominator, currency, available_at,
-                         ingested_at, raw_artifact_id, source_reference, provider_payload)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'USD', %s, %s, %s, %s, %s::jsonb)
+                         ingested_at, raw_artifact_id, source_reference, provider_payload, source_receipt_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'USD', %s, %s, %s, %s, %s::jsonb, %s)
                     ON CONFLICT (provider_action_id)
                     DO UPDATE SET available_at = EXCLUDED.available_at, ingested_at = EXCLUDED.ingested_at,
                         raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference,
-                        provider_payload = EXCLUDED.provider_payload
+                        provider_payload = EXCLUDED.provider_payload,
+                        source_receipt_id = COALESCE(EXCLUDED.source_receipt_id, quantrade.corporate_actions.source_receipt_id)
                     """,
                     (security_id, action.provider_action_id, action.action_type, action.process_date,
                      action.effective_date, action.cash_amount, action.ratio_numerator,
                      action.ratio_denominator, action_available_at, datetime.now(timezone.utc), raw_artifact_id,
-                     source_reference, json.dumps(action.payload, sort_keys=True)),
+                     source_reference, json.dumps(action.payload, sort_keys=True) if retain_provider_payload else "{}",
+                     source_receipt_id),
                 )
                 persisted += 1
         self._connection.commit()
         return persisted
+
+
+def record_market_source(
+    repository: PostgresMarketDataRepository, store: FileRawArtifactStore, payload: bytes,
+    retrieved_at: datetime, source_reference: str, *, response_category: str,
+    raw_category: str, compact_receipts: bool, parser_version: str,
+) -> MarketSource:
+    """Store either a full raw response or a compact, hash-backed source receipt."""
+    if compact_receipts:
+        receipt = repository.persist_compact_receipt(
+            payload, source_reference, response_category, retrieved_at,
+            parser_version=parser_version,
+        )
+        return MarketSource(receipt.raw_artifact_id, receipt.storage_uri, receipt.source_receipt_id)
+    artifact = store.store(payload, retrieved_at, category=raw_category)
+    return MarketSource(repository.persist_raw_artifact(artifact, source_reference), artifact.storage_uri)

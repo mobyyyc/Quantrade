@@ -254,10 +254,12 @@ def main() -> None:
                 start = _catch_up_start(settings.database_url, score_date)
                 if start <= score_date:
                     _run([sys.executable, "-m", "quantrade_research.ingest_market_data", "--symbols", symbols,
-                          "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision], environment,
+                          "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision,
+                          "--compact-receipts"], environment,
                          operation="market-data ingestion")
                     _run([sys.executable, "-m", "quantrade_research.ingest_benchmark_data", "--ticker", "SPY",
-                          "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision], environment,
+                          "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision,
+                          "--compact-receipts"], environment,
                          operation="benchmark-data ingestion")
                 if not _has_current_benchmark_session(settings.database_url, score_date):
                     _set_skipped(connection, score_date, "No regular SPY session was returned for this date.")

@@ -14,9 +14,12 @@ from .alpaca import (
 )
 from .config import Settings
 from .ingest_security_master import _file_path_from_uri
-from .market_data import PostgresMarketDataRepository
+from .market_data import PostgresMarketDataRepository, record_market_source
 from .run_manifest import RunManifest, SourceInput
 from .security_master import FileRawArtifactStore
+
+
+_ALPACA_PARSER_VERSION = "alpaca_parser_v1"
 
 
 def _symbols(value: str) -> list[str]:
@@ -33,6 +36,10 @@ def main() -> None:
     parser.add_argument("--end", type=date.fromisoformat, required=True)
     parser.add_argument("--code-revision", required=True)
     parser.add_argument("--batch-size", type=int, default=100)
+    parser.add_argument(
+        "--compact-receipts", action="store_true",
+        help="Store source metadata receipts without routine payload files",
+    )
     arguments = parser.parse_args()
     if arguments.batch_size < 1:
         parser.error("--batch-size must be positive")
@@ -61,12 +68,16 @@ def main() -> None:
                 retrieved_at = datetime.now(timezone.utc)
                 payload = client.fetch_daily_bars(symbols, arguments.start, arguments.end, adjustment, token)
                 bars, token = parse_daily_bars(payload)
-                artifact = artifact_store.store(payload, retrieved_at, category="market-data")
-                artifact_uris.append(artifact.storage_uri)
-                artifact_id = repository.persist_raw_artifact(artifact, ALPACA_BARS_URL)
+                source = record_market_source(
+                    repository, artifact_store, payload, retrieved_at, ALPACA_BARS_URL,
+                    response_category="alpaca_daily_bars", raw_category="market-data",
+                    compact_receipts=arguments.compact_receipts, parser_version=_ALPACA_PARSER_VERSION,
+                )
+                artifact_uris.append(source.storage_uri)
                 bar_count += repository.upsert_daily_bars(
                     bars, "unadjusted" if adjustment == "raw" else "split_adjusted",
-                    artifact_id, ALPACA_BARS_URL, retrieved_at, availability_rule_id,
+                    source.raw_artifact_id, ALPACA_BARS_URL, retrieved_at, availability_rule_id,
+                    source_receipt_id=source.source_receipt_id,
                 )
                 if token is None:
                     break
@@ -75,10 +86,16 @@ def main() -> None:
             retrieved_at = datetime.now(timezone.utc)
             payload = client.fetch_corporate_actions(symbols, arguments.start, arguments.end, token)
             actions, token = parse_corporate_actions(payload)
-            artifact = artifact_store.store(payload, retrieved_at, category="corporate-actions")
-            artifact_uris.append(artifact.storage_uri)
-            artifact_id = repository.persist_raw_artifact(artifact, ALPACA_CORPORATE_ACTIONS_URL)
-            action_count += repository.upsert_corporate_actions(actions, artifact_id, ALPACA_CORPORATE_ACTIONS_URL, retrieved_at)
+            source = record_market_source(
+                repository, artifact_store, payload, retrieved_at, ALPACA_CORPORATE_ACTIONS_URL,
+                response_category="alpaca_corporate_actions", raw_category="corporate-actions",
+                compact_receipts=arguments.compact_receipts, parser_version=_ALPACA_PARSER_VERSION,
+            )
+            artifact_uris.append(source.storage_uri)
+            action_count += repository.upsert_corporate_actions(
+                actions, source.raw_artifact_id, ALPACA_CORPORATE_ACTIONS_URL, retrieved_at,
+                source_receipt_id=source.source_receipt_id, retain_provider_payload=not arguments.compact_receipts,
+            )
             if token is None:
                 break
     finally:
@@ -93,7 +110,8 @@ def main() -> None:
             SourceInput(provider="alpaca", source_reference=ALPACA_BARS_URL, raw_artifact_uris=tuple(artifact_uris)),
         ),
         status="completed",
-        note=f"daily_bars={bar_count}; corporate_actions={action_count}; adjustment_bases=unadjusted,split_adjusted",
+        note=(f"daily_bars={bar_count}; corporate_actions={action_count}; adjustment_bases=unadjusted,split_adjusted; "
+              f"receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}"),
     )
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")
     print(manifest.note)

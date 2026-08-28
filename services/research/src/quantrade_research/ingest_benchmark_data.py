@@ -9,8 +9,12 @@ from pathlib import Path
 from .alpaca import ALPACA_BARS_URL, AlpacaClient, parse_daily_bars
 from .config import Settings
 from .ingest_security_master import _file_path_from_uri
+from .market_data import PostgresMarketDataRepository, record_market_source
 from .run_manifest import RunManifest, SourceInput
 from .security_master import FileRawArtifactStore
+
+
+_ALPACA_PARSER_VERSION = "alpaca_parser_v1"
 
 
 def main() -> None:
@@ -20,6 +24,10 @@ def main() -> None:
     parser.add_argument("--end", type=date.fromisoformat, required=True)
     parser.add_argument("--code-revision", required=True)
     parser.add_argument("--env-file", default=".env")
+    parser.add_argument(
+        "--compact-receipts", action="store_true",
+        help="Store source metadata receipts without routine payload files",
+    )
     arguments = parser.parse_args()
     if arguments.start > arguments.end:
         parser.error("--start must be on or before --end")
@@ -35,75 +43,48 @@ def main() -> None:
     store = FileRawArtifactStore(settings.raw_artifacts_uri)
     artifact_uris: list[str] = []
     count = 0
-    import psycopg
-    with psycopg.connect(settings.database_url) as connection, connection.cursor() as cursor:
-        cursor.execute(
-            """SELECT availability_rule_id FROM quantrade.availability_rules
-               WHERE rule_key = 'alpaca_retrieval' AND rule_version = 'v1-benchmark'
-                 AND data_domain = 'benchmark_bar'"""
+    repository = PostgresMarketDataRepository(settings.database_url)
+    try:
+        availability_rule_id = repository.availability_rule_id(
+            "alpaca_retrieval", "v1-benchmark", "benchmark_bar",
         )
-        availability_rule_id = cursor.fetchone()[0]
         for adjustment, basis in (("raw", "unadjusted"), ("split", "split_adjusted")):
             token = None
             while True:
                 retrieved_at = datetime.now(timezone.utc)
                 payload = client.fetch_daily_bars([ticker], arguments.start, arguments.end, adjustment, token)
                 bars, token = parse_daily_bars(payload)
-                artifact = store.store(payload, retrieved_at, category="benchmark-market-data")
-                artifact_uris.append(artifact.storage_uri)
-                cursor.execute(
-                    """INSERT INTO quantrade.raw_artifacts
-                       (provider, source_reference, storage_uri, retrieved_at, content_sha256)
-                       VALUES ('alpaca', %s, %s, %s, %s)
-                       ON CONFLICT (storage_uri) DO UPDATE SET storage_uri = EXCLUDED.storage_uri
-                       RETURNING raw_artifact_id""",
-                    (ALPACA_BARS_URL, artifact.storage_uri, artifact.retrieved_at, artifact.content_sha256),
+                source = record_market_source(
+                    repository, store, payload, retrieved_at, ALPACA_BARS_URL,
+                    response_category="alpaca_daily_bars", raw_category="benchmark-market-data",
+                    compact_receipts=arguments.compact_receipts, parser_version=_ALPACA_PARSER_VERSION,
                 )
-                artifact_id = cursor.fetchone()[0]
-                cursor.execute(
-                    """INSERT INTO quantrade.raw_documents (provider, content_sha256, canonical_storage_uri)
-                       VALUES ('alpaca', %s, %s)
-                       ON CONFLICT (provider, content_sha256) DO NOTHING""",
-                    (artifact.content_sha256, artifact.storage_uri),
+                artifact_uris.append(source.storage_uri)
+                count += repository.upsert_benchmark_daily_bars(
+                    bars, ticker, basis, source.raw_artifact_id, ALPACA_BARS_URL,
+                    retrieved_at, availability_rule_id, source_receipt_id=source.source_receipt_id,
                 )
-                cursor.execute(
-                    """SELECT raw_document_id FROM quantrade.raw_documents
-                       WHERE provider = 'alpaca' AND content_sha256 = %s""",
-                    (artifact.content_sha256,),
-                )
-                document_id = cursor.fetchone()[0]
-                cursor.execute(
-                    """INSERT INTO quantrade.raw_document_retrievals
-                           (raw_document_id, raw_artifact_id, source_reference, retrieved_at)
-                       VALUES (%s, %s, %s, %s)
-                       ON CONFLICT (raw_artifact_id) DO NOTHING""",
-                    (document_id, artifact_id, ALPACA_BARS_URL, artifact.retrieved_at),
-                )
-                for bar in bars:
-                    cursor.execute(
-                        """INSERT INTO quantrade.benchmark_daily_price_bars
-                           (benchmark_ticker, session_date, session, currency, open_price, high_price, low_price,
-                            close_price, volume, adjustment_basis, observed_at, available_at, availability_rule_id, ingested_at,
-                            raw_artifact_id, source_reference)
-                           VALUES (%s, %s, 'regular', 'USD', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                           ON CONFLICT (benchmark_ticker, session_date, session, adjustment_basis)
-                           DO UPDATE SET open_price = EXCLUDED.open_price, high_price = EXCLUDED.high_price,
-                               low_price = EXCLUDED.low_price, close_price = EXCLUDED.close_price,
-                               volume = EXCLUDED.volume, observed_at = EXCLUDED.observed_at,
-                               available_at = EXCLUDED.available_at,
-                               availability_rule_id = EXCLUDED.availability_rule_id,
-                               ingested_at = EXCLUDED.ingested_at,
-                               raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference""",
-                        (ticker, bar.session_date, bar.open_price, bar.high_price, bar.low_price, bar.close_price,
-                         bar.volume, basis, bar.observed_at, retrieved_at, availability_rule_id,
-                         datetime.now(timezone.utc), artifact_id,
-                         ALPACA_BARS_URL),
-                    )
-                    count += 1
                 if token is None:
                     break
-        connection.commit()
-    manifest = RunManifest.create(settings=settings, run_kind="ingestion", code_revision=arguments.code_revision, data_capability_tier="B", status="completed", source_inputs=(SourceInput(provider="alpaca", source_reference=ALPACA_BARS_URL, raw_artifact_uris=tuple(artifact_uris)),), note=f"benchmark={ticker}; daily_bars={count}; adjustment_bases=unadjusted,split_adjusted")
+    finally:
+        repository.close()
+    manifest = RunManifest.create(
+        settings=settings,
+        run_kind="ingestion",
+        code_revision=arguments.code_revision,
+        data_capability_tier="B",
+        status="completed",
+        source_inputs=(
+            SourceInput(
+                provider="alpaca", source_reference=ALPACA_BARS_URL,
+                raw_artifact_uris=tuple(artifact_uris),
+            ),
+        ),
+        note=(
+            f"benchmark={ticker}; daily_bars={count}; adjustment_bases=unadjusted,split_adjusted; "
+            f"receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}"
+        ),
+    )
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")
     print(manifest.note)
 
