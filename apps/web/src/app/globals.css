@@ -359,6 +359,14 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .evidence-list strong, .evidence-list span { display: block; }
 .evidence-list span, .evidence-list p, .plain-list li, .split-note p { color: var(--muted); line-height: 1.55; }
 .evidence-list p { margin: 0; }
+.evidence-intro { max-width: 44rem; margin: 0 0 1.5rem; color: var(--muted); line-height: 1.55; }
+.evidence-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.4rem; }
+.evidence-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
+.evidence-group-heading h3 { margin: 0; color: var(--foreground); font-size: .94rem; letter-spacing: -.02em; }
+.evidence-group-heading span { color: var(--subtle); font-size: .72rem; text-align: right; }
+.evidence-group .evidence-list { border-radius: 1.1rem; }
+.evidence-group .evidence-list li { grid-template-columns: 1fr; gap: .4rem; padding: 1rem 1.05rem; }
+.evidence-empty { min-height: 5.2rem; margin: 0; padding: 1rem 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); color: var(--muted); font-size: .88rem; line-height: 1.55; }
 .split-note, .methodology { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 2rem; }
 .methodology p { color: var(--muted); line-height: 1.6; }
 .methodology dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-top: 1.4rem; }
@@ -524,7 +532,8 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .stock-overview-item { min-height: 0; padding: 1rem 0; border-right: 0; border-bottom: 1px solid var(--line-soft); }
   .stock-overview-item:first-child, .stock-overview-item:last-child { padding-right: 0; padding-left: 0; }
   .stock-overview-item:last-child { border-bottom: 0; }
-  .evidence-list li, .split-note, .methodology, .coverage-health { grid-template-columns: 1fr; gap: .5rem; }
+  .evidence-list li, .split-note, .methodology, .coverage-health, .evidence-groups { grid-template-columns: 1fr; gap: .5rem; }
+  .evidence-groups { gap: 1.75rem; }
   .methodology dl { grid-template-columns: 1fr; }
   .portfolio-checkpoints li { grid-template-columns: 1fr auto; }
   .portfolio-checkpoints li > span { grid-column: 1 / -1; grid-row: 2; }
