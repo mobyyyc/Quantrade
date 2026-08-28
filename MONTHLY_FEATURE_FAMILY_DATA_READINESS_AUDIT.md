@@ -53,6 +53,17 @@ No historical accounting feature may be added to a candidate dataset until all a
 5. **Split-aware share-count builder.** Compare dated share facts only after a corporate-action reconciliation. It must publish an exclusion rather than guess when the path cannot be proven.
 6. **Coverage and determinism tests.** For every feature: test late filing exclusion, late amendment exclusion, same-accession revision handling, missing period exclusion, split event handling, and identical hashes from two replays of the same decision date.
 
+## Implemented after this audit
+
+The first two safeguards are now implemented in migration `0028_add_sec_fact_versioning.sql`:
+
+- an append-only `filing_fact_observations` table stores immutable parsed values with source lineage and an observation hash;
+- all new SEC observations use the versioned `sec_filing_acceptance_buffered@v1` rule, which makes them eligible five minutes after SEC acceptance;
+- future ingestion preserves an original submitted form and an amendment flag, while retaining the existing canonical form for compatibility;
+- the old mutable canonical `filing_facts` rows remain for the already-approved baseline only. New monthly accounting research must read the append-only observation table.
+
+The existing canonical facts are deliberately **not** copied by the schema migration: copying 1.8 million rows in one transaction would block ordinary database work. A later resumable, chunked operation will create clearly labelled `legacy_snapshot` observations. It will not claim to reconstruct every historical provider revision; that limitation remains part of Tier-B provenance.
+
 ## Consequence for P9B.3
 
 P9B.3 may safely start with the price-only short-term-reversal feature because it already reads split-adjusted bars through the point-in-time availability filter.
@@ -64,4 +75,3 @@ The accounting portion of P9B.3 is dependent on the six gates above. Implement t
 3. one quality feature selected from gross profitability or accrual quality after coverage measurement.
 
 Do not expose a model trained with the current-survivors cohort as unbiased historical performance. All resulting data and models retain the Tier-B survivorship/static-sector limitations.
-

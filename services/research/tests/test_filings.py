@@ -17,7 +17,7 @@ from quantrade_research.sec_edgar import (
     parse_submissions,
     submission_history_names,
 )
-from quantrade_research.filings import StoredSource
+from quantrade_research.filings import SEC_FILING_AVAILABILITY_BUFFER, StoredSource, buffered_filing_availability
 from quantrade_research.ingest_filings import (
     _daily_index_candidates, _daily_index_dates, _fetch_daily_master_index_with_retry, _new_accession_numbers,
     _new_filings, _record_source, _requires_company_facts,
@@ -60,6 +60,17 @@ class FilingParserTests(unittest.TestCase):
         self.assertEqual([filing.form for filing in filings], ["8-K", "10-Q"])
         self.assertFalse(_requires_company_facts([filings[0]]))
         self.assertTrue(_requires_company_facts([filings[1]]))
+        self.assertEqual(filings[1].submitted_form, "10-Q/A")
+        self.assertTrue(filings[1].is_amendment)
+
+    def test_applies_a_conservative_five_minute_buffer_to_sec_acceptance(self) -> None:
+        accepted_at = datetime(2026, 8, 2, 20, 15, tzinfo=timezone.utc)
+        self.assertEqual(
+            buffered_filing_availability(accepted_at),
+            accepted_at + SEC_FILING_AVAILABILITY_BUFFER,
+        )
+        with self.assertRaisesRegex(ValueError, "UTC offset"):
+            buffered_filing_availability(datetime(2026, 8, 2, 20, 15))
 
     def test_retries_the_daily_index_without_a_cohort_wide_fallback(self) -> None:
         class UnstableClient:

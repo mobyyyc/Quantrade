@@ -59,6 +59,8 @@ class SecurityMasterRow:
 class SecFilingMetadata:
     accession_number: str
     form: str
+    submitted_form: str
+    is_amendment: bool
     filed_at: datetime
     accepted_at: datetime
     period_end: date | None
@@ -165,7 +167,12 @@ def _parse_submission_rows(rows: object) -> list[SecFilingMetadata]:
     for form, accession, filing_date, acceptance, report_date in zip(forms, accessions, filed, accepted, reports, strict=True):
         if not isinstance(accession, str) or not isinstance(form, str):
             raise SecEdgarError("SEC submissions payload contains an invalid filing")
-        filings.append(SecFilingMetadata(accession, _canonical_filing_form(form), _timestamp(filing_date + "T00:00:00Z"), _timestamp(acceptance), _optional_date(report_date)))
+        submitted_form = form.strip()
+        filings.append(SecFilingMetadata(
+            accession, _canonical_filing_form(submitted_form), submitted_form,
+            submitted_form.endswith("/A"), _timestamp(filing_date + "T00:00:00Z"),
+            _timestamp(acceptance), _optional_date(report_date),
+        ))
     return filings
 
 

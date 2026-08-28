@@ -97,6 +97,7 @@ daily training remains a documented sensitivity test only.
 
 - [x] P9B.1: publish a versioned protocol that fixes monthly formation at the final market session, 8:00 p.m. Toronto decision time, next-open execution, label-safe pre-July-2025 development dates, a 20-session label-overlap purge, top-20 equal weighting, and cost scenarios.
 - [x] P9B.2: audit point-in-time accounting construction and availability for amendments, TTM flows, balance-sheet facts, split-adjusted share counts, and a conservative SEC publication-latency rule before adding features. See `MONTHLY_FEATURE_FAMILY_DATA_READINESS_AUDIT.md`.
+- [ ] P9B.2a: copy legacy SEC facts into the new immutable observation store through a resumable, chunked Tier-B snapshot process; measure and record its coverage before any accounting candidate reads it.
 - [ ] P9B.3: materialize and audit a small, economically distinct feature-family set: short-term reversal; asset growth; net share issuance; and one pre-registered quality specification. Record coverage, business-model exclusions, missingness, redundancy, and source lineage.
 - [ ] P9B.4: compare market-wide centered percentile inputs with the existing static-sector percentile transformation as Tier-B robustness only. Do not allow static current-sector results alone to select a production candidate.
 - [ ] P9B.5: build a versioned monthly development dataset and nested chronological out-of-fold panel. Give each formation date equal aggregate weight and exclude every label whose 20-session outcome reaches July 2025.

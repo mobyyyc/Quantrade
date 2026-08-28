@@ -189,6 +189,14 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("source_receipts_immutable", sql)
         self.assertIn("source_receipt_retrievals_immutable", sql)
 
+    def test_sec_fact_observations_are_append_only_and_buffered(self) -> None:
+        migration = MIGRATION.with_name("0028_add_sec_fact_versioning.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.filing_fact_observations", sql)
+        self.assertIn("sec_filing_acceptance_buffered", sql)
+        self.assertIn("observation_hash CHAR(64) NOT NULL", sql)
+        self.assertIn("filing_fact_observations_immutable", sql)
+
     def test_forward_readiness_snapshots_are_compact_and_immutable(self) -> None:
         migration = MIGRATION.with_name("0020_add_forward_readiness_snapshots.sql")
         sql = migration.read_text(encoding="utf-8")
