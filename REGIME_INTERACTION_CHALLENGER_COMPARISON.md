@@ -41,5 +41,6 @@ this verification note was appended. Their file SHA-256 values were
 `f11cc3ba657b6f26c3bde83e2f91609d9da0b58872581cb3d390f76f5ede49d1`
 and `710ebfe587b6968b2f59f90feeb2923ca2bf7c317e6cd104acdeff5c1ddcc9ab`.
 
-P9A.5 must record the formal freeze or rejection decision. This comparison
-alone cannot alter the live model or user-visible rankings.
+P9A.5 formally rejected the challenger in
+`REGIME_INTERACTION_CHALLENGER_DECISION.md`. No artifact was frozen and the
+live model and user-visible rankings remain unchanged.

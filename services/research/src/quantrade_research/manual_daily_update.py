@@ -252,6 +252,7 @@ def main() -> None:
                 print(f"reusing_existing_scores score_date={score_date}; snapshots={snapshots}; eligible={eligible}")
             else:
                 start = _catch_up_start(settings.database_url, score_date)
+                source_update_start = _sec_index_start_date(connection, score_date)
                 if start <= score_date:
                     _run([sys.executable, "-m", "quantrade_research.ingest_benchmark_data", "--ticker", "SPY",
                           "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision,
@@ -259,6 +260,7 @@ def main() -> None:
                          operation="benchmark-data ingestion")
                     _run([sys.executable, "-m", "quantrade_research.ingest_market_data", "--symbols", symbols,
                           "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision,
+                          "--corporate-actions-start", source_update_start.isoformat(),
                           "--compact-receipts", "--only-missing"], environment,
                          operation="market-data ingestion")
                 if not _has_current_benchmark_session(settings.database_url, score_date):
@@ -266,11 +268,10 @@ def main() -> None:
                     print(f"skipped score_date={score_date}; no regular NYSE session")
                     return
                 if ciks:
-                    index_start_date = _sec_index_start_date(connection, score_date)
                     _run([sys.executable, "-m", "quantrade_research.ingest_filings", "--ciks", ciks,
                           "--code-revision", revision, "--incremental",
                           "--compact-receipts",
-                          "--daily-index-start-date", index_start_date.isoformat(),
+                          "--daily-index-start-date", source_update_start.isoformat(),
                           "--daily-index-end-date", score_date.isoformat()], _sec_network_environment(environment),
                          operation="SEC filing ingestion")
                 decision_at = _set_decision_at(connection, score_date, retry_cutoff)

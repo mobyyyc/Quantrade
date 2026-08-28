@@ -43,6 +43,10 @@ def main() -> None:
     parser.add_argument("--symbols", type=_symbols, required=True)
     parser.add_argument("--start", type=date.fromisoformat, required=True)
     parser.add_argument("--end", type=date.fromisoformat, required=True)
+    parser.add_argument(
+        "--corporate-actions-start", type=date.fromisoformat,
+        help="Inclusive source-retrieval boundary for corporate actions; defaults to --start",
+    )
     parser.add_argument("--code-revision", required=True)
     parser.add_argument("--batch-size", type=int, default=100)
     parser.add_argument(
@@ -56,6 +60,9 @@ def main() -> None:
     arguments = parser.parse_args()
     if arguments.batch_size < 1:
         parser.error("--batch-size must be positive")
+    action_start = arguments.corporate_actions_start or arguments.start
+    if action_start > arguments.end:
+        parser.error("--corporate-actions-start must be on or before --end")
 
     settings = Settings.from_environment()
     settings.require_runtime_storage()
@@ -74,6 +81,8 @@ def main() -> None:
     bar_request_symbols = 0
     skipped_existing_symbols = 0
     bar_pages = 0
+    action_pages = 0
+    action_request_symbols = 0
     try:
         availability_rule_id = repository.availability_rule_id("alpaca_retrieval", "v1", "market_bar")
         batches = [
@@ -110,10 +119,12 @@ def main() -> None:
                     if token is None:
                         break
             token = None
+            action_request_symbols += len(symbols)
             while True:
                 retrieved_at = datetime.now(timezone.utc)
-                payload = client.fetch_corporate_actions(symbols, arguments.start, arguments.end, token)
+                payload = client.fetch_corporate_actions(symbols, action_start, arguments.end, token)
                 actions, token = parse_corporate_actions(payload)
+                action_pages += 1
                 source = record_market_source(
                     repository, artifact_store, payload, retrieved_at, ALPACA_CORPORATE_ACTIONS_URL,
                     response_category="alpaca_corporate_actions", raw_category="corporate-actions",
@@ -142,7 +153,9 @@ def main() -> None:
             f"daily_bars={bar_count}; corporate_actions={action_count}; adjustment_bases=unadjusted,split_adjusted; "
             f"request_mode={'missing_only' if arguments.only_missing else 'range'}; "
             f"bar_request_symbols={bar_request_symbols}; skipped_existing_symbols={skipped_existing_symbols}; "
-            f"bar_pages={bar_pages}; receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}"
+            f"bar_pages={bar_pages}; corporate_action_window={action_start}:{arguments.end}; "
+            f"corporate_action_request_symbols={action_request_symbols}; corporate_action_pages={action_pages}; "
+            f"receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}"
         ),
     )
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")
