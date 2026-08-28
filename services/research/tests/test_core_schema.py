@@ -178,6 +178,17 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("model_deployments_require_approval", sql)
         self.assertIn("matching approved governance decision", sql)
 
+    def test_compact_source_receipts_are_immutable_and_additive(self) -> None:
+        migration = MIGRATION.with_name("0027_add_compact_source_receipts.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.source_receipts", sql)
+        self.assertIn("CREATE TABLE quantrade.source_receipt_retrievals", sql)
+        self.assertIn("content_sha256 CHAR(64) NOT NULL", sql)
+        self.assertIn("payload_retained BOOLEAN NOT NULL DEFAULT FALSE", sql)
+        self.assertIn("source_receipt_id UUID REFERENCES quantrade.source_receipts", sql)
+        self.assertIn("source_receipts_immutable", sql)
+        self.assertIn("source_receipt_retrievals_immutable", sql)
+
     def test_forward_readiness_snapshots_are_compact_and_immutable(self) -> None:
         migration = MIGRATION.with_name("0020_add_forward_readiness_snapshots.sql")
         sql = migration.read_text(encoding="utf-8")
