@@ -2,9 +2,8 @@
 
 Protocol key: `tier_b_weekly_family_rank_v1`
 
-Status: pre-implementation draft; it becomes frozen only after P9C.1 closes the
-data-feasibility audit and this document records the resulting admissible data
-scope.
+Status: frozen for Phase 9C v1 after the P9C.1 data-feasibility decision. Any
+post-result change requires a new protocol version.
 
 Registration date: 2026-08-28
 
@@ -107,6 +106,13 @@ aggregation must be frozen after coverage and redundancy inspection but before
 any Phase 9C outcome comparison. No more than three economically distinct
 feature expansions beyond the existing approved inputs may enter this version.
 
+P9C.1 restricts the primary common weekly window to formations on or after
+2022-01-07. It admits true-TTM net-income/profit-loss and operating-cash-flow
+paths plus compatible balance-sheet endpoints. It excludes direct gross
+profitability from the first candidate, defers historical SIC/FF12, and forbids
+period-average basic shares as the primary endpoint-share substitute. The full
+decision is recorded in `PHASE_9C_DATA_FEASIBILITY_DECISION.md`.
+
 ## Missing data and coverage
 
 - Phase 9C does not use a complete-case dataset.
@@ -196,13 +202,15 @@ Report at minimum:
 
 ## Freeze gates
 
-Numeric gates become immutable when P9C.1 closes. The proposed gates, subject
-only to pre-result feasibility adjustment, are:
+P9C.1 is closed. The following numeric gates are immutable for Phase 9C v1:
 
 1. zero point-in-time, lineage, label-overlap, or reproducibility violations;
-2. 100% lineage for included values, aggregate score coverage at least 95%,
-   minimum monthly score coverage at least 90%, and separately frozen
-   informative-family coverage thresholds;
+2. 100% lineage for included values; aggregate score coverage at least 95% and
+   minimum weekly score coverage at least 90%; every included market family at
+   least 90% informative coverage per formation; every included accounting
+   family at least 80% aggregate and 70% per-formation informative coverage;
+   every scored security has at least three informative families; and every
+   modeled raw feature has at least 70% aggregate coverage;
 3. mean monthly rank IC at least `0.012` and at least `0.004` above the deployed
    active reference under the same Phase 9C sample;
 4. positive mean rank IC in at least three of four outer blocks, with the worst
@@ -220,7 +228,7 @@ only to pre-result feasibility adjustment, are:
     outer fits.
 
 These values are project judgments, not facts established by literature. P9C.1
-must document their sensitivity and rationale before freezing them. Holm
+documented the feasibility evidence and froze them before model fitting. Holm
 adjustment and White Reality Check or Hansen SPA may be reported as
 multiple-testing robustness; with roughly 40 independent months, they cannot
 substitute for effect size, stability, and economic plausibility.

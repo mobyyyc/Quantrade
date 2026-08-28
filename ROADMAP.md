@@ -122,7 +122,7 @@ support training, but calendar months remain the independent weighting and
 inference unit; the visible research basket remains monthly.
 
 - [x] P9C.0: translate the external research report into a project-specific protocol, explicitly preserve the consumed holdout, separate deployed/reference/portfolio effects, and document the report's non-portable bibliography limitation.
-- [ ] P9C.1: run the no-download data-feasibility audit for corporate-action-aware wealth labels, point-in-time quarterly/TTM SEC reconstruction, endpoint shares, historical SIC/FF12, market-feature coverage, and weekly calendar weights; then freeze admissible scope and numeric gates before inspecting outcomes.
+- [x] P9C.1: run the no-download data-feasibility audit for corporate-action-aware wealth labels, point-in-time quarterly/TTM SEC reconstruction, endpoint shares, historical SIC/FF12, market-feature coverage, and weekly calendar weights; then freeze admissible scope and numeric gates before inspecting outcomes. The decision restricts the common weekly start to 2022-01-07, defers historical SIC/FF12, excludes direct gross profitability from the first candidate, and authorizes the label and true-TTM foundation work only.
 - [ ] P9C.2: implement the deterministic stock-and-SPY wealth ledger for ordinary dividends and splits, withholding labels that cross unresolved complex actions.
 - [ ] P9C.3: implement the fail-closed point-in-time standalone-quarter and true-TTM SEC engine with full selected-fact lineage and no weighted-average-share primary fallback.
 - [ ] P9C.4: freeze and materialize the approved six economic families with neutral missing ranks, separately measured informative coverage, and calendar-month-normalized weekly sample weights.
