@@ -86,6 +86,12 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .content-section, .watchlist-preview { margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--line-soft); }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1.15rem; }
 .section-heading h2 { margin: 0; }
+.score-input-heading { align-items: end; }
+.score-input-summary { display: flex; gap: 1.15rem; margin: 0; }
+.score-input-summary div { display: grid; justify-items: end; gap: .1rem; min-width: 5.6rem; padding-left: 1.15rem; border-left: 1px solid var(--line-soft); }
+.score-input-summary dt, .score-input-summary small { color: var(--subtle); font-size: .66rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+.score-input-summary dd { margin: 0; color: var(--foreground); font-size: 1.2rem; font-weight: 760; letter-spacing: -.04em; }
+.score-input-summary small { font-size: .62rem; font-weight: 640; letter-spacing: .05em; }
 .section-context { max-width: 27rem; margin: 0; color: var(--subtle); font-size: .82rem; line-height: 1.45; text-align: right; }
 .status-label { color: var(--muted); border: 1px solid var(--line); border-radius: 9999px; padding: .4rem .65rem; font-size: .78rem; box-shadow: var(--control-shadow); }
 
@@ -503,6 +509,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .research-basket-result { justify-items: start; min-width: 0; text-align: left; }
   .research-basket-list a { grid-template-columns: 1.4rem minmax(0, 1fr) auto 2.4rem; }
   .section-heading:has(.section-context) { align-items: start; flex-direction: column; }
+  .score-input-heading { align-items: start; }
+  .score-input-summary { gap: .9rem; }
+  .score-input-summary div { justify-items: start; min-width: 0; padding-left: .9rem; }
   .section-context { max-width: none; text-align: left; }
   .daily-update-summary dl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
   .daily-update-summary > .text-link { margin-left: -.85rem; }
