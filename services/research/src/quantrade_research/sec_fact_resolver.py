@@ -154,7 +154,7 @@ class PostgresSecFactResolver:
     def close(self) -> None:
         self._connection.close()
 
-    def resolve(
+    def load_candidates(
         self, *, security_ids: Sequence[str], taxonomy: str, concepts: Sequence[str],
         formation_date: date, decision_at: datetime,
     ) -> tuple[ResolvedSecFact, ...]:
@@ -182,4 +182,14 @@ class PostgresSecFactResolver:
             )
             for row in rows
         )
-        return resolve_facts_as_of(facts, decision_at=decision)
+        return facts
+
+    def resolve(
+        self, *, security_ids: Sequence[str], taxonomy: str, concepts: Sequence[str],
+        formation_date: date, decision_at: datetime,
+    ) -> tuple[ResolvedSecFact, ...]:
+        candidates = self.load_candidates(
+            security_ids=security_ids, taxonomy=taxonomy, concepts=concepts,
+            formation_date=formation_date, decision_at=decision_at,
+        )
+        return resolve_facts_as_of(candidates, decision_at=decision_at)

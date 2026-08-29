@@ -37,6 +37,7 @@ from .quality import DataQualityError
 from .ranking import SectorClassification, build_sector_aware_percentile_ranks
 from .risk_liquidity import calculate_median_dollar_volume_20d, calculate_trailing_volatility_60d
 from .run_manifest import RunManifest, SourceInput
+from .sec_form_scope import RESEARCH_RELEVANT_FORMS
 from .scoring import PostgresScoreSnapshotRepository, TORONTO, generate_end_of_day_scores
 from .score_predictions import persist_score_predictions
 
@@ -159,18 +160,20 @@ def _load_prices(connection, security_ids: Iterable[str], formation_date: date, 
 def _load_facts(connection, security_ids: Iterable[str], formation_date: date, decision_at: datetime) -> dict[str, list[FundamentalFactObservation]]:
     with connection.cursor() as cursor:
         cursor.execute(
-            """SELECT security_id::text, filing_id::text, taxonomy, concept, unit, fact_value,
-                      period_start, period_end, available_at
-               FROM quantrade.filing_facts
-               WHERE security_id = ANY(%s::uuid[]) AND period_end <= %s AND available_at <= %s
-                 AND (taxonomy, concept, unit) IN (
+            """SELECT ff.security_id::text, ff.filing_id::text, ff.taxonomy, ff.concept, ff.unit, ff.fact_value,
+                      ff.period_start, ff.period_end, ff.available_at
+               FROM quantrade.filing_facts ff
+               JOIN quantrade.filings filing ON filing.filing_id = ff.filing_id
+               WHERE ff.security_id = ANY(%s::uuid[]) AND ff.period_end <= %s AND ff.available_at <= %s
+                 AND filing.form = ANY(%s)
+                 AND (ff.taxonomy, ff.concept, ff.unit) IN (
                     ('us-gaap', 'NetIncomeLoss', 'USD'),
                     ('us-gaap', 'ProfitLoss', 'USD'),
                     ('us-gaap', 'Assets', 'USD'),
                     ('dei', 'EntityCommonStockSharesOutstanding', 'shares')
                  )
-               ORDER BY security_id, period_end, available_at""",
-            (list(security_ids), formation_date, decision_at),
+               ORDER BY ff.security_id, ff.period_end, ff.available_at""",
+            (list(security_ids), formation_date, decision_at, list(sorted(RESEARCH_RELEVANT_FORMS))),
         )
         rows = cursor.fetchall()
     result: dict[str, list[FundamentalFactObservation]] = defaultdict(list)
@@ -229,8 +232,10 @@ def _source_inputs(connection, snapshot_id: str, security_ids: Iterable[str], fo
                    SELECT raw_artifact_id FROM quantrade.daily_price_bars
                     WHERE security_id = ANY(%s::uuid[]) AND session_date <= %s AND available_at <= %s
                    UNION
-                   SELECT raw_artifact_id FROM quantrade.filing_facts
-                    WHERE security_id = ANY(%s::uuid[]) AND period_end <= %s AND available_at <= %s
+                   SELECT ff.raw_artifact_id FROM quantrade.filing_facts ff
+                    JOIN quantrade.filings filing ON filing.filing_id = ff.filing_id
+                    WHERE ff.security_id = ANY(%s::uuid[]) AND ff.period_end <= %s AND ff.available_at <= %s
+                      AND filing.form = ANY(%s)
                    UNION
                    SELECT raw_artifact_id FROM quantrade.benchmark_daily_price_bars
                     WHERE benchmark_ticker = %s AND session_date <= %s AND available_at <= %s
@@ -240,7 +245,8 @@ def _source_inputs(connection, snapshot_id: str, security_ids: Iterable[str], fo
                WHERE raw_artifact_id IN (SELECT raw_artifact_id FROM input_artifacts)
                ORDER BY provider, source_reference, storage_uri""",
             (snapshot_id, list(security_ids), static_tier_b_grouping, formation_date, decision_at, list(security_ids), formation_date,
-             decision_at, list(security_ids), formation_date, decision_at, benchmark_ticker, formation_date,
+             decision_at, list(security_ids), formation_date, decision_at,
+             list(sorted(RESEARCH_RELEVANT_FORMS)), benchmark_ticker, formation_date,
              decision_at),
         )
         rows = cursor.fetchall()

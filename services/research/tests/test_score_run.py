@@ -1,14 +1,58 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 import unittest
 
 from quantrade_research.feature_diagnostics import FeatureOutcome
 from quantrade_research.features import FeatureValue, baseline_feature_registry
 from quantrade_research.quality import DataQualityError
-from quantrade_research.score_run import _outcome
+from quantrade_research.score_run import _load_facts, _outcome
+from quantrade_research.sec_form_scope import RESEARCH_RELEVANT_FORMS
+
+
+class RecordingCursor:
+    def __init__(self):
+        self.query = ""
+        self.parameters = ()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return None
+
+    def execute(self, query, parameters):
+        self.query = query
+        self.parameters = parameters
+
+    def fetchall(self):
+        return []
+
+
+class RecordingConnection:
+    def __init__(self):
+        self.recording_cursor = RecordingCursor()
+
+    def cursor(self):
+        return self.recording_cursor
 
 
 class ScoreRunOutcomeTests(unittest.TestCase):
+    def test_daily_score_facts_are_restricted_to_research_forms(self) -> None:
+        connection = RecordingConnection()
+
+        result = _load_facts(
+            connection, ("00000000-0000-0000-0000-000000000001",),
+            date(2026, 8, 28),
+            datetime(2026, 8, 28, 20, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(result, {})
+        self.assertIn("filing.form = ANY(%s)", connection.recording_cursor.query)
+        self.assertEqual(
+            set(connection.recording_cursor.parameters[3]),
+            set(RESEARCH_RELEVANT_FORMS),
+        )
+
     def test_calculated_value_is_a_available_feature_outcome(self) -> None:
         registry = baseline_feature_registry()
         formation_date = date(2026, 8, 21)
