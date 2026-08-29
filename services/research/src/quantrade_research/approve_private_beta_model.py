@@ -52,22 +52,53 @@ def build_private_beta_approval_decision(
     integrity = _document(integrity_audit_bytes, label="integrity audit")
 
     model_version = str(artifact.get("model_version", ""))
-    if not model_version or artifact.get("status") != "research_only":
-        raise DataQualityError("approval source must be a frozen research-only model artifact")
-    if artifact.get("source_experiment_sha256") != sha256(experiment_bytes).hexdigest():
+    clean_v3 = artifact.get("artifact_schema_version") == "research_inference_v3"
+    if not model_version or artifact.get("status") not in {"research_only", "development_frozen"}:
+        raise DataQualityError("approval source must be a frozen research model artifact")
+    if clean_v3:
+        if artifact.get("status") != "development_frozen":
+            raise DataQualityError("clean approval source must remain development-frozen")
+        try:
+            source_dataset = artifact["source_dataset"]
+            frozen_specification = experiment["frozen_specification"]
+        except (KeyError, TypeError) as error:
+            raise DataQualityError("clean approval evidence has invalid development lineage") from error
+        if experiment.get("status") != "development_validation_complete":
+            raise DataQualityError("clean approval requires completed development validation")
+        if experiment.get("model_version") != model_version:
+            raise DataQualityError("clean validation does not match the frozen model")
+        if experiment.get("source_model_artifact_sha256") != sha256(model_artifact_bytes).hexdigest():
+            raise DataQualityError("clean validation does not match the model artifact bytes")
+        if experiment.get("source_dataset_sha256") != source_dataset.get("content_sha256"):
+            raise DataQualityError("clean validation and model use different datasets")
+        if experiment.get("source_dataset_manifest_sha256") != sha256(training_manifest_bytes).hexdigest():
+            raise DataQualityError("clean validation does not match the training manifest")
+        if source_dataset.get("manifest_sha256") != sha256(training_manifest_bytes).hexdigest():
+            raise DataQualityError("clean model does not match the training manifest")
+        if manifest.get("content_sha256") != source_dataset.get("content_sha256"):
+            raise DataQualityError("clean training manifest does not match the model dataset")
+        if (
+            frozen_specification.get("family"), frozen_specification.get("l1"), frozen_specification.get("l2")
+        ) != (artifact.get("family"), artifact.get("l1_penalty"), artifact.get("l2_penalty")):
+            raise DataQualityError("clean validation did not use the frozen model specification")
+        if experiment.get("development_only") is not True or experiment.get("holdout_used") is not False:
+            raise DataQualityError("clean validation is not development-only")
+    elif artifact.get("source_experiment_sha256") != sha256(experiment_bytes).hexdigest():
         raise DataQualityError("model artifact does not match the development experiment")
     if selection.get("model_card") != model_version or selection.get("holdout_performance_evaluated") is not False:
         raise DataQualityError("holdout selection does not match the frozen model or pre-evaluation state")
+    if clean_v3 and selection.get("source_model_artifact_sha256") != sha256(model_artifact_bytes).hexdigest():
+        raise DataQualityError("clean holdout selection does not match the frozen model bytes")
     if integrity.get("evaluation_sha256") != sha256(evaluation_bytes).hexdigest():
         raise DataQualityError("integrity audit does not match the holdout evaluation")
     if evaluation.get("holdout_performance_evaluated") is not True or evaluation.get("status") != "execution_cost_evaluation_complete":
         raise DataQualityError("completed locked-holdout execution and cost evidence is required")
     if integrity.get("approval_eligible") is not True or integrity.get("failures") != []:
         raise DataQualityError("holdout integrity evidence is not eligible for policy review")
-    if manifest.get("data_capability_tier") != artifact.get("data_capability_tier"):
+    if not clean_v3 and manifest.get("data_capability_tier") != artifact.get("data_capability_tier"):
         raise DataQualityError("training manifest and model artifact data tiers differ")
     try:
-        folds = experiment["selected_candidate"]["folds"]  # type: ignore[index]
+        folds = experiment["folds"] if clean_v3 else experiment["selected_candidate"]["folds"]  # type: ignore[index]
         formations = selection["formations"]
         shared_eligible = [int(item["shared_eligible_count"]) for item in formations]  # type: ignore[index]
         cost_case = evaluation["cost_case_summaries_bps"]["20"]  # type: ignore[index]
@@ -131,7 +162,8 @@ def build_private_beta_approval_decision(
         "limitations": [
             "Private Tier-B research only; this is not an unbiased historical-performance or public-performance approval.",
             "The fixed current-survivors cohort has survivorship bias and static current-sector classifications.",
-            "The locked holdout is consumed and cannot be reused for model selection, tuning, or calibration.",
+            "The historical holdout was previously examined and is a reused diagnostic, not a pristine final holdout.",
+            "The consumed holdout cannot be reused for model selection, tuning, or calibration.",
             "Approval does not guarantee that future baskets or stocks will outperform SPY.",
         ],
     }
