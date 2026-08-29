@@ -9,9 +9,10 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC))
 
 from quantrade_research.sec_fact_resolver import (
-    LEGACY_AVAILABILITY_RULE, OBSERVED_AVAILABILITY_RULE,
+    LEGACY_AVAILABILITY_RULE, OBSERVED_AVAILABILITY_RULE, POINT_IN_TIME_FACT_SQL,
     ResolvedSecFact, resolve_facts_as_of,
 )
+from quantrade_research.sec_form_scope import canonical_form, is_research_relevant_form
 
 
 def fact(key: str, accession: str, available: datetime, value: str, *, observed=None, amendment=False):
@@ -25,6 +26,14 @@ def fact(key: str, accession: str, available: datetime, value: str, *, observed=
 
 
 class SecFactResolverTests(unittest.TestCase):
+    def test_database_resolution_restricts_both_fact_sources_to_approved_forms(self) -> None:
+        self.assertEqual(POINT_IN_TIME_FACT_SQL.count("f.form = ANY(%s)"), 2)
+
+    def test_form_scope_canonicalizes_amendments_and_rejects_offering_forms(self) -> None:
+        self.assertEqual(canonical_form("10-Q/A"), "10-Q")
+        self.assertTrue(is_research_relevant_form("8-k/a"))
+        self.assertFalse(is_research_relevant_form("424B2"))
+
     def test_later_observation_cannot_enter_an_earlier_decision(self) -> None:
         early = fact("same-key", "0001", datetime(2026, 8, 1, 20, 5, tzinfo=timezone.utc), "100")
         late = fact(

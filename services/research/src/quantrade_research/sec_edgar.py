@@ -11,6 +11,8 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from .sec_form_scope import canonical_form
+
 
 COMPANY_TICKERS_EXCHANGE_URL = "https://www.sec.gov/files/company_tickers_exchange.json"
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
@@ -19,8 +21,6 @@ COMPANY_FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
 DAILY_MASTER_INDEX_URL = "https://www.sec.gov/Archives/edgar/daily-index/{year}/QTR{quarter}/master.{stamp}.idx"
 
 _SUBMISSION_HISTORY_NAME = re.compile(r"^CIK\d{10}-submissions-\d{3}\.json$")
-_CANONICAL_FILING_FORMS = {"10-K", "10-Q", "8-K", "20-F", "40-F"}
-
 EXCHANGE_MIC_BY_SEC_NAME = {
     "Nasdaq": "XNAS",
     "NYSE": "XNYS",
@@ -149,8 +149,7 @@ def _optional_date(value: object) -> date | None:
 
 def _canonical_filing_form(value: str) -> str:
     """Keep supported amendment facts in their model-relevant base form."""
-    base_form = value.removesuffix("/A")
-    return base_form if base_form in _CANONICAL_FILING_FORMS else "other"
+    return canonical_form(value)
 
 
 def _parse_submission_rows(rows: object) -> list[SecFilingMetadata]:

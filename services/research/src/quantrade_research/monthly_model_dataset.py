@@ -19,7 +19,7 @@ from .score_run import _dotenv_values
 
 
 DATASET_KEY = "tier_b_monthly_model_development"
-DATASET_VERSION = "v1"
+DATASET_VERSION = "v2"
 BASE_FEATURES = (
     "momentum_12_1", "relative_strength_6m", "trailing_volatility_60d",
     "median_dollar_volume_20d", "earnings_yield_ttm", "return_on_assets_ttm",
@@ -245,6 +245,7 @@ def build_monthly_model_dataset(
         "included_by_date": dict(included_by_date), "exclusions": dict(sorted(exclusions.items())),
         "base_features": list(BASE_FEATURES), "candidate_market_features": list(MARKET_FEATURES),
         "candidate_static_sector_features": list(SECTOR_FEATURES),
+        "sec_form_scope": panel_metadata["sec_form_scope"],
         "transformations": {
             "primary": "market-wide centered percentile",
             "robustness_only": "static current-sector centered percentile",

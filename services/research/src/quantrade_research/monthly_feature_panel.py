@@ -19,11 +19,12 @@ from .historical_cohorts import CURRENT_SURVIVORS_COHORT
 from .quality import DataQualityError
 from .score_run import _dotenv_values
 from .sec_fact_resolver import PostgresSecFactResolver, ResolvedSecFact
+from .sec_form_scope import RESEARCH_RELEVANT_FORMS
 
 
 PANEL_KEY = "tier_b_monthly_feature_panel"
-PANEL_VERSION = "v1"
-FEATURE_RULE_VERSION = "tier_b_monthly_feature_family_v2"
+PANEL_VERSION = "v2"
+FEATURE_RULE_VERSION = "tier_b_monthly_feature_family_v3_sec_scope"
 HOLDOUT_START = date(2025, 7, 1)
 FEATURES = ("short_term_reversal_20d", "asset_growth_yoy", "net_share_issuance_yoy", "accrual_quality")
 
@@ -336,6 +337,7 @@ def build_monthly_feature_panel(*, database_url: str, destination: Path) -> dict
         "start_date": formations[0][0].isoformat(),
         "end_date": formations[-1][0].isoformat(),
         "features": list(FEATURES),
+        "sec_form_scope": sorted(RESEARCH_RELEVANT_FORMS),
         "coverage": {
             feature: {
                 "available": sum(counts),
@@ -348,6 +350,7 @@ def build_monthly_feature_panel(*, database_url: str, destination: Path) -> dict
         "limitations": [
             "current-survivors cohort; historical membership is not point-in-time verified",
             "legacy SEC facts assume availability at acceptance plus five minutes",
+            "SEC facts are restricted to canonical 10-K, 10-Q, 20-F, 40-F, and 8-K forms",
             "corporate-action history is free-source Tier B",
             "current sectors may be used only as a robustness grouping",
         ],

@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Iterable, Sequence
 
 from .quality import DataQualityError
+from .sec_form_scope import RESEARCH_RELEVANT_FORMS
 
 
 LEGACY_AVAILABILITY_RULE = "sec_acceptance_plus_5m_legacy_tier_b_v1"
@@ -105,6 +106,7 @@ WITH observed_keys AS (
      AND ok.taxonomy = ff.taxonomy AND ok.concept = ff.concept AND ok.unit = ff.unit
      AND ok.period_start IS NOT DISTINCT FROM ff.period_start AND ok.period_end = ff.period_end
     WHERE ok.filing_id IS NULL
+      AND f.form = ANY(%s)
 
     UNION ALL
 
@@ -126,6 +128,7 @@ WITH observed_keys AS (
         o.source_receipt_id::text
     FROM quantrade.filing_fact_observations o
     JOIN quantrade.filings f ON f.filing_id = o.filing_id
+    WHERE f.form = ANY(%s)
 )
 SELECT *
 FROM candidates
@@ -161,7 +164,11 @@ class PostgresSecFactResolver:
         with self._connection.cursor() as cursor:
             cursor.execute(
                 POINT_IN_TIME_FACT_SQL,
-                (list(security_ids), taxonomy, list(concepts), formation_date, decision),
+                (
+                    list(sorted(RESEARCH_RELEVANT_FORMS)),
+                    list(sorted(RESEARCH_RELEVANT_FORMS)),
+                    list(security_ids), taxonomy, list(concepts), formation_date, decision,
+                ),
             )
             rows = cursor.fetchall()
         facts = tuple(

@@ -12,6 +12,11 @@ from zoneinfo import ZoneInfo
 from .filings import PostgresFilingRepository, StoredSource, persist_sec_filings
 from .ingest_security_master import _file_path_from_uri
 from .run_manifest import RunManifest, SourceInput
+from .sec_form_scope import (
+    MODEL_RELEVANT_FINANCIAL_FORMS as _MODEL_RELEVANT_FINANCIAL_FORMS,
+    RESEARCH_RELEVANT_FORMS as _RESEARCH_RELEVANT_FORMS,
+    is_research_relevant_form as _is_research_relevant_form,
+)
 from .sec_edgar import (
     COMPANY_FACTS_URL,
     daily_master_index_url,
@@ -31,8 +36,6 @@ from .security_master import FileRawArtifactStore
 
 
 _SEC_PARSER_VERSION = "sec_edgar_parser_v1"
-_MODEL_RELEVANT_FINANCIAL_FORMS = frozenset({"10-K", "10-Q", "20-F", "40-F"})
-_RESEARCH_RELEVANT_FORMS = _MODEL_RELEVANT_FINANCIAL_FORMS | {"8-K"}
 _TORONTO = ZoneInfo("America/Toronto")
 _EXPECTED_DAILY_INDEX_PUBLICATION = wall_time(22, 15)
 
@@ -92,12 +95,6 @@ def _new_filings(filings, known_accessions: set[str]):
 def _requires_company_facts(filings) -> bool:
     """Company Facts is useful only for new annual/interim financial filings."""
     return any(filing.form in _MODEL_RELEVANT_FINANCIAL_FORMS for filing in filings)
-
-
-def _is_research_relevant_form(form: str) -> bool:
-    """Keep financial statements and current reports, including amendments."""
-    normalized = form.strip().upper()
-    return normalized.removesuffix("/A") in _RESEARCH_RELEVANT_FORMS
 
 
 def _research_relevant_filings(filings):
