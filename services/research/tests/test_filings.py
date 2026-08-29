@@ -29,7 +29,7 @@ from quantrade_research.ingest_filings import (
 
 class FilingParserTests(unittest.TestCase):
     def test_selects_only_current_universe_ciks_present_in_daily_index(self) -> None:
-        payload = b"""Description:           Master Index of EDGAR Dissemination Feed\nLast Data Received:    Aug 26, 2026\nComments:              webmaster@sec.gov\n\nCIK|Company Name|Form Type|Date Filed|File Name\n1045810|NVIDIA CORP|10-Q|2026-08-26|edgar/data/1045810/nvda-20260726.htm\n320193|APPLE INC|8-K|2026-08-26|edgar/data/320193/aapl-20260826.htm\n789019|MICROSOFT CORP|8-K|2026-08-26|edgar/data/789019/msft-20260826.htm\n"""
+        payload = b"""Description:           Master Index of EDGAR Dissemination Feed\nLast Data Received:    Aug 26, 2026\nComments:              webmaster@sec.gov\n\nCIK|Company Name|Form Type|Date Filed|File Name\n--------------------------------------------------------------------------------\n1045810|NVIDIA CORP|10-Q|2026-08-26|edgar/data/1045810/nvda-20260726.htm\n320193|APPLE INC|8-K|2026-08-26|edgar/data/320193/aapl-20260826.htm\n789019|MICROSOFT CORP|8-K|2026-08-26|edgar/data/789019/msft-20260826.htm\n"""
         records = parse_daily_master_index(payload)
         self.assertEqual(daily_master_index_url(date(2026, 8, 26)), "https://www.sec.gov/Archives/edgar/daily-index/2026/QTR3/master.20260826.idx")
         self.assertEqual({record.cik for record in records}, {"0001045810", "0000320193", "0000789019"})
@@ -37,6 +37,11 @@ class FilingParserTests(unittest.TestCase):
             _daily_index_candidates(["0000320193", "0001045810", "0001652044"], {record.cik for record in records}),
             ["0000320193", "0001045810"],
         )
+
+    def test_rejects_a_malformed_filing_row_after_the_header_separator(self) -> None:
+        payload = b"""CIK|Company Name|Form Type|Date Filed|File Name\n----------------\nnot-a-valid-filing-row\n"""
+        with self.assertRaisesRegex(SecEdgarError, "invalid row"):
+            parse_daily_master_index(payload)
 
     def test_keeps_weekend_dates_in_the_discovery_interval(self) -> None:
         self.assertEqual(

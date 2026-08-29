@@ -208,8 +208,17 @@ def parse_daily_master_index(payload: bytes) -> list[SecDailyIndexRecord]:
     if header_index is None:
         raise SecEdgarError("SEC daily master index header is missing")
 
+    body = lines[header_index + 1:]
+    first_content_index = next((index for index, line in enumerate(body) if line.strip()), None)
+    if first_content_index is not None:
+        first_content = body[first_content_index].strip()
+        if len(first_content) >= 5 and set(first_content) == {"-"}:
+            # SEC's official master index places a dashed presentation separator
+            # directly beneath the header. It is metadata, not a filing record.
+            body = body[:first_content_index] + body[first_content_index + 1:]
+
     records: list[SecDailyIndexRecord] = []
-    for line in lines[header_index + 1:]:
+    for line in body:
         if not line.strip():
             continue
         fields = line.split("|")

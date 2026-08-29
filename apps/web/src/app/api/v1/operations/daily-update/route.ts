@@ -16,7 +16,7 @@ function userFacingError(output: string): string {
     return "A daily update is already running. Keep this page open and try again when it finishes.";
   }
   if (output.includes("SEC filing ingestion failed")) {
-    return "SEC filing retrieval did not complete. Check your internet connection, then try the update again; no duplicate scores will be created.";
+    return "SEC filing retrieval or validation did not complete. The update stopped safely before publication; no duplicate scores were created.";
   }
   return "The daily update did not complete. Check the local research service logs for details.";
 }
@@ -25,19 +25,32 @@ export async function POST() {
   const workspaceRoot = process.env.QUANTRADE_WORKSPACE_ROOT
     ?? (process.cwd().endsWith(path.join("apps", "web")) ? path.resolve(process.cwd(), "../..") : process.cwd());
   const envFile = path.join(workspaceRoot, ".env");
-  const result = await new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-    const child = spawn("py", ["-3.14", "-m", "quantrade_research.manual_daily_update", "--env-file", envFile], {
-      cwd: workspaceRoot,
-      env: { ...process.env, PYTHONPATH: path.join(workspaceRoot, "services", "research", "src") },
-      windowsHide: true,
+  let result: { code: number | null; output: string };
+  try {
+    result = await new Promise<{ code: number | null; output: string }>((resolve, reject) => {
+      const child = spawn("py", ["-3.14", "-m", "quantrade_research.manual_daily_update", "--env-file", envFile], {
+        cwd: workspaceRoot,
+        env: { ...process.env, PYTHONPATH: path.join(workspaceRoot, "services", "research", "src") },
+        windowsHide: true,
+      });
+      let output = "";
+      child.stdout.on("data", (chunk) => { output += String(chunk); });
+      child.stderr.on("data", (chunk) => { output += String(chunk); });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, output }));
     });
-    let output = "";
-    child.stdout.on("data", (chunk) => { output += String(chunk); });
-    child.stderr.on("data", (chunk) => { output += String(chunk); });
-    child.on("error", reject);
-    child.on("close", (code) => resolve({ code, output }));
-  });
+  } catch (error) {
+    console.error("[daily-update] failed to start research process", { error });
+    return Response.json(
+      { error: "The local research process could not be started. Check the web terminal for details." },
+      { status: 500 },
+    );
+  }
   if (result.code !== 0) {
+    console.error("[daily-update] research process failed", {
+      code: result.code,
+      output: result.output.slice(-4_000),
+    });
     return Response.json({ error: userFacingError(result.output) }, { status: 500 });
   }
   if (result.output.includes("already_completed")) {
