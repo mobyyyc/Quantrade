@@ -150,7 +150,7 @@ def _solve(matrix: list[list[float]], values: list[float]) -> tuple[float, ...]:
     return tuple(augmented[index][-1] for index in range(len(values)))
 
 
-def _fit_linear(
+def fit_linear_model(
     examples: Sequence[Example], features: Callable[[Example], tuple[float, ...]], *,
     family: str, l1: float, l2: float, huber_delta: float = 1.5,
 ) -> LinearModel:
@@ -277,7 +277,7 @@ def _inner_select(model_key: str, transform: str, training: Sequence[Example]):
     selector = _feature_selector(model_key, transform)
     candidates = []
     for family, l1, l2 in _grid(model_key):
-        model = _fit_linear(inner_train, selector, family=family, l1=l1, l2=l2)
+        model = fit_linear_model(inner_train, selector, family=family, l1=l1, l2=l2)
         grouped: dict[date, list[tuple[str, float, float]]] = defaultdict(list)
         for item in inner_validation:
             grouped[item.formation_date].append((item.security_id, model.predict(selector(item)), item.target))
@@ -307,7 +307,7 @@ def build_oof_predictions(examples: Sequence[Example], *, transform: str):
                 predictor = lambda item: fmean(item.market if transform == "market" else item.sector)
             else:
                 family, l1, l2 = _inner_select(model_key, transform, training)
-                model = _fit_linear(training, selector, family=family, l1=l1, l2=l2)
+                model = fit_linear_model(training, selector, family=family, l1=l1, l2=l2)
                 coefficients = model.coefficients
                 tuning = {"family": family, "l1": l1, "l2": l2}
                 predictor = lambda item, fitted=model, choose=selector: fitted.predict(choose(item))
