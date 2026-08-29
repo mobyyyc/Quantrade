@@ -57,7 +57,7 @@ export default async function Home() {
               <div><p className="eyebrow">MARKET ACTIVITY</p><h2 id="filing-activity-title">Today’s filings</h2></div>
               <p className="section-context">SEC documents accepted on {formatResearchDate(latest.scoreDate)}.</p>
             </div>
-            <p className="filing-activity-summary"><strong>{filingSummary.filingCount}</strong><span>SEC documents updated today</span></p>
+            <p className="filing-activity-summary"><strong>{filingSummary.filingCount}</strong><span>research-relevant SEC filings today</span></p>
           </section>
         </>
       ) : (

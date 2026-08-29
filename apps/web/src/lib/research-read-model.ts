@@ -448,7 +448,8 @@ export async function getTodayFilingSummary(scoreDate: string): Promise<TodayFil
   const result = await databasePool().query(
     `SELECT COUNT(*)::int AS filing_count
      FROM quantrade.filings
-     WHERE (accepted_at AT TIME ZONE 'America/Toronto')::date = $1::date`,
+     WHERE (accepted_at AT TIME ZONE 'America/Toronto')::date = $1::date
+       AND form IN ('10-K', '10-Q', '20-F', '40-F', '8-K')`,
     [scoreDate],
   );
   return { filingCount: Number(result.rows[0]?.filing_count ?? 0) };

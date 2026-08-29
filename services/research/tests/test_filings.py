@@ -25,17 +25,20 @@ from quantrade_research.filings import (
 from quantrade_research.ingest_filings import (
     _daily_index_candidates, _daily_index_dates, _fetch_daily_master_index_with_retry, _new_accession_numbers,
     _is_pending_current_daily_index, _new_filings, _record_source, _requires_company_facts,
+    _research_relevant_daily_index_ciks, _research_relevant_filings,
 )
 
 
 class FilingParserTests(unittest.TestCase):
     def test_selects_only_current_universe_ciks_present_in_daily_index(self) -> None:
-        payload = b"""Description:           Master Index of EDGAR Dissemination Feed\nLast Data Received:    Aug 26, 2026\nComments:              webmaster@sec.gov\n\nCIK|Company Name|Form Type|Date Filed|File Name\n--------------------------------------------------------------------------------\n1045810|NVIDIA CORP|10-Q|2026-08-26|edgar/data/1045810/nvda-20260726.htm\n320193|APPLE INC|8-K|2026-08-26|edgar/data/320193/aapl-20260826.htm\n789019|MICROSOFT CORP|8-K|2026-08-26|edgar/data/789019/msft-20260826.htm\n"""
+        payload = b"""Description:           Master Index of EDGAR Dissemination Feed\nLast Data Received:    Aug 26, 2026\nComments:              webmaster@sec.gov\n\nCIK|Company Name|Form Type|Date Filed|File Name\n--------------------------------------------------------------------------------\n1045810|NVIDIA CORP|10-Q|2026-08-26|edgar/data/1045810/nvda-20260726.htm\n320193|APPLE INC|8-K|2026-08-26|edgar/data/320193/aapl-20260826.htm\n789019|MICROSOFT CORP|424B2|2026-08-26|edgar/data/789019/msft-20260826.htm\n"""
         records = parse_daily_master_index(payload)
         self.assertEqual(daily_master_index_url(date(2026, 8, 26)), "https://www.sec.gov/Archives/edgar/daily-index/2026/QTR3/master.20260826.idx")
         self.assertEqual({record.cik for record in records}, {"0001045810", "0000320193", "0000789019"})
+        relevant_ciks = _research_relevant_daily_index_ciks(records, date(2026, 8, 26))
+        self.assertEqual(relevant_ciks, {"0001045810", "0000320193"})
         self.assertEqual(
-            _daily_index_candidates(["0000320193", "0001045810", "0001652044"], {record.cik for record in records}),
+            _daily_index_candidates(["0000320193", "0001045810", "0001652044"], relevant_ciks),
             ["0000320193", "0001045810"],
         )
 
@@ -71,6 +74,15 @@ class FilingParserTests(unittest.TestCase):
         self.assertTrue(_requires_company_facts([filings[1]]))
         self.assertEqual(filings[1].submitted_form, "10-Q/A")
         self.assertTrue(filings[1].is_amendment)
+
+    def test_persists_only_research_relevant_filing_forms(self) -> None:
+        filings = parse_submissions(
+            b'{"filings":{"recent":{"form":["10-Q/A","8-K","424B2","FWP","4"],"accessionNumber":["1","2","3","4","5"],"filingDate":["2026-08-01","2026-08-01","2026-08-01","2026-08-01","2026-08-01"],"acceptanceDateTime":["2026-08-01T20:15:00Z","2026-08-01T20:15:00Z","2026-08-01T20:15:00Z","2026-08-01T20:15:00Z","2026-08-01T20:15:00Z"],"reportDate":["2026-06-30","","","",""]}}}'
+        )
+        relevant = _research_relevant_filings(filings)
+        self.assertEqual([(filing.form, filing.submitted_form) for filing in relevant], [
+            ("10-Q", "10-Q/A"), ("8-K", "8-K"),
+        ])
 
     def test_applies_a_conservative_five_minute_buffer_to_sec_acceptance(self) -> None:
         accepted_at = datetime(2026, 8, 2, 20, 15, tzinfo=timezone.utc)
