@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 import unittest
 
-from quantrade_research.ingest_benchmark_data import _should_fetch_adjustment
+from quantrade_research.ingest_benchmark_data import _should_fetch_adjustment, _source_inputs_for_artifacts
 from quantrade_research.ingest_market_data import _symbols_to_fetch
 from quantrade_research.market_data import CompactMarketReceipt, record_market_source
 
@@ -65,6 +65,13 @@ class MarketReceiptTests(unittest.TestCase):
         self.assertTrue(_should_fetch_adjustment(
             repository, "SPY", date(2026, 8, 27), "split_adjusted", only_missing=False,
         ))
+
+    def test_benchmark_retry_with_no_downloads_has_no_ingestion_lineage(self) -> None:
+        self.assertEqual(_source_inputs_for_artifacts([]), ())
+
+        source_inputs = _source_inputs_for_artifacts(["receipt://alpaca/bars/hash"])
+        self.assertEqual(len(source_inputs), 1)
+        self.assertEqual(source_inputs[0].raw_artifact_uris, ("receipt://alpaca/bars/hash",))
 
 
 if __name__ == "__main__":  # pragma: no cover

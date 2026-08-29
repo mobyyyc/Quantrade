@@ -24,6 +24,23 @@ def _should_fetch_adjustment(
     return not only_missing or not repository.benchmark_bar_exists(ticker, end, adjustment_basis)
 
 
+def _source_inputs_for_artifacts(artifact_uris: list[str]) -> tuple[SourceInput, ...]:
+    """Return provenance only for data retrieved by this invocation.
+
+    A missing-only retry can legitimately retrieve nothing because an earlier
+    attempt already committed every requested benchmark bar. That is a
+    successful no-op, not an ingestion run with fabricated source lineage.
+    """
+    if not artifact_uris:
+        return ()
+    return (
+        SourceInput(
+            provider="alpaca", source_reference=ALPACA_BARS_URL,
+            raw_artifact_uris=tuple(artifact_uris),
+        ),
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest split-adjusted and raw benchmark daily bars")
     parser.add_argument("--ticker", default="SPY")
@@ -86,24 +103,24 @@ def main() -> None:
                     break
     finally:
         repository.close()
+    note = (
+        f"benchmark={ticker}; daily_bars={count}; adjustment_bases=unadjusted,split_adjusted; "
+        f"request_mode={'missing_only' if arguments.only_missing else 'range'}; "
+        f"fetched_adjustments={fetched_adjustments}; skipped_existing_adjustments={skipped_existing_adjustments}; "
+        f"receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}"
+    )
+    source_inputs = _source_inputs_for_artifacts(artifact_uris)
+    if not source_inputs:
+        print(f"{note}; no_op=all_requested_adjustments_already_present")
+        return
     manifest = RunManifest.create(
         settings=settings,
         run_kind="ingestion",
         code_revision=arguments.code_revision,
         data_capability_tier="B",
         status="completed",
-        source_inputs=(
-            SourceInput(
-                provider="alpaca", source_reference=ALPACA_BARS_URL,
-                raw_artifact_uris=tuple(artifact_uris),
-            ),
-        ),
-        note=(
-            f"benchmark={ticker}; daily_bars={count}; adjustment_bases=unadjusted,split_adjusted; "
-            f"request_mode={'missing_only' if arguments.only_missing else 'range'}; "
-            f"fetched_adjustments={fetched_adjustments}; skipped_existing_adjustments={skipped_existing_adjustments}; "
-            f"receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}"
-        ),
+        source_inputs=source_inputs,
+        note=note,
     )
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")
     print(manifest.note)
