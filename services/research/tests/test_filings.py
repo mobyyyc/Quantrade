@@ -11,6 +11,7 @@ from quantrade_research.sec_edgar import (
     daily_master_index_url,
     parse_daily_master_index,
     SecEdgarError,
+    SecEdgarNotFoundError,
     merge_filings,
     parse_company_facts,
     parse_submission_history,
@@ -23,7 +24,7 @@ from quantrade_research.filings import (
 )
 from quantrade_research.ingest_filings import (
     _daily_index_candidates, _daily_index_dates, _fetch_daily_master_index_with_retry, _new_accession_numbers,
-    _new_filings, _record_source, _requires_company_facts,
+    _is_pending_current_daily_index, _new_filings, _record_source, _requires_company_facts,
 )
 
 
@@ -122,6 +123,27 @@ class FilingParserTests(unittest.TestCase):
             _fetch_daily_master_index_with_retry(
                 UnavailableClient(), date(2026, 8, 27), attempts=2, retry_seconds=0, sleep=lambda _seconds: None,
             )
+
+    def test_identifies_only_a_current_prepublication_403_as_pending(self) -> None:
+        before_publication = datetime.fromisoformat("2026-08-28T21:00:00-04:00")
+        after_publication = datetime.fromisoformat("2026-08-28T22:15:00-04:00")
+        forbidden = SecEdgarError("SEC returned HTTP 403")
+
+        self.assertTrue(_is_pending_current_daily_index(
+            date(2026, 8, 28), forbidden, observed_at=before_publication,
+        ))
+        self.assertTrue(_is_pending_current_daily_index(
+            date(2026, 8, 28), SecEdgarNotFoundError("not found"), observed_at=before_publication,
+        ))
+        self.assertFalse(_is_pending_current_daily_index(
+            date(2026, 8, 27), forbidden, observed_at=before_publication,
+        ))
+        self.assertFalse(_is_pending_current_daily_index(
+            date(2026, 8, 28), forbidden, observed_at=after_publication,
+        ))
+        self.assertFalse(_is_pending_current_daily_index(
+            date(2026, 8, 28), SecEdgarError("SEC returned HTTP 503"), observed_at=before_publication,
+        ))
 
     def test_compact_receipt_mode_never_writes_a_payload_file(self) -> None:
         expected = StoredSource("artifact-id", "receipt://sec-edgar/reference/hash", "https://data.sec.gov/example", "receipt-id")

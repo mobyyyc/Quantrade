@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time as wall_time, timezone
 from pathlib import Path
 import time
+from zoneinfo import ZoneInfo
 
 from .filings import PostgresFilingRepository, StoredSource, persist_sec_filings
 from .ingest_security_master import _file_path_from_uri
@@ -31,6 +32,8 @@ from .security_master import FileRawArtifactStore
 
 _SEC_PARSER_VERSION = "sec_edgar_parser_v1"
 _MODEL_RELEVANT_FINANCIAL_FORMS = frozenset({"10-K", "10-Q", "20-F", "40-F"})
+_TORONTO = ZoneInfo("America/Toronto")
+_EXPECTED_DAILY_INDEX_PUBLICATION = wall_time(22, 15)
 
 
 def _record_source(
@@ -123,6 +126,18 @@ def _daily_index_dates(start_date: date, end_date: date) -> list[date]:
     return [date.fromordinal(value) for value in range(start_date.toordinal(), end_date.toordinal() + 1)]
 
 
+def _is_pending_current_daily_index(
+    filing_date: date, error: SecEdgarError, *, observed_at: datetime | None = None,
+) -> bool:
+    """Identify SEC's pre-publication absence without hiding a later real outage."""
+    observed = (observed_at or datetime.now(_TORONTO)).astimezone(_TORONTO)
+    return (
+        (isinstance(error, SecEdgarNotFoundError) or "HTTP 403" in str(error))
+        and filing_date == observed.date()
+        and observed.time() < _EXPECTED_DAILY_INDEX_PUBLICATION
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest SEC filing metadata and facts for one CIK")
     source = parser.add_mutually_exclusive_group(required=True)
@@ -184,10 +199,20 @@ def main() -> None:
                         retry_seconds=arguments.daily_index_retry_seconds,
                     )
                     index_records = parse_daily_master_index(index_payload)
-                except SecEdgarNotFoundError:
+                except SecEdgarNotFoundError as error:
+                    if _is_pending_current_daily_index(filing_date, error):
+                        raise SecEdgarError(
+                            f"SEC daily filing index for {filing_date.isoformat()} has not been published yet; "
+                            "retry after 10:00 p.m. Toronto time"
+                        ) from error
                     missing_index_dates.append(filing_date)
                     continue
                 except SecEdgarError as error:
+                    if _is_pending_current_daily_index(filing_date, error):
+                        raise SecEdgarError(
+                            f"SEC daily filing index for {filing_date.isoformat()} has not been published yet; "
+                            "retry after 10:00 p.m. Toronto time"
+                        ) from error
                     raise SecEdgarError(
                         f"daily index discovery is incomplete for {filing_date.isoformat()}; "
                         "no cohort-wide submissions fallback will run"

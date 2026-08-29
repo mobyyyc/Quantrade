@@ -15,6 +15,9 @@ function userFacingError(output: string): string {
   if (output.includes("already running")) {
     return "A daily update is already running. Keep this page open and try again when it finishes.";
   }
+  if (output.includes("has not been published yet")) {
+    return "SEC has not published today’s daily filing index yet. Please retry after 10:00 p.m. Toronto time; no scores were published.";
+  }
   if (output.includes("SEC filing ingestion failed")) {
     return "SEC filing retrieval or validation did not complete. The update stopped safely before publication; no duplicate scores were created.";
   }
