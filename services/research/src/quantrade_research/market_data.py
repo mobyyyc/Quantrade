@@ -309,11 +309,7 @@ class PostgresMarketDataRepository:
                          cash_amount, ratio_numerator, ratio_denominator, currency, available_at,
                          ingested_at, raw_artifact_id, source_reference, provider_payload, source_receipt_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'USD', %s, %s, %s, %s, %s::jsonb, %s)
-                    ON CONFLICT (provider_action_id)
-                    DO UPDATE SET available_at = EXCLUDED.available_at, ingested_at = EXCLUDED.ingested_at,
-                        raw_artifact_id = EXCLUDED.raw_artifact_id, source_reference = EXCLUDED.source_reference,
-                        provider_payload = EXCLUDED.provider_payload,
-                        source_receipt_id = COALESCE(EXCLUDED.source_receipt_id, quantrade.corporate_actions.source_receipt_id)
+                    ON CONFLICT (provider_action_id) DO NOTHING
                     """,
                     (security_id, action.provider_action_id, action.action_type, action.process_date,
                      action.effective_date, action.cash_amount, action.ratio_numerator,
@@ -321,7 +317,39 @@ class PostgresMarketDataRepository:
                      source_reference, json.dumps(action.payload, sort_keys=True) if retain_provider_payload else "{}",
                      source_receipt_id),
                 )
-                persisted += 1
+                persisted += cursor.rowcount
+        self._connection.commit()
+        return persisted
+
+    def insert_benchmark_corporate_actions(
+        self, *, benchmark_ticker: str, actions: list[AlpacaCorporateAction],
+        raw_artifact_id: str, source_reference: str, source_receipt_id: str | None,
+        availability_rule_id: str,
+        available_at: datetime | Callable[[AlpacaCorporateAction], datetime],
+    ) -> int:
+        """Append compact benchmark actions without polluting the equity master."""
+        persisted = 0
+        ticker = benchmark_ticker.upper()
+        with self._connection.cursor() as cursor:
+            for action in actions:
+                if action.ticker != ticker:
+                    continue
+                action_available_at = available_at(action) if callable(available_at) else available_at
+                cursor.execute(
+                    """INSERT INTO quantrade.benchmark_corporate_actions
+                           (benchmark_ticker,provider_action_id,action_type,process_date,effective_date,
+                            cash_amount,ratio_numerator,ratio_denominator,currency,available_at,
+                            availability_rule_id,ingested_at,raw_artifact_id,source_reference,source_receipt_id)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'USD',%s,%s,%s,%s,%s,%s)
+                       ON CONFLICT (benchmark_ticker,provider_action_id) DO NOTHING""",
+                    (
+                        ticker, action.provider_action_id, action.action_type, action.process_date,
+                        action.effective_date, action.cash_amount, action.ratio_numerator,
+                        action.ratio_denominator, action_available_at, availability_rule_id,
+                        datetime.now(timezone.utc), raw_artifact_id, source_reference, source_receipt_id,
+                    ),
+                )
+                persisted += cursor.rowcount
         self._connection.commit()
         return persisted
 

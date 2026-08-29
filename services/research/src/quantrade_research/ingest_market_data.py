@@ -90,7 +90,9 @@ def main() -> None:
             for index in range(0, len(arguments.symbols), arguments.batch_size)
         ]
         for symbols in batches:
-            for adjustment, basis in (("raw", "unadjusted"), ("split", "split_adjusted")):
+            for adjustment, basis in (
+                ("raw", "unadjusted"), ("split", "split_adjusted"), ("all", "total_return_adjusted"),
+            ):
                 request_symbols = _symbols_to_fetch(
                     repository, symbols, arguments.start, arguments.end, basis, arguments.only_missing,
                 )
@@ -150,7 +152,8 @@ def main() -> None:
         ),
         status="completed",
         note=(
-            f"daily_bars={bar_count}; corporate_actions={action_count}; adjustment_bases=unadjusted,split_adjusted; "
+            f"daily_bars={bar_count}; corporate_actions={action_count}; "
+            f"adjustment_bases=unadjusted,split_adjusted,total_return_adjusted; "
             f"request_mode={'missing_only' if arguments.only_missing else 'range'}; "
             f"bar_request_symbols={bar_request_symbols}; skipped_existing_symbols={skipped_existing_symbols}; "
             f"bar_pages={bar_pages}; corporate_action_window={action_start}:{arguments.end}; "

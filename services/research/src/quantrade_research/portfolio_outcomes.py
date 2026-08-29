@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
+from hashlib import sha256
+import json
 
 from .config import Settings
 from .quality import DataQualityError
+from .wealth_ledger import (
+    PAPER_PORTFOLIO_LEDGER_RULE,
+    WealthAction,
+    WealthPriceMark,
+    calculate_wealth_return,
+)
 
 
 CHECKPOINT_HORIZONS = (5, 20, 60)
+RECONCILIATION_TOLERANCE = Decimal("0.0025")
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +38,11 @@ class PaperPortfolioOutcome:
     benchmark_return: Decimal | None = None
     benchmark_relative_return: Decimal | None = None
     unavailable_reason: str | None = None
+    accounting_rule: str | None = None
+    portfolio_ledger_sha256: str | None = None
+    benchmark_ledger_sha256: str | None = None
+    corporate_action_count: int | None = None
+    data_cutoff_at: datetime | None = None
 
 
 def calculate_paper_portfolio_return(
@@ -66,15 +80,29 @@ def _withheld(run_id: str, horizon: int, outcome_date: date, reason: str) -> Pap
     return PaperPortfolioOutcome(run_id, horizon, "withheld", outcome_date, unavailable_reason=reason)
 
 
+def _wealth_action(row) -> WealthAction:
+    return WealthAction(
+        action_id=str(row[0]), action_type=str(row[1]), process_date=row[2],
+        effective_date=row[3], cash_amount=row[4], ratio_numerator=row[5],
+        ratio_denominator=row[6], currency=str(row[7]) if row[7] else None,
+        available_at=row[8], source_reference=str(row[9]),
+    )
+
+
+def _portfolio_digest(items: list[tuple[str, str, str]], ending_cash: Decimal) -> str:
+    payload = {"positions": sorted(items), "ending_cash": str(ending_cash), "rule": PAPER_PORTFOLIO_LEDGER_RULE}
+    return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def materialize_due_paper_portfolio_outcomes(
     *, settings: Settings, as_of_date: date
 ) -> tuple[PaperPortfolioOutcome, ...]:
     """Write checkpoints only on their real 5th, 20th, or 60th benchmark session.
 
-    A horizon counts the execution session as session one. Raw prices are used
-    consistently with the raw next-open trades. An action on a held name causes
-    a withheld checkpoint until the project has explicit position accounting for
-    that action; it never becomes a silently adjusted performance claim.
+    A horizon counts the execution session as session one. Raw entry-open and
+    checkpoint-close prices are reconciled through explicit split and cash-
+    dividend ledgers for both holdings and SPY. Complex or incomplete actions
+    fail closed instead of being silently adjusted.
     """
     settings.require_runtime_storage()
     assert settings.database_url is not None
@@ -117,7 +145,7 @@ def materialize_due_paper_portfolio_outcomes(
                     continue
                 outcome_date = target_row[0]
                 cursor.execute(
-                    """SELECT session_date, open_price, close_price
+                    """SELECT session_date, open_price, close_price, available_at
                        FROM quantrade.benchmark_daily_price_bars
                        WHERE benchmark_ticker = %s
                          AND session = 'regular'
@@ -125,7 +153,7 @@ def materialize_due_paper_portfolio_outcomes(
                          AND session_date IN (%s, %s)""",
                     (benchmark_ticker, execution_date, outcome_date),
                 )
-                benchmark_marks = {row[0]: (row[1], row[2]) for row in cursor.fetchall()}
+                benchmark_marks = {row[0]: (row[1], row[2], row[3]) for row in cursor.fetchall()}
                 execution_mark = benchmark_marks.get(execution_date)
                 closing_mark = benchmark_marks.get(outcome_date)
                 if execution_mark is None or closing_mark is None or execution_mark[0] <= 0 or closing_mark[1] <= 0:
@@ -141,51 +169,170 @@ def materialize_due_paper_portfolio_outcomes(
                     positions = tuple(PaperPortfolioPosition(str(row[0]), row[1]) for row in cursor.fetchall())
                     security_ids = [position.security_id for position in positions]
                     cursor.execute(
-                        """SELECT COUNT(*)
-                           FROM quantrade.corporate_actions
+                        """SELECT security_id::text, session_date, open_price, close_price, available_at
+                           FROM quantrade.daily_price_bars
                            WHERE security_id = ANY(%s::uuid[])
-                             AND COALESCE(effective_date, process_date) >= %s
-                             AND COALESCE(effective_date, process_date) <= %s""",
+                             AND session_date BETWEEN %s AND %s
+                             AND session = 'regular' AND adjustment_basis = 'unadjusted'
+                           ORDER BY security_id, session_date""",
                         (security_ids, execution_date, outcome_date),
                     )
-                    action_count = int(cursor.fetchone()[0])
-                    if action_count:
-                        outcome = _withheld(str(run_id), horizon, outcome_date, "a held company had a corporate action; adjusted position accounting is required")
-                    else:
-                        cursor.execute(
-                            """SELECT security_id::text, close_price
-                               FROM quantrade.daily_price_bars
-                               WHERE security_id = ANY(%s::uuid[])
-                                 AND session_date = %s
-                                 AND session = 'regular'
-                                 AND adjustment_basis = 'unadjusted'""",
-                            (security_ids, outcome_date),
+                    price_paths: dict[str, dict[date, tuple[Decimal, Decimal, datetime]]] = {}
+                    for security_id, session_date, open_price, close_price, available_at in cursor:
+                        price_paths.setdefault(str(security_id), {})[session_date] = (
+                            open_price, close_price, available_at,
                         )
-                        closes = {str(row[0]): row[1] for row in cursor.fetchall()}
-                        try:
-                            portfolio_return = calculate_paper_portfolio_return(
-                                starting_nav=starting_nav,
-                                ending_cash=ending_cash,
-                                positions=positions,
-                                closing_prices=closes,
-                            )
-                        except DataQualityError:
-                            outcome = _withheld(str(run_id), horizon, outcome_date, "one or more held-company closing prices are unavailable")
-                        else:
-                            benchmark_return = closing_mark[1] / execution_mark[0] - Decimal("1")
-                            outcome = PaperPortfolioOutcome(
-                                str(run_id), horizon, "completed", outcome_date,
-                                portfolio_return, benchmark_return, portfolio_return - benchmark_return,
-                            )
+                    cursor.execute(
+                        """SELECT security_id::text, session_date, open_price, close_price
+                           FROM quantrade.daily_price_bars
+                           WHERE security_id = ANY(%s::uuid[])
+                             AND session_date IN (%s, %s)
+                             AND session = 'regular' AND adjustment_basis = 'total_return_adjusted'""",
+                        (security_ids, execution_date, outcome_date),
+                    )
+                    total_return_marks = {
+                        (str(row[0]), row[1]): (row[2], row[3]) for row in cursor
+                    }
+                    cursor.execute(
+                        """SELECT security_id::text, provider_action_id, action_type, process_date,
+                                  effective_date, cash_amount, ratio_numerator, ratio_denominator,
+                                  currency, available_at, source_reference
+                           FROM quantrade.corporate_actions
+                           WHERE security_id = ANY(%s::uuid[])
+                             AND COALESCE(effective_date, process_date) > %s
+                             AND COALESCE(effective_date, process_date) <= %s
+                           ORDER BY security_id, COALESCE(effective_date, process_date), provider_action_id""",
+                        (security_ids, execution_date, outcome_date),
+                    )
+                    actions_by_security: dict[str, list[WealthAction]] = {}
+                    for row in cursor:
+                        actions_by_security.setdefault(str(row[0]), []).append(_wealth_action(row[1:]))
+                    cursor.execute(
+                        """SELECT provider_action_id, action_type, process_date, effective_date,
+                                  cash_amount, ratio_numerator, ratio_denominator, currency,
+                                  available_at, source_reference
+                           FROM quantrade.benchmark_corporate_actions
+                           WHERE benchmark_ticker = %s
+                             AND COALESCE(effective_date, process_date) > %s
+                             AND COALESCE(effective_date, process_date) <= %s
+                           ORDER BY COALESCE(effective_date, process_date), provider_action_id""",
+                        (benchmark_ticker, execution_date, outcome_date),
+                    )
+                    benchmark_actions = [_wealth_action(row) for row in cursor]
+                    cursor.execute(
+                        """SELECT session_date, open_price, available_at
+                           FROM quantrade.benchmark_daily_price_bars
+                           WHERE benchmark_ticker = %s AND session = 'regular'
+                             AND adjustment_basis = 'unadjusted'
+                             AND session_date BETWEEN %s AND %s ORDER BY session_date""",
+                        (benchmark_ticker, execution_date, outcome_date),
+                    )
+                    benchmark_path = tuple(WealthPriceMark(row[0], row[1], row[2]) for row in cursor)
+                    expected_sessions = {mark.session_date for mark in benchmark_path}
+                    cursor.execute(
+                        """SELECT session_date, open_price, close_price
+                           FROM quantrade.benchmark_daily_price_bars
+                           WHERE benchmark_ticker = %s AND session = 'regular'
+                             AND adjustment_basis = 'total_return_adjusted'
+                             AND session_date IN (%s, %s)""",
+                        (benchmark_ticker, execution_date, outcome_date),
+                    )
+                    benchmark_total_marks = {row[0]: (row[1], row[2]) for row in cursor}
+                    benchmark_ledger = calculate_wealth_return(
+                        entry_date=execution_date, exit_date=outcome_date,
+                        entry_price=execution_mark[0], exit_price=closing_mark[1],
+                        entry_available_at=execution_mark[2], exit_available_at=closing_mark[2],
+                        actions=benchmark_actions, intermediate_prices=benchmark_path,
+                        ledger_rule=PAPER_PORTFOLIO_LEDGER_RULE,
+                    )
+                    ledgers = []
+                    ending_nav = ending_cash
+                    failure = benchmark_ledger.unavailable_reason if benchmark_ledger.status != "completed" else None
+                    benchmark_total_entry = benchmark_total_marks.get(execution_date)
+                    benchmark_total_exit = benchmark_total_marks.get(outcome_date)
+                    if not failure and (benchmark_total_entry is None or benchmark_total_exit is None):
+                        failure = "benchmark total-return reconciliation marks are unavailable"
+                    if not failure:
+                        assert benchmark_ledger.wealth_return is not None
+                        provider_benchmark_return = (
+                            benchmark_total_exit[1] / benchmark_total_entry[0] - Decimal("1")
+                        )
+                        if abs(benchmark_ledger.wealth_return - provider_benchmark_return) > RECONCILIATION_TOLERANCE:
+                            failure = "benchmark wealth ledger failed provider reconciliation"
+                    for position in positions:
+                        marks = price_paths.get(position.security_id, {})
+                        entry = marks.get(execution_date)
+                        exit_mark = marks.get(outcome_date)
+                        if entry is None or exit_mark is None or set(marks) != expected_sessions:
+                            failure = "one or more held-company price paths are unavailable"
+                            break
+                        ledger = calculate_wealth_return(
+                            entry_date=execution_date, exit_date=outcome_date,
+                            entry_price=entry[0], exit_price=exit_mark[1],
+                            entry_available_at=entry[2], exit_available_at=exit_mark[2],
+                            actions=actions_by_security.get(position.security_id, ()),
+                            intermediate_prices=tuple(
+                                WealthPriceMark(session, mark[0], mark[2])
+                                for session, mark in sorted(marks.items())
+                            ),
+                            ledger_rule=PAPER_PORTFOLIO_LEDGER_RULE,
+                        )
+                        ledgers.append((position, ledger))
+                        if ledger.status != "completed":
+                            failure = ledger.unavailable_reason
+                            break
+                        total_entry = total_return_marks.get((position.security_id, execution_date))
+                        total_exit = total_return_marks.get((position.security_id, outcome_date))
+                        if total_entry is None or total_exit is None:
+                            failure = "one or more held-company reconciliation marks are unavailable"
+                            break
+                        assert ledger.wealth_return is not None
+                        provider_return = total_exit[1] / total_entry[0] - Decimal("1")
+                        if abs(ledger.wealth_return - provider_return) > RECONCILIATION_TOLERANCE:
+                            failure = "one or more held-company wealth ledgers failed provider reconciliation"
+                            break
+                        assert ledger.ending_quantity is not None and ledger.cash_distributions is not None
+                        ending_nav += position.quantity * (
+                            ledger.ending_quantity * exit_mark[1] + ledger.cash_distributions
+                        )
+                    if failure:
+                        outcome = _withheld(str(run_id), horizon, outcome_date, failure)
+                    else:
+                        assert benchmark_ledger.wealth_return is not None
+                        portfolio_return = ending_nav / starting_nav - Decimal("1")
+                        digest_items = [
+                            (position.security_id, str(position.quantity), ledger.digest)
+                            for position, ledger in ledgers
+                        ]
+                        cutoff = max(
+                            benchmark_ledger.data_cutoff_at,
+                            *(ledger.data_cutoff_at for _, ledger in ledgers),
+                        )
+                        action_count = len(benchmark_ledger.action_ids) + sum(
+                            len(ledger.action_ids) for _, ledger in ledgers
+                        )
+                        outcome = PaperPortfolioOutcome(
+                            str(run_id), horizon, "completed", outcome_date,
+                            portfolio_return, benchmark_ledger.wealth_return,
+                            portfolio_return - benchmark_ledger.wealth_return, None,
+                            PAPER_PORTFOLIO_LEDGER_RULE,
+                            _portfolio_digest(digest_items, ending_cash), benchmark_ledger.digest,
+                            action_count, cutoff,
+                        )
                 cursor.execute(
                     """INSERT INTO quantrade.paper_portfolio_outcomes
                        (paper_portfolio_run_id, horizon_sessions, status, outcome_date,
-                        portfolio_return, benchmark_return, benchmark_relative_return, unavailable_reason)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                        portfolio_return, benchmark_return, benchmark_relative_return, unavailable_reason,
+                        accounting_rule, portfolio_ledger_sha256, benchmark_ledger_sha256,
+                        corporate_action_count, data_cutoff_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     (
                         outcome.paper_portfolio_run_id, outcome.horizon_sessions, outcome.status,
                         outcome.outcome_date, outcome.portfolio_return, outcome.benchmark_return,
                         outcome.benchmark_relative_return, outcome.unavailable_reason,
+                        outcome.accounting_rule, outcome.portfolio_ledger_sha256,
+                        outcome.benchmark_ledger_sha256, outcome.corporate_action_count,
+                        outcome.data_cutoff_at,
                     ),
                 )
                 materialized.append(outcome)

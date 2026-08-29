@@ -256,6 +256,7 @@ def main() -> None:
                 if start <= score_date:
                     _run([sys.executable, "-m", "quantrade_research.ingest_benchmark_data", "--ticker", "SPY",
                           "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision,
+                          "--corporate-actions-start", source_update_start.isoformat(),
                           "--compact-receipts", "--only-missing"], environment,
                          operation="benchmark-data ingestion")
                     _run([sys.executable, "-m", "quantrade_research.ingest_market_data", "--symbols", symbols,

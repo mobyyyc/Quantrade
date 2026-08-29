@@ -276,11 +276,15 @@ ingested market data. It never creates missed portfolios retroactively. This
 preserves the forward, no-lookahead record needed for evaluation.
 
 Each paper portfolio is then observed only at its 5th, 20th, and 60th regular
-SPY session, counting the next-open execution session as day one. Returns use
-the same unadjusted prices as the execution ledger and compare the basket with
-SPY bought at that same open. Missing marks or a corporate action affecting a
-held company yield an immutable withheld checkpoint rather than a substitute
-calculation; corporate-action-adjusted position accounting is a later task.
+SPY session, counting the next-open execution session as day one. The wealth
+ledger starts from the raw execution open, explicitly applies ordinary splits
+and USD cash dividends, and marks the position at the checkpoint close. The
+same accounting is applied to SPY. Every completed result must reconcile with
+provider total-return-adjusted marks within 25 basis points; missing marks,
+complex actions, omitted actions, or ticker-identity collisions produce an
+immutable withheld checkpoint. Completed checkpoints store the accounting
+rule, source cutoff, action count, and deterministic portfolio/SPY ledger
+hashes.
 
 ## Forward outcome labels
 

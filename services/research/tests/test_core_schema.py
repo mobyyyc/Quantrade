@@ -85,6 +85,23 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("REFERENCES quantrade.paper_portfolio_runs", sql)
         self.assertIn("paper_portfolio_outcomes_immutable", sql)
 
+    def test_paper_portfolio_outcomes_record_wealth_ledger_provenance(self) -> None:
+        sql = MIGRATION.with_name("0032_add_paper_portfolio_wealth_provenance.sql").read_text()
+        self.assertIn("accounting_rule TEXT", sql)
+        self.assertIn("portfolio_ledger_sha256 CHAR(64)", sql)
+        self.assertIn("benchmark_ledger_sha256 CHAR(64)", sql)
+        self.assertIn("corporate_action_count INTEGER", sql)
+
+    def test_live_benchmark_actions_have_a_distinct_availability_rule(self) -> None:
+        sql = MIGRATION.with_name("0033_add_live_benchmark_action_rule.sql").read_text()
+        self.assertIn("v1-benchmark-corporate-action", sql)
+        self.assertIn("'corporate_action'", sql)
+
+    def test_equity_corporate_actions_are_append_only(self) -> None:
+        sql = MIGRATION.with_name("0034_make_corporate_actions_append_only.sql").read_text()
+        self.assertIn("CREATE TRIGGER corporate_actions_immutable", sql)
+        self.assertIn("prevent_historical_lineage_mutation", sql)
+
     def test_forward_score_outcomes_are_immutable_training_labels(self) -> None:
         migration = MIGRATION.with_name("0014_add_forward_score_outcomes.sql")
         sql = migration.read_text(encoding="utf-8")
@@ -224,6 +241,13 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         sql = migration.read_text(encoding="utf-8")
         self.assertIn("total_return_adjusted", sql)
         self.assertIn("not eligible for model features", sql)
+
+    def test_benchmark_corporate_actions_are_separate_and_immutable(self) -> None:
+        migration = MIGRATION.with_name("0031_add_benchmark_corporate_actions.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.benchmark_corporate_actions", sql)
+        self.assertIn("benchmark_corporate_actions_immutable", sql)
+        self.assertIn("prevent_historical_lineage_mutation", sql)
 
     def test_holdout_and_experiment_governance_are_immutable(self) -> None:
         migration = MIGRATION.with_name("0007_add_experiment_governance.sql")
