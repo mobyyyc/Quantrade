@@ -29,6 +29,10 @@ class SecFactResolverTests(unittest.TestCase):
     def test_database_resolution_restricts_both_fact_sources_to_approved_forms(self) -> None:
         self.assertEqual(POINT_IN_TIME_FACT_SQL.count("f.form = ANY(%s)"), 2)
 
+    def test_database_resolution_keeps_canonical_fact_before_later_observation(self) -> None:
+        self.assertNotIn("observed_keys", POINT_IN_TIME_FACT_SQL)
+        self.assertNotIn("ok.filing_id IS NULL", POINT_IN_TIME_FACT_SQL)
+
     def test_form_scope_canonicalizes_amendments_and_rejects_offering_forms(self) -> None:
         self.assertEqual(canonical_form("10-Q/A"), "10-Q")
         self.assertTrue(is_research_relevant_form("8-k/a"))

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from hashlib import sha256
 from typing import Iterable, Sequence
 
 from .quality import DataQualityError
@@ -37,10 +38,37 @@ class ResolvedSecFact:
     availability_rule: str
     source_reference: str
     source_receipt_id: str | None
+    observation_hash: str | None = None
 
     @property
     def lineage_key(self) -> str:
-        return ":".join((self.accession_number, self.filing_fact_key, self.availability_rule))
+        return ":".join((
+            self.accession_number,
+            self.filing_fact_key,
+            self.availability_rule,
+            self.effective_observation_hash,
+        ))
+
+    @property
+    def effective_observation_hash(self) -> str:
+        """Return a stable fact-level hash for legacy and observed facts."""
+        if self.observation_hash:
+            return self.observation_hash
+        payload = "|".join((
+            self.filing_fact_key,
+            self.accession_number,
+            self.taxonomy,
+            self.concept,
+            self.unit,
+            str(self.value),
+            self.period_start.isoformat() if self.period_start else "",
+            self.period_end.isoformat(),
+            str(self.fiscal_year or ""),
+            self.fiscal_period or "",
+            self.available_at.isoformat(),
+            self.source_reference,
+        ))
+        return sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _utc(value: datetime, label: str) -> datetime:
@@ -79,10 +107,7 @@ def resolve_facts_as_of(
 
 
 POINT_IN_TIME_FACT_SQL = """
-WITH observed_keys AS (
-    SELECT DISTINCT filing_id, taxonomy, concept, unit, period_start, period_end
-    FROM quantrade.filing_fact_observations
-), candidates AS (
+WITH candidates AS (
     SELECT
         concat_ws('|', ff.filing_id::text, ff.taxonomy, ff.concept, ff.unit,
                   ff.period_start::text, ff.period_end::text) AS filing_fact_key,
@@ -98,15 +123,12 @@ WITH observed_keys AS (
         f.accepted_at + interval '5 minutes' AS effective_available_at,
         'sec_acceptance_plus_5m_legacy_tier_b_v1' AS availability_rule,
         ff.source_reference,
-        ff.source_receipt_id::text
+        ff.source_receipt_id::text,
+        encode(digest(concat_ws('|', ff.filing_fact_id::text, ff.fact_value::text,
+                                ff.available_at::text, ff.source_reference), 'sha256'), 'hex') AS observation_hash
     FROM quantrade.filing_facts ff
     JOIN quantrade.filings f ON f.filing_id = ff.filing_id
-    LEFT JOIN observed_keys ok
-      ON ok.filing_id = ff.filing_id
-     AND ok.taxonomy = ff.taxonomy AND ok.concept = ff.concept AND ok.unit = ff.unit
-     AND ok.period_start IS NOT DISTINCT FROM ff.period_start AND ok.period_end = ff.period_end
-    WHERE ok.filing_id IS NULL
-      AND f.form = ANY(%s)
+    WHERE f.form = ANY(%s)
 
     UNION ALL
 
@@ -125,7 +147,8 @@ WITH observed_keys AS (
         GREATEST(f.accepted_at + interval '5 minutes', o.observed_at) AS effective_available_at,
         'max_sec_acceptance_plus_5m_observed_at_v1' AS availability_rule,
         o.source_reference,
-        o.source_receipt_id::text
+        o.source_receipt_id::text,
+        o.observation_hash
     FROM quantrade.filing_fact_observations o
     JOIN quantrade.filings f ON f.filing_id = o.filing_id
     WHERE f.form = ANY(%s)
@@ -135,6 +158,7 @@ FROM candidates
 WHERE security_id = ANY(%s)
   AND taxonomy = %s
   AND concept = ANY(%s)
+  AND period_end >= %s
   AND period_end <= %s
   AND effective_available_at <= %s
 ORDER BY security_id, concept, period_end, effective_available_at, accession_number
@@ -156,7 +180,7 @@ class PostgresSecFactResolver:
 
     def load_candidates(
         self, *, security_ids: Sequence[str], taxonomy: str, concepts: Sequence[str],
-        formation_date: date, decision_at: datetime,
+        formation_date: date, decision_at: datetime, earliest_period_end: date = date(1900, 1, 1),
     ) -> tuple[ResolvedSecFact, ...]:
         if not security_ids or not concepts:
             return ()
@@ -167,7 +191,7 @@ class PostgresSecFactResolver:
                 (
                     list(sorted(RESEARCH_RELEVANT_FORMS)),
                     list(sorted(RESEARCH_RELEVANT_FORMS)),
-                    list(security_ids), taxonomy, list(concepts), formation_date, decision,
+                    list(security_ids), taxonomy, list(concepts), earliest_period_end, formation_date, decision,
                 ),
             )
             rows = cursor.fetchall()
@@ -179,6 +203,7 @@ class PostgresSecFactResolver:
                 period_start=row[10], period_end=row[11], fiscal_year=row[12], fiscal_period=row[13],
                 accepted_at=row[14], observed_at=row[15], available_at=row[16], availability_rule=str(row[17]),
                 source_reference=str(row[18]), source_receipt_id=str(row[19]) if row[19] else None,
+                observation_hash=str(row[20]) if row[20] else None,
             )
             for row in rows
         )
@@ -186,10 +211,11 @@ class PostgresSecFactResolver:
 
     def resolve(
         self, *, security_ids: Sequence[str], taxonomy: str, concepts: Sequence[str],
-        formation_date: date, decision_at: datetime,
+        formation_date: date, decision_at: datetime, earliest_period_end: date = date(1900, 1, 1),
     ) -> tuple[ResolvedSecFact, ...]:
         candidates = self.load_candidates(
             security_ids=security_ids, taxonomy=taxonomy, concepts=concepts,
             formation_date=formation_date, decision_at=decision_at,
+            earliest_period_end=earliest_period_end,
         )
         return resolve_facts_as_of(candidates, decision_at=decision_at)
