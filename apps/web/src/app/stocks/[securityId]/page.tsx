@@ -62,12 +62,10 @@ export default async function StockDetailPage({ params, searchParams }: { params
   const requiredInputCount = score ? requiredInputsByModel[score.modelVersion] : undefined;
   const supports = [...explainedInputs]
     .filter((item) => Number(item.contribution) > 0)
-    .sort((left, right) => Number(right.contribution) - Number(left.contribution))
-    .slice(0, 2);
+    .sort((left, right) => Number(right.contribution) - Number(left.contribution));
   const headwinds = [...explainedInputs]
     .filter((item) => Number(item.contribution) < 0)
-    .sort((left, right) => Number(left.contribution) - Number(right.contribution))
-    .slice(0, 2);
+    .sort((left, right) => Number(left.contribution) - Number(right.contribution));
   const evidenceCopy = (item: ScoreExplanation) => factorContext[normalizedFeatureKey(item.featureKey)] ?? "A current model input.";
   const evidenceName = (item: ScoreExplanation) => item.displayName ?? factorDisplayNames[normalizedFeatureKey(item.featureKey)] ?? normalizedFeatureKey(item.featureKey);
   const priceChange = marketSnapshot ? formatPriceChange(marketSnapshot.closePrice, marketSnapshot.previousClosePrice) : null;
