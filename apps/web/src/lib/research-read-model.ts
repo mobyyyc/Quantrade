@@ -818,8 +818,7 @@ export async function getStockAtAGlance(securityId: string): Promise<StockAtAGla
 }
 
 export async function getScoreExplanations(
-  securityId: string,
-  scoreDate: string,
+  scoreSnapshotId: string,
 ): Promise<ScoreExplanation[]> {
   const result = await databasePool().query(
     `SELECT e.feature_key, e.feature_version, e.sector_code, e.percentile, e.feature_weight,
@@ -834,9 +833,9 @@ export async function getScoreExplanations(
        ON d.feature_key = e.feature_key
       AND d.feature_version = e.feature_version
       AND d.definition_hash = e.definition_hash
-     WHERE s.security_id = $1 AND s.score_date = $2
+     WHERE e.score_snapshot_id = $1
      ORDER BY e.contribution DESC NULLS LAST, e.feature_key ASC`,
-    [securityId, scoreDate],
+    [scoreSnapshotId],
   );
   return result.rows.map((row) => ({
     featureKey: String(row.feature_key),
