@@ -24,6 +24,7 @@ in `.env.example`.
 - [Free-data provider audit](FREE_DATA_AUDIT.md)
 - [Data capability decision](DATA_CAPABILITY_DECISION.md)
 - [Historical free-track coverage](data/derived/historical-coverage/)
+- [Canonical daily-update workflow](DAILY_UPDATE_WORKFLOW.md)
 - [Operational monitoring](OPERATIONAL_MONITORING.md)
 - [Recovery runbook](RECOVERY_RUNBOOK.md)
 - [Release runbook](RELEASE_RUNBOOK.md)

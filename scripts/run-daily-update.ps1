@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$EnvFile = ".env"
+    [string]$EnvFile = ".env",
+    [switch]$Describe
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,14 +16,36 @@ if (-not (Test-Path -LiteralPath $resolvedEnvFile -PathType Leaf)) {
     throw "Environment file not found: $resolvedEnvFile"
 }
 
-# Match the local web route: same interpreter, module, source path, and .env file.
+# This script is the only supported executable boundary for routine daily updates.
+# The web route, interactive terminal, and scheduler all invoke it.
 $previousPythonPath = $env:PYTHONPATH
 $sourcePath = Join-Path $workspaceRoot "services\research\src"
-$env:PYTHONPATH = if ($previousPythonPath) { "$sourcePath;$previousPythonPath" } else { $sourcePath }
+$pythonArguments = @(
+    "-3.14",
+    "-m",
+    "quantrade_research.manual_daily_update",
+    "--env-file",
+    $resolvedEnvFile
+)
+
+if ($Describe) {
+    [pscustomobject]@{
+        contract = "canonical_daily_update_v1"
+        workspaceRoot = $workspaceRoot
+        envFile = $resolvedEnvFile
+        workingDirectory = $workspaceRoot
+        pythonPath = $sourcePath
+        executable = "py"
+        arguments = $pythonArguments
+    } | ConvertTo-Json -Compress
+    exit 0
+}
+
+$env:PYTHONPATH = $sourcePath
 
 Push-Location $workspaceRoot
 try {
-    & py -3.14 -m quantrade_research.manual_daily_update --env-file $resolvedEnvFile
+    & py @pythonArguments
     $exitCode = $LASTEXITCODE
 } finally {
     Pop-Location

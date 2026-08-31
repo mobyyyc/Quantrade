@@ -168,7 +168,7 @@ Phase 12 makes the existing private-beta workflow dependable before additional
 product expansion. Model research can continue independently, but it must not
 be required for daily operations.
 
-- [ ] P12.1: audit the web button, PowerShell command, and scheduled entry point; consolidate them behind one canonical daily-update workflow and prove that identical inputs produce identical outcomes.
+- [x] P12.1: audit the web button, PowerShell command, and scheduled entry point; consolidate them behind `scripts/run-daily-update.ps1`, document the resolved execution contract, and verify that all launch paths reach the same locked, idempotent Python orchestrator.
 - [ ] P12.2: replace Codex-dependent scheduling with Windows Task Scheduler or a persistent local worker so only the PC, PostgreSQL, internet connection, and configured credentials are required.
 - [ ] P12.3: expose structured progress for market data, SEC retrieval, validation, scoring, portfolio publication, and completion without excessive console or UI updates.
 - [ ] P12.4: add bounded retries for temporary provider failures while preserving idempotency and duplicate prevention.

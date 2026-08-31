@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import path from "node:path";
+import { dailyUpdateLaunchSpec } from "@/lib/daily-update-launcher";
 import { getLatestDatedScores } from "@/lib/research-read-model";
 
 export const runtime = "nodejs";
@@ -25,15 +25,13 @@ function userFacingError(output: string): string {
 }
 
 export async function POST() {
-  const workspaceRoot = process.env.QUANTRADE_WORKSPACE_ROOT
-    ?? (process.cwd().endsWith(path.join("apps", "web")) ? path.resolve(process.cwd(), "../..") : process.cwd());
-  const envFile = path.join(workspaceRoot, ".env");
+  const launch = dailyUpdateLaunchSpec();
   let result: { code: number | null; output: string };
   try {
     result = await new Promise<{ code: number | null; output: string }>((resolve, reject) => {
-      const child = spawn("py", ["-3.14", "-m", "quantrade_research.manual_daily_update", "--env-file", envFile], {
-        cwd: workspaceRoot,
-        env: { ...process.env, PYTHONPATH: path.join(workspaceRoot, "services", "research", "src") },
+      const child = spawn(launch.executable, launch.args, {
+        cwd: launch.cwd,
+        env: process.env,
         windowsHide: true,
       });
       let output = "";
