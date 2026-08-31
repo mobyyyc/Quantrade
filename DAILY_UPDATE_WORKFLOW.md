@@ -23,3 +23,37 @@ entry point must not invoke the Python module directly.
 Identical invocations are safe to repeat. The database ledger permits one
 canonical completed publication per score date, and a completed date returns
 `already_completed` without creating duplicate scores.
+
+## Windows scheduling
+
+Install or repair the Codex-independent weekday task with:
+
+```powershell
+.\scripts\install-daily-update-task.ps1
+```
+
+Run this installer once from a PowerShell window opened as Administrator.
+The installed task itself runs with limited privileges under the current user.
+
+The task runs Monday through Friday at 10:15 p.m. in the Windows `Eastern
+Standard Time` zone. It starts a missed run when the machine becomes available,
+requires network connectivity, ignores overlapping launches, retries a failed
+process twice at ten-minute intervals, and wakes a sleeping PC when Windows
+permits it.
+
+The current Windows account must remain signed in because Quantrade's Python
+launcher is installed for that user. PostgreSQL, internet access, and `.env`
+credentials must be available. Codex and the web application do not need to be
+open.
+
+Remove the task with:
+
+```powershell
+.\scripts\uninstall-daily-update-task.ps1
+```
+
+Verify the installed action, principal, schedule, and safety settings with:
+
+```powershell
+.\scripts\verify-daily-update-task.ps1
+```
