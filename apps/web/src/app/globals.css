@@ -211,9 +211,10 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .daily-update-control p:not(.eyebrow) { max-width: 39rem; margin-bottom: 0; color: var(--muted); line-height: 1.55; }
 .daily-update-action { display: grid; justify-items: end; gap: .6rem; min-width: min(100%, 20rem); }
 .daily-update-action button:disabled { cursor: wait; opacity: .7; }
-.daily-update-message { margin: 0; font-size: .82rem; text-align: right; }
-.daily-update-message.success { color: var(--positive) !important; }
-.daily-update-message.error { color: var(--negative) !important; }
+.daily-update-message { min-height: 2.5em; margin: 0; color: var(--muted); font-size: .82rem; line-height: 1.25; text-align: right; }
+.daily-update-message.idle { visibility: hidden; }
+.daily-update-message.success { color: var(--foreground) !important; }
+.daily-update-message.error { color: var(--foreground) !important; }
 .daily-update-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 1.5rem 2.5rem; align-items: end; padding: 1.35rem 0; border-bottom: 1px solid var(--line-soft); }
 .daily-update-summary .eyebrow { margin-bottom: .45rem; }
 .daily-update-summary h3 { margin: 0 0 .35rem; color: var(--foreground); font-size: 1.1rem; letter-spacing: -.03em; }

@@ -24,6 +24,20 @@ Identical invocations are safe to repeat. The database ledger permits one
 canonical completed publication per score date, and a completed date returns
 `already_completed` without creating duplicate scores.
 
+## Progress contract
+
+The Python orchestrator emits a bounded `daily_update_progress_v1` JSON-lines
+contract prefixed with `QUANTRADE_PROGRESS `. It reports stage transitions for
+initialization, market data, SEC filings, validation, scoring, portfolio
+maintenance, and completion. Each stage reports only meaningful state changes,
+not per-symbol or per-document activity.
+
+The web route converts those lines to an `application/x-ndjson` response so the
+button can show the current stage while the canonical script is still running.
+Terminal and scheduled runs receive the same concise stage output. Ordinary
+human-readable completion and error lines remain available for logs and failure
+diagnosis. Closing the browser does not cancel the database-backed update.
+
 ## Windows scheduling
 
 Install or repair the Codex-independent weekday task with:

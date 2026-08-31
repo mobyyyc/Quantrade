@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -20,9 +21,24 @@ from .universe_symbols import canonical_ticker
 
 
 _LOCK_KEY = 7_136_202_600_824
+_PROGRESS_CONTRACT = "daily_update_progress_v1"
+_PROGRESS_PREFIX = "QUANTRADE_PROGRESS "
 _PROXY_VARIABLES = (
     "ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "all_proxy", "http_proxy", "https_proxy",
 )
+
+
+def _progress(stage: str, status: str, message: str, *, score_date: date | None = None) -> None:
+    """Emit one machine-readable, line-delimited workflow transition."""
+    payload = {
+        "contract": _PROGRESS_CONTRACT,
+        "stage": stage,
+        "status": status,
+        "message": message,
+    }
+    if score_date is not None:
+        payload["scoreDate"] = score_date.isoformat()
+    print(f"{_PROGRESS_PREFIX}{json.dumps(payload, separators=(',', ':'), sort_keys=True)}", flush=True)
 
 
 def _symbols(database_url: str, score_date: date) -> list[str]:
@@ -227,33 +243,42 @@ def main() -> None:
     if now.hour < 16:
         parser.error("The daily update is available after the regular market closes at 4:00 p.m. Toronto time.")
     score_date = now.date()
-    if not _symbols(settings.database_url, score_date):
+    _progress("initialization", "started", "Preparing the locked daily research run.", score_date=score_date)
+    symbol_list = _symbols(settings.database_url, score_date)
+    if not symbol_list:
         parser.error("No current S&P 500 universe is available for today.")
 
     environment = dict(os.environ)
     environment.update(_dotenv_values(arguments.env_file))
     environment["PYTHONPATH"] = str(Path("services/research/src").resolve())
     revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
-    symbol_list = _symbols(settings.database_url, score_date)
     symbols = ",".join(symbol_list)
     ciks = ",".join(_ciks(settings.database_url, score_date))
 
     with _daily_update_lock(settings.database_url) as connection:
         should_run, retry_cutoff = _start_or_resume(connection, score_date)
         if not should_run:
+            _progress("completion", "completed", "Today’s publication already exists; nothing was duplicated.", score_date=score_date)
             print(f"already_completed score_date={score_date}; no duplicate publication was created")
             return
+        _progress("initialization", "completed", f"Locked the run for {len(symbol_list)} companies.", score_date=score_date)
+        active_stage = "market_data"
         try:
             existing_score = _published_score_summary(settings.database_url, score_date, len(symbol_list))
             if existing_score is not None:
                 decision_at, snapshots, eligible = existing_score
                 _set_decision_at(connection, score_date, decision_at)
                 score_note = f"score_snapshots={snapshots}; eligible={eligible}"
+                _progress("market_data", "skipped", "Reusing the existing immutable score publication.", score_date=score_date)
+                _progress("sec_filings", "skipped", "Reusing the existing immutable score publication.", score_date=score_date)
+                _progress("validation", "completed", "The existing score publication is complete and consistent.", score_date=score_date)
+                _progress("scoring", "skipped", "No duplicate scores were calculated.", score_date=score_date)
                 print(f"reusing_existing_scores score_date={score_date}; snapshots={snapshots}; eligible={eligible}")
             else:
                 start = _catch_up_start(settings.database_url, score_date)
                 source_update_start = _sec_index_start_date(connection, score_date)
                 if start <= score_date:
+                    _progress("market_data", "started", "Fetching only missing market bars and corporate actions.", score_date=score_date)
                     _run([sys.executable, "-m", "quantrade_research.ingest_benchmark_data", "--ticker", "SPY",
                           "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision,
                           "--corporate-actions-start", source_update_start.isoformat(),
@@ -264,34 +289,58 @@ def main() -> None:
                           "--corporate-actions-start", source_update_start.isoformat(),
                           "--compact-receipts", "--only-missing"], environment,
                          operation="market-data ingestion")
-                if not _has_current_benchmark_session(settings.database_url, score_date):
-                    _set_skipped(connection, score_date, "No regular SPY session was returned for this date.")
-                    print(f"skipped score_date={score_date}; no regular NYSE session")
-                    return
+                    _progress("market_data", "completed", "Missing market data is up to date.", score_date=score_date)
+                else:
+                    _progress("market_data", "skipped", "Market data is already current.", score_date=score_date)
+
+                active_stage = "sec_filings"
                 if ciks:
+                    _progress("sec_filings", "started", "Checking accepted decision-useful SEC filings since the last update.", score_date=score_date)
                     _run([sys.executable, "-m", "quantrade_research.ingest_filings", "--ciks", ciks,
                           "--code-revision", revision, "--incremental",
                           "--compact-receipts",
                           "--daily-index-start-date", source_update_start.isoformat(),
                           "--daily-index-end-date", score_date.isoformat()], _sec_network_environment(environment),
                          operation="SEC filing ingestion")
+                    _progress("sec_filings", "completed", "New eligible SEC facts and filing metadata are recorded.", score_date=score_date)
+                else:
+                    _progress("sec_filings", "skipped", "No SEC identifiers were available for this universe.", score_date=score_date)
+
+                active_stage = "validation"
+                _progress("validation", "started", "Validating the market session and point-in-time cutoff.", score_date=score_date)
+                if not _has_current_benchmark_session(settings.database_url, score_date):
+                    _set_skipped(connection, score_date, "No regular SPY session was returned for this date.")
+                    _progress("validation", "skipped", "No regular NYSE session was available for this date.", score_date=score_date)
+                    _progress("completion", "completed", "No publication was required for a non-market date.", score_date=score_date)
+                    print(f"skipped score_date={score_date}; no regular NYSE session")
+                    return
                 decision_at = _set_decision_at(connection, score_date, retry_cutoff)
+                _progress("validation", "completed", "Inputs passed the point-in-time publication checks.", score_date=score_date)
+
+                active_stage = "scoring"
+                _progress("scoring", "started", "Calculating and publishing eligible model scores.", score_date=score_date)
                 score_note = _run([sys.executable, "-m", "quantrade_research.score_run", "--score-date", score_date.isoformat(),
                                    "--code-revision", revision, "--manual", "--decision-at", decision_at.isoformat()], environment,
                                   operation="score publication")
                 snapshot_text, eligible_text = score_note.split("; ")
                 snapshots, eligible = int(snapshot_text.split("=")[1]), int(eligible_text.split("=")[1])
+                _progress("scoring", "completed", f"Published {eligible} eligible scores from {snapshots} snapshots.", score_date=score_date)
             _set_completed(connection, score_date, snapshots, eligible)
         except Exception as error:
             _set_failure(connection, score_date, str(error))
+            _progress(active_stage, "failed", "This stage did not complete; publication stopped safely.", score_date=score_date)
+            _progress("completion", "failed", "The daily update did not complete.", score_date=score_date)
             raise
 
+    _progress("portfolio", "started", "Updating due outcomes and monthly portfolio records.", score_date=score_date)
     try:
         forward_outcomes = materialize_due_forward_score_outcomes(settings=settings, as_of_date=score_date)
         readiness_snapshot_created = materialize_forward_readiness_snapshot(settings=settings, as_of_date=score_date)
         outcomes = materialize_due_paper_portfolio_outcomes(settings=settings, as_of_date=score_date)
         published_portfolios = publish_due_paper_portfolios(settings=settings, execution_date=score_date)
     except Exception as error:
+        _progress("portfolio", "warning", "Scores are ready, but post-publication portfolio maintenance needs attention.", score_date=score_date)
+        _progress("completion", "warning", "Daily scores completed with a post-publication warning.", score_date=score_date)
         print(f"completed score_date={score_date}; {score_note}; post_publication_error={error}")
         return
 
@@ -299,6 +348,8 @@ def main() -> None:
     outcome_note = ",".join(f"{item.horizon_sessions}d:{item.status}" for item in outcomes) or "none_due"
     forward_note = ",".join(f"{item.horizon_sessions}d:{item.status}" for item in forward_outcomes) or "none_due"
     readiness_note = "created" if readiness_snapshot_created else "already_recorded"
+    _progress("portfolio", "completed", "Portfolio records and due outcomes are current.", score_date=score_date)
+    _progress("completion", "completed", "The canonical daily publication is ready.", score_date=score_date)
     print(f"completed score_date={score_date}; {score_note}; forward_outcomes={forward_note}; readiness_snapshot={readiness_note}; paper_portfolios={published_note}; paper_outcomes={outcome_note}")
 
 

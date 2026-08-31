@@ -1,11 +1,30 @@
 import argparse
+from contextlib import redirect_stdout
+from datetime import date
+from io import StringIO
+import json
 import unittest
 
 from quantrade_research.ingest_filings import _ciks
-from quantrade_research.manual_daily_update import _sec_network_environment
+from quantrade_research.manual_daily_update import _progress, _sec_network_environment
 
 
 class DailyUpdateParsingTests(unittest.TestCase):
+    def test_progress_is_a_versioned_single_line_json_contract(self) -> None:
+        output = StringIO()
+        with redirect_stdout(output):
+            _progress("market_data", "started", "Fetching missing bars.", score_date=date(2026, 8, 31))
+        line = output.getvalue().strip()
+        self.assertTrue(line.startswith("QUANTRADE_PROGRESS "))
+        payload = json.loads(line.removeprefix("QUANTRADE_PROGRESS "))
+        self.assertEqual(payload, {
+            "contract": "daily_update_progress_v1",
+            "message": "Fetching missing bars.",
+            "scoreDate": "2026-08-31",
+            "stage": "market_data",
+            "status": "started",
+        })
+
     def test_accepts_a_deduplicated_cik_list(self) -> None:
         self.assertEqual(_ciks("320193,0000320193,789019"), ["0000320193", "0000789019"])
 
