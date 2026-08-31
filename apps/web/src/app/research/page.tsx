@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { formatPercentagePoints, formatPublicationTime, formatResearchDate } from "@/lib/format";
-import { getActiveModelCard, getActivePredictionContext, getDailyOperationsStatus, getForwardOutcomeReadiness, getLatestDatedScores, getLatestPaperPortfolio, getRecentScoreRuns, ML_DATASET_MINIMUM_COMPLETED_LABELS, ML_DATASET_MINIMUM_SCORE_DATES, ResearchReadModelError, type DailyOperationRunStatus, type DailyOperationsStatus, type DatedScore, type ForwardOutcomeReadiness, type PredictionContext, type ScoreRunSummary } from "@/lib/research-read-model";
+import { getActiveModelCard, getActivePredictionContext, getDailyOperationsHistory, getDailyOperationsStatus, getForwardOutcomeReadiness, getLatestDatedScores, getLatestPaperPortfolio, getRecentScoreRuns, ML_DATASET_MINIMUM_COMPLETED_LABELS, ML_DATASET_MINIMUM_SCORE_DATES, ResearchReadModelError, type DailyOperationHistoryEntry, type DailyOperationRunStatus, type DailyOperationsStatus, type DatedScore, type ForwardOutcomeReadiness, type PredictionContext, type ScoreRunSummary } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +45,19 @@ function runStatusCopy(status?: DailyOperationRunStatus) {
   return "Waiting for first run";
 }
 
+function runHistoryNote(run: DailyOperationHistoryEntry) {
+  const notes: string[] = [];
+  if (run.attemptCount > 1) notes.push(`${run.attemptCount} attempts`);
+  if (run.providerRetryCount) notes.push(`${run.providerRetryCount} provider ${run.providerRetryCount === 1 ? "retry" : "retries"}`);
+  if (run.duplicatePreventedCount) notes.push(`${run.duplicatePreventedCount} duplicate ${run.duplicatePreventedCount === 1 ? "blocked" : "attempts blocked"}`);
+  if (run.warningCount) notes.push(`${run.warningCount} post-publication ${run.warningCount === 1 ? "warning" : "warnings"}`);
+  if (!notes.length && run.status === "completed") notes.push("Completed without retry");
+  if (!notes.length && run.status === "skipped") notes.push("No market session to publish");
+  if (!notes.length && run.status === "failed") notes.push("Stopped safely before publication");
+  if (!notes.length) notes.push("Update is still running");
+  return notes.join(" · ");
+}
+
 export default async function ResearchPage() {
   let card = null;
   let portfolio = null;
@@ -52,16 +65,18 @@ export default async function ResearchPage() {
   let recentRuns: ScoreRunSummary[] = [];
   let forwardReadiness: ForwardOutcomeReadiness[] = [];
   let operations: DailyOperationsStatus = {};
+  let operationsHistory: DailyOperationHistoryEntry[] = [];
   let predictionContext: PredictionContext | null = null;
   let unavailable = false;
   try {
-    [card, portfolio, latestScores, recentRuns, forwardReadiness, operations, predictionContext] = await Promise.all([
+    [card, portfolio, latestScores, recentRuns, forwardReadiness, operations, operationsHistory, predictionContext] = await Promise.all([
       getActiveModelCard(),
       getLatestPaperPortfolio(),
       getLatestDatedScores(),
       getRecentScoreRuns(),
       getForwardOutcomeReadiness(),
       getDailyOperationsStatus(),
+      getDailyOperationsHistory(),
       getActivePredictionContext(),
     ]);
   } catch (error) { unavailable = error instanceof ResearchReadModelError; }
@@ -80,6 +95,7 @@ export default async function ResearchPage() {
     <section className="content-section coverage-health"><div><p className="eyebrow">DATA COVERAGE</p><h2>What this run could score.</h2><p>Incomplete source data is withheld, never estimated or filled in.</p></div><div>{coverage.length ? <><p className="coverage-date">Latest completed run, {formatResearchDate(latestScores!.scoreDate)}</p><dl className="coverage-metrics"><div><dt>Eligible</dt><dd>{eligibleCount}</dd><span>published scores</span></div><div><dt>Withheld</dt><dd>{withheldCount}</dd><span>quality-gated names</span></div><div><dt>Coverage</dt><dd>{coveragePercent}%</dd><span>of this run</span></div></dl>{withheldCount ? <div className="coverage-gates"><p>Most common gates</p><ul>{gateBreakdown.map(([gate, count]) => <li key={gate}><span>{gate}</span><strong>{count} {count === 1 ? "name" : "names"}</strong></li>)}</ul></div> : <p className="coverage-complete">Every company in this run met the required data-quality gates.</p>}</> : <p className="quiet-copy">Coverage will appear after the first completed daily research run.</p>}</div></section>
     <section className="content-section methodology"><div><p className="eyebrow">RESEARCH ACTIVITY</p><h2>Recent score publications</h2></div><div>{recentRuns.length ? <ul className="publication-list">{recentRuns.map((run) => <li key={run.scoreDate}><strong>{formatResearchDate(run.scoreDate)}</strong><span>{run.eligibleCount} eligible names</span></li>)}</ul> : <p>No dated score publication has been recorded yet.</p>}</div></section>
     <section className="content-section operations-health"><div><p className="eyebrow">OPERATIONS</p><h2>Daily research health</h2><p>The local post-close workflow records one dated publication, or an explicit reason it could not.</p></div><div className="operations-list"><div><span>Latest run</span><strong>{runStatusCopy(operations.latestRun?.status)}</strong><small>{operations.latestRun ? `${formatResearchDate(operations.latestRun.scoreDate)}${operations.latestRun.eligibleCount === undefined ? "" : ` · ${operations.latestRun.eligibleCount} eligible`}` : "No completed publication yet"}</small>{operations.latestRun?.failureReason && <small>{operations.latestRun.failureReason}</small>}</div><div><span>Data freshness</span><strong>{operations.latestMarketSession ? formatResearchDate(operations.latestMarketSession) : "Unavailable"}</strong><small>{operations.latestBenchmarkSession === operations.latestMarketSession ? "Stocks and SPY aligned" : "Check the benchmark refresh"}{operations.latestSecRefreshAt ? ` · SEC ${formatPublicationTime(operations.latestSecRefreshAt)}` : ""}</small></div><div><span>Next scheduled attempt</span><strong>{nextScheduledUpdate()}</strong><small>Requires this PC, a signed-in Windows session, PostgreSQL, and internet access. Codex and the web app may be closed.</small></div></div></section>
+    <section className="content-section operations-history"><div><p className="eyebrow">RUN HISTORY</p><h2>Recent daily updates</h2><p>Retries and blocked duplicate attempts remain visible without creating another publication.</p></div><div>{operationsHistory.length ? <ol className="operations-history-list">{operationsHistory.map((run) => <li key={run.scoreDate}><div><strong>{formatResearchDate(run.scoreDate)}</strong><span>{runHistoryNote(run)}</span></div><div><strong>{runStatusCopy(run.status)}</strong><span>{run.eligibleCount === undefined ? formatPublicationTime(run.lastEventAt) : `${run.eligibleCount} eligible · ${formatPublicationTime(run.lastEventAt)}`}</span></div></li>)}</ol> : <p className="quiet-copy">Run history will appear after the first daily update.</p>}</div></section>
     <section className="content-section methodology" id="track-record"><div><p className="eyebrow">TRACK RECORD</p><h2>Monthly paper portfolio</h2></div><div>{portfolio ? <><p>An official monthly research basket, formed from scores dated {formatResearchDate(portfolio.scoreDate)} and recorded at the following regular-session open on {formatResearchDate(portfolio.executionDate)}. Daily score changes do not rebalance it.</p><dl><div><dt>Starting NAV</dt><dd>${Number(portfolio.startingNav).toLocaleString("en-CA")}</dd></div><div><dt>Positions</dt><dd>{portfolio.positions.length}</dd></div></dl><div className="portfolio-checkpoints"><p className="portfolio-checkpoints-title">Forward checkpoints</p><ul>{[5, 20, 60].map((horizon) => {
       const outcome = portfolio.outcomes.find((item) => item.horizonSessions === horizon);
       if (!outcome) return <li key={horizon}><strong>{horizon} sessions</strong><span>Awaiting its dated market close</span></li>;

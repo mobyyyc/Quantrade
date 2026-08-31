@@ -159,12 +159,49 @@ def _run_row(connection, score_date: date) -> tuple[str, datetime | None] | None
     return (str(row[0]), row[1]) if row else None
 
 
+def _record_operation_event(
+    connection, score_date: date, event_type: str, *, stage: str | None = None,
+    attempt_number: int | None = None, detail: str | None = None,
+) -> None:
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """INSERT INTO quantrade.daily_research_run_events
+                   (score_date, event_type, stage, attempt_number, detail)
+               VALUES (%s, %s, %s, %s, %s)""",
+            (score_date, event_type, stage, attempt_number, detail[:2000] if detail else None),
+        )
+
+
+def _try_record_operation_event_by_url(
+    database_url: str, score_date: date, event_type: str, *, stage: str | None = None,
+    detail: str | None = None,
+) -> None:
+    import psycopg
+    try:
+        with psycopg.connect(database_url) as connection:
+            _record_operation_event(connection, score_date, event_type, stage=stage, detail=detail)
+    except Exception:
+        # A telemetry write must not turn a completed score publication into a
+        # failed user-visible update. The original warning is still emitted.
+        return
+
+
 def _start_or_resume(connection, score_date: date) -> tuple[bool, datetime | None]:
     """Return whether work is needed plus a fixed retry cutoff, when one exists."""
     existing = _run_row(connection, score_date)
     if existing and existing[0] == "completed":
+        _record_operation_event(
+            connection, score_date, "duplicate_prevented", stage="initialization",
+            detail="A completed publication already exists; no duplicate work was started.",
+        )
         return False, existing[1]
     with connection.cursor() as cursor:
+        cursor.execute(
+            """SELECT COUNT(*) FROM quantrade.daily_research_run_events
+               WHERE score_date = %s AND event_type = 'attempt_started'""",
+            (score_date,),
+        )
+        attempt_number = int(cursor.fetchone()[0]) + 1
         cursor.execute(
             """INSERT INTO quantrade.daily_research_runs (score_date, status, started_at)
                VALUES (%s, 'running', now())
@@ -173,14 +210,20 @@ def _start_or_resume(connection, score_date: date) -> tuple[bool, datetime | Non
                    score_snapshot_count = NULL, eligible_count = NULL, failure_reason = NULL""",
             (score_date,),
         )
+    _record_operation_event(
+        connection, score_date, "attempt_started", stage="initialization",
+        attempt_number=attempt_number,
+        detail="Canonical daily update attempt started.",
+    )
     return True, existing[1] if existing else None
 
 
-def _set_failure(connection, score_date: date, reason: str) -> None:
+def _set_failure(connection, score_date: date, reason: str, *, stage: str) -> None:
     with connection.cursor() as cursor:
         cursor.execute("""UPDATE quantrade.daily_research_runs
                           SET status = 'failed', completed_at = now(), failure_reason = %s
                           WHERE score_date = %s""", (reason[:2000], score_date))
+    _record_operation_event(connection, score_date, "failed", stage=stage, detail=reason)
 
 
 def _set_skipped(connection, score_date: date, reason: str) -> None:
@@ -188,6 +231,7 @@ def _set_skipped(connection, score_date: date, reason: str) -> None:
         cursor.execute("""UPDATE quantrade.daily_research_runs
                           SET status = 'skipped', completed_at = now(), failure_reason = %s
                           WHERE score_date = %s""", (reason, score_date))
+    _record_operation_event(connection, score_date, "skipped", stage="validation", detail=reason)
 
 
 def _set_decision_at(connection, score_date: date, existing: datetime | None) -> datetime:
@@ -203,6 +247,10 @@ def _set_completed(connection, score_date: date, snapshots: int, eligible: int) 
                           SET status = 'completed', completed_at = now(), score_snapshot_count = %s,
                               eligible_count = %s, failure_reason = NULL
                           WHERE score_date = %s""", (snapshots, eligible, score_date))
+    _record_operation_event(
+        connection, score_date, "completed", stage="completion",
+        detail=f"Published {eligible} eligible scores from {snapshots} snapshots.",
+    )
 
 
 def _has_current_benchmark_session(database_url: str, score_date: date) -> bool:
@@ -278,9 +326,14 @@ def _run(
 
 
 def _provider_retry_progress(
-    stage: str, score_date: date, operation: str,
+    connection, stage: str, score_date: date, operation: str,
 ) -> Callable[[int, int, float], None]:
     def report(next_attempt: int, attempts: int, delay: float) -> None:
+        _record_operation_event(
+            connection, score_date, "provider_retry", stage=stage,
+            attempt_number=next_attempt,
+            detail=f"{operation}: attempt {next_attempt} of {attempts} after {delay:g}s.",
+        )
         _progress(
             stage, "retrying",
             f"Temporary provider issue; retrying {operation} ({next_attempt} of {attempts}) in {delay:g}s.",
@@ -349,13 +402,13 @@ def main() -> None:
                           "--corporate-actions-start", source_update_start.isoformat(),
                           "--compact-receipts", "--only-missing"], environment,
                          operation="benchmark-data ingestion", retry_policy=_PROVIDER_RETRY_POLICY,
-                         on_retry=_provider_retry_progress("market_data", score_date, "benchmark data"))
+                         on_retry=_provider_retry_progress(connection, "market_data", score_date, "benchmark data"))
                     _run([sys.executable, "-m", "quantrade_research.ingest_market_data", "--symbols", symbols,
                           "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision,
                           "--corporate-actions-start", source_update_start.isoformat(),
                           "--compact-receipts", "--only-missing"], environment,
                          operation="market-data ingestion", retry_policy=_PROVIDER_RETRY_POLICY,
-                         on_retry=_provider_retry_progress("market_data", score_date, "market data"))
+                         on_retry=_provider_retry_progress(connection, "market_data", score_date, "market data"))
                     _progress("market_data", "completed", "Missing market data is up to date.", score_date=score_date)
                 else:
                     _progress("market_data", "skipped", "Market data is already current.", score_date=score_date)
@@ -369,7 +422,7 @@ def main() -> None:
                           "--daily-index-start-date", source_update_start.isoformat(),
                           "--daily-index-end-date", score_date.isoformat()], _sec_network_environment(environment),
                          operation="SEC filing ingestion", retry_policy=_PROVIDER_RETRY_POLICY,
-                         on_retry=_provider_retry_progress("sec_filings", score_date, "SEC filings"))
+                         on_retry=_provider_retry_progress(connection, "sec_filings", score_date, "SEC filings"))
                     _progress("sec_filings", "completed", "New eligible SEC facts and filing metadata are recorded.", score_date=score_date)
                 else:
                     _progress("sec_filings", "skipped", "No SEC identifiers were available for this universe.", score_date=score_date)
@@ -395,7 +448,7 @@ def main() -> None:
                 _progress("scoring", "completed", f"Published {eligible} eligible scores from {snapshots} snapshots.", score_date=score_date)
             _set_completed(connection, score_date, snapshots, eligible)
         except Exception as error:
-            _set_failure(connection, score_date, str(error))
+            _set_failure(connection, score_date, str(error), stage=active_stage)
             _progress(active_stage, "failed", "This stage did not complete; publication stopped safely.", score_date=score_date)
             _progress("completion", "failed", "The daily update did not complete.", score_date=score_date)
             raise
@@ -407,6 +460,10 @@ def main() -> None:
         outcomes = materialize_due_paper_portfolio_outcomes(settings=settings, as_of_date=score_date)
         published_portfolios = publish_due_paper_portfolios(settings=settings, execution_date=score_date)
     except Exception as error:
+        _try_record_operation_event_by_url(
+            settings.database_url, score_date, "post_publication_warning", stage="portfolio",
+            detail=str(error),
+        )
         _progress("portfolio", "warning", "Scores are ready, but post-publication portfolio maintenance needs attention.", score_date=score_date)
         _progress("completion", "warning", "Daily scores completed with a post-publication warning.", score_date=score_date)
         print(f"completed score_date={score_date}; {score_note}; post_publication_error={error}")

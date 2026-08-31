@@ -410,6 +410,14 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .operations-list span { color: var(--subtle); font-size: .71rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
 .operations-list strong { color: var(--foreground); font-size: 1rem; letter-spacing: -.025em; }
 .operations-list small { color: var(--muted); font-size: .78rem; line-height: 1.5; }
+.operations-history { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 2rem; }
+.operations-history > div > p:not(.eyebrow) { max-width: 28rem; color: var(--muted); line-height: 1.6; }
+.operations-history-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-soft); }
+.operations-history-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; padding: .9rem 0; border-bottom: 1px solid var(--line-soft); }
+.operations-history-list li > div { display: grid; gap: .22rem; min-width: 0; }
+.operations-history-list li > div:last-child { justify-items: end; text-align: right; }
+.operations-history-list strong { color: var(--foreground); font-size: .9rem; letter-spacing: -.015em; }
+.operations-history-list span { color: var(--muted); font-size: .76rem; line-height: 1.45; }
 .portfolio-checkpoints { margin-top: 1.5rem; padding-top: 1.1rem; border-top: 1px solid var(--line-soft); }
 .portfolio-checkpoints-title { margin: 0 0 .55rem; color: var(--subtle) !important; font-size: .72rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
 .portfolio-checkpoints ul { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-soft); }
@@ -478,7 +486,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .rankings-results, .rankings-context { grid-column: 1; grid-row: auto; }
   .rankings-context { position: static; padding: 1rem 0; }
   .ranking-movers { max-width: 28rem; }
-  .operations-health { grid-template-columns: 1fr; gap: 1rem; }
+  .operations-health, .operations-history { grid-template-columns: 1fr; gap: 1rem; }
 }
 
 @media (max-width: 700px) {
@@ -519,6 +527,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .operations-list { grid-template-columns: 1fr; }
   .operations-list > div, .operations-list > div:first-child, .operations-list > div:last-child { min-height: 0; padding: 1rem 0; border-right: 0; border-bottom: 1px solid var(--line-soft); }
   .operations-list > div:last-child { border-bottom: 0; }
+  .operations-history-list li { gap: 1rem; }
   .date-form { flex-direction: column; align-items: stretch; }
   .date-form label, .date-form input { width: 100%; }
   .detail-heading-row { flex-direction: column; align-items: start; gap: .9rem; }

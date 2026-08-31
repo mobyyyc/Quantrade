@@ -120,6 +120,15 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("latest_decisions", sql)
         self.assertIn("ORDER BY score_date, decision_at DESC", sql)
 
+    def test_daily_research_run_events_preserve_attempts_and_outcomes(self) -> None:
+        migration = MIGRATION.with_name("0035_add_daily_research_run_events.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.daily_research_run_events", sql)
+        self.assertIn("'provider_retry'", sql)
+        self.assertIn("'duplicate_prevented'", sql)
+        self.assertIn("REFERENCES quantrade.daily_research_runs", sql)
+        self.assertIn("daily research run events are append-only", sql)
+
     def test_historical_research_foundation_preserves_lineage_and_cohort_limits(self) -> None:
         migration = MIGRATION.with_name("0016_add_historical_research_foundation.sql")
         sql = migration.read_text(encoding="utf-8")

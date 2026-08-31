@@ -142,6 +142,19 @@ export type DailyOperationsStatus = {
   latestSecRefreshAt?: string;
 };
 
+export type DailyOperationHistoryEntry = {
+  scoreDate: string;
+  status: DailyOperationRunStatus;
+  startedAt: string;
+  completedAt?: string;
+  eligibleCount?: number;
+  attemptCount: number;
+  providerRetryCount: number;
+  duplicatePreventedCount: number;
+  warningCount: number;
+  lastEventAt: string;
+};
+
 export type ForwardOutcomeReadiness = {
   horizonSessions: number;
   completedLabels: number;
@@ -495,6 +508,38 @@ export async function getDailyOperationsStatus(): Promise<DailyOperationsStatus>
     ...(freshness?.benchmark_session ? { latestBenchmarkSession: String(freshness.benchmark_session) } : {}),
     ...(freshness?.sec_refresh_at ? { latestSecRefreshAt: new Date(String(freshness.sec_refresh_at)).toISOString() } : {}),
   };
+}
+
+export async function getDailyOperationsHistory(limit = 8): Promise<DailyOperationHistoryEntry[]> {
+  const boundedLimit = Math.max(1, Math.min(limit, 20));
+  const result = await databasePool().query(
+    `SELECT run.score_date::text AS score_date, run.status, run.started_at, run.completed_at,
+            run.eligible_count,
+            COUNT(event.*) FILTER (WHERE event.event_type = 'attempt_started')::int AS attempt_count,
+            COUNT(event.*) FILTER (WHERE event.event_type = 'provider_retry')::int AS provider_retry_count,
+            COUNT(event.*) FILTER (WHERE event.event_type = 'duplicate_prevented')::int AS duplicate_prevented_count,
+            COUNT(event.*) FILTER (WHERE event.event_type = 'post_publication_warning')::int AS warning_count,
+            COALESCE(MAX(event.occurred_at), run.completed_at, run.started_at) AS last_event_at
+     FROM quantrade.daily_research_runs AS run
+     LEFT JOIN quantrade.daily_research_run_events AS event
+       ON event.score_date = run.score_date
+     GROUP BY run.score_date, run.status, run.started_at, run.completed_at, run.eligible_count
+     ORDER BY run.score_date DESC
+     LIMIT $1`,
+    [boundedLimit],
+  );
+  return result.rows.map((row) => ({
+    scoreDate: String(row.score_date),
+    status: row.status as DailyOperationRunStatus,
+    startedAt: new Date(String(row.started_at)).toISOString(),
+    ...(row.completed_at ? { completedAt: new Date(String(row.completed_at)).toISOString() } : {}),
+    ...(row.eligible_count === null ? {} : { eligibleCount: Number(row.eligible_count) }),
+    attemptCount: Number(row.attempt_count),
+    providerRetryCount: Number(row.provider_retry_count),
+    duplicatePreventedCount: Number(row.duplicate_prevented_count),
+    warningCount: Number(row.warning_count),
+    lastEventAt: new Date(String(row.last_event_at)).toISOString(),
+  }));
 }
 
 export async function getForwardOutcomeReadiness(): Promise<ForwardOutcomeReadiness[]> {
