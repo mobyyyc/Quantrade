@@ -12,11 +12,11 @@ function returnDirection(value: string | number | undefined): "positive-change" 
   return undefined;
 }
 
-function PreviousBasketResult({ result }: { result?: PreviousPaperPortfolioResult }) {
+function PreviousBasketResult({ result, retrospectivePreview = false }: { result?: PreviousPaperPortfolioResult; retrospectivePreview?: boolean }) {
   if (!result) {
     return (
       <div className="research-basket-result">
-        <span>Previous basket result</span>
+        <span>{retrospectivePreview ? "Simulated prior result" : "Previous basket result"}</span>
         <strong>Unavailable</strong>
         <small>No earlier official monthly basket.</small>
       </div>
@@ -26,7 +26,7 @@ function PreviousBasketResult({ result }: { result?: PreviousPaperPortfolioResul
   if (result.status === "pending") {
     return (
       <div className="research-basket-result">
-        <span>Previous basket result</span>
+        <span>{retrospectivePreview ? "Simulated prior result" : "Previous basket result"}</span>
         <strong>Pending</strong>
         <small>Formed {formatResearchDate(result.scoreDate)}. Waiting for its 20th market close.</small>
       </div>
@@ -36,7 +36,7 @@ function PreviousBasketResult({ result }: { result?: PreviousPaperPortfolioResul
   if (result.status === "withheld" || result.portfolioReturn === undefined || result.benchmarkReturn === undefined || result.benchmarkRelativeReturn === undefined) {
     return (
       <div className="research-basket-result">
-        <span>Previous basket result</span>
+        <span>{retrospectivePreview ? "Simulated prior result" : "Previous basket result"}</span>
         <strong>Unavailable</strong>
         <small>{result.unavailableReason ?? "The 20-session comparison did not pass data-quality checks."}</small>
       </div>
@@ -48,7 +48,7 @@ function PreviousBasketResult({ result }: { result?: PreviousPaperPortfolioResul
 
   return (
     <div className="research-basket-result">
-      <span>Previous basket result</span>
+      <span>{retrospectivePreview ? "Simulated prior result" : "Previous basket result"}</span>
       <strong className="research-basket-comparison">
         <span className={returnDirection(relativeReturn)}>{difference}</span>
         <span>vs SPY</span>
@@ -57,7 +57,9 @@ function PreviousBasketResult({ result }: { result?: PreviousPaperPortfolioResul
         <div><dt>Basket</dt><dd className={returnDirection(result.portfolioReturn)}>{formatRelativeReturn(result.portfolioReturn)}</dd></div>
         <div><dt>SPY</dt><dd className={returnDirection(result.benchmarkReturn)}>{formatRelativeReturn(result.benchmarkReturn)}</dd></div>
       </dl>
-      <small>20 sessions ending {formatResearchDate(result.outcomeDate ?? "")}</small>
+      <small>{retrospectivePreview
+        ? `Look-ahead-biased UI sample using the preceding 20 sessions ending ${formatResearchDate(result.outcomeDate ?? "")}. Not official performance.`
+        : `20 sessions ending ${formatResearchDate(result.outcomeDate ?? "")}`}</small>
     </div>
   );
 }
@@ -72,6 +74,7 @@ export function ResearchBasket({
   preview?: {
     scoreDate: string;
     positions: DatedScore[];
+    previousResult?: PreviousPaperPortfolioResult;
   };
 }) {
   const titleId = `${from}-research-basket-title`;
@@ -88,10 +91,9 @@ export function ResearchBasket({
             </div>
             <h2 id={titleId}>Current Top 20 research basket</h2>
           </div>
-          <div className="research-basket-preview-summary" aria-label={`${positions.length} companies at ${weight}% model weight each`}>
-            <strong>{positions.length}</strong>
-            <span>companies · {weight}% each</span>
-          </div>
+          {preview.previousResult
+            ? <PreviousBasketResult result={preview.previousResult} retrospectivePreview />
+            : <div className="research-basket-preview-summary" aria-label={`${positions.length} companies at ${weight}% model weight each`}><strong>{positions.length}</strong><span>companies · {weight}% each</span></div>}
         </div>
         <div className="research-basket-context">
           <p>
