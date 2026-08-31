@@ -161,3 +161,65 @@ holdout.
 - [ ] P11.1: adopt dated historical index membership, delistings, and sector classifications from an approved source.
 - [ ] P11.2: build the isolated `sp500_verified_pit_v1` cohort without mixing it with Tier-B current survivors.
 - [ ] P11.3: repeat development and final confirmation before any unbiased historical-performance claim.
+
+## Phase 12: operational reliability
+
+Phase 12 makes the existing private-beta workflow dependable before additional
+product expansion. Model research can continue independently, but it must not
+be required for daily operations.
+
+- [ ] P12.1: audit the web button, PowerShell command, and scheduled entry point; consolidate them behind one canonical daily-update workflow and prove that identical inputs produce identical outcomes.
+- [ ] P12.2: replace Codex-dependent scheduling with Windows Task Scheduler or a persistent local worker so only the PC, PostgreSQL, internet connection, and configured credentials are required.
+- [ ] P12.3: expose structured progress for market data, SEC retrieval, validation, scoring, portfolio publication, and completion without excessive console or UI updates.
+- [ ] P12.4: add bounded retries for temporary provider failures while preserving idempotency and duplicate prevention.
+- [ ] P12.5: implement automated PostgreSQL backups, retention rules, and a tested restore procedure.
+- [ ] P12.6: add a concise operations-history view for successful, skipped, failed, retried, and duplicate-prevented runs.
+
+## Phase 13: portfolio and research experience
+
+Phase 13 improves how users follow validated research over time without
+presenting daily rankings as trading instructions or daily portfolio changes.
+
+- [ ] P13.1: build a dedicated model-portfolio page instead of redirecting the portfolio route to the research page.
+- [ ] P13.2: show official current holdings, formation date, next-open execution date, weights, and the next scheduled rebalance.
+- [ ] P13.3: add completed official basket history with basket return, SPY return, percentage-point difference, turnover, and applicable transaction-cost assumptions.
+- [ ] P13.4: add daily movement context for rank and score changes plus Top-20 entries and exits, while stating that the monthly basket remains fixed.
+- [ ] P13.5: add private watchlist notes, optional tags, and changed-since-last-update indicators.
+- [ ] P13.6: add a compact daily research summary covering new scores, largest movements, research-relevant filings, portfolio status, and data-quality warnings.
+
+## Phase 14: data reliability and storage
+
+Phase 14 strengthens the existing free-data foundation without changing the
+active model or weakening point-in-time rules.
+
+- [ ] P14.1: periodically reconcile Alpaca prices, splits, dividends, and missing sessions against the normalized market-data ledger.
+- [ ] P14.2: publish SEC coverage reports by company, accepted form, selected concept, and reporting period.
+- [ ] P14.3: monitor database size and per-table growth, with thresholds for unexpected expansion.
+- [ ] P14.4: enforce documented retention rules for manifests, compact receipts, logs, and raw artifacts.
+- [ ] P14.5: define provider-failover interfaces so another market-data source can be added without rewriting normalized ingestion.
+- [ ] P14.6: evaluate an approved paid historical-membership source when Phase 11 is authorized; keep verified data isolated from Tier-B research.
+
+## Phase 15: quality, performance, and security
+
+Phase 15 prepares Quantrade to behave like a reliable beta product under
+repeat use and eventual external access.
+
+- [ ] P15.1: add end-to-end tests for search, rankings, stock details, watchlists, daily updates, and official portfolio history.
+- [ ] P15.2: profile slow server-rendered pages and database queries; add indexes or bounded caching only where measurement justifies them.
+- [ ] P15.3: complete an accessibility audit covering keyboard navigation, focus, contrast, chart alternatives, and screen-reader labels.
+- [ ] P15.4: add database-migration verification and production web builds to continuous integration.
+- [ ] P15.5: audit secrets and configuration, rotate previously exposed provider credentials, and prevent secrets from entering source control or logs.
+- [ ] P15.6: add authentication, rate limiting, audit logging, and user-data isolation before external beta access.
+
+## Phase 16: deployment and public-beta architecture
+
+Phase 16 moves the validated local application toward durable staging and a
+controlled external beta. It does not add brokerage execution or personalized
+investment advice.
+
+- [ ] P16.1: document the deployment architecture for the Next.js frontend, Python research worker, PostgreSQL, durable artifact storage, and scheduled jobs.
+- [ ] P16.2: create a staging environment with isolated credentials, storage, and database state.
+- [ ] P16.3: adopt managed PostgreSQL and durable artifact storage before external access requires always-on infrastructure.
+- [ ] P16.4: deploy the web application and research worker with health checks, centralized logs, and recoverable releases.
+- [ ] P16.5: add onboarding, privacy documentation, methodology disclosures, and structured feedback collection.
+- [ ] P16.6: run a closed external beta and resolve operational, usability, and governance findings before broader release.
