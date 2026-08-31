@@ -84,6 +84,21 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .today-candidates { min-width: 0; }
 
 .content-section, .watchlist-preview { margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--line-soft); }
+.portfolio-intro { max-width: 51rem; }
+.portfolio-home-status { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 3rem; padding: 2rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.portfolio-home-copy p:not(.eyebrow) { max-width: 33rem; color: var(--muted); font-size: .92rem; line-height: 1.65; }
+.portfolio-home-copy .text-link { display: inline-flex; margin: .25rem 0 0 -.85rem; }
+.portfolio-home-facts { display: grid; grid-template-columns: .7fr .7fr 1.6fr; margin: 0; }
+.portfolio-home-facts > div { display: grid; align-content: center; gap: .16rem; min-width: 0; padding: .35rem 1.25rem; border-left: 1px solid var(--line-soft); }
+.portfolio-home-facts dt { color: var(--subtle); font-size: .7rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+.portfolio-home-facts dd { overflow: hidden; margin: .2rem 0 0; color: var(--foreground); font-size: 1.45rem; font-weight: 730; letter-spacing: -.045em; text-overflow: ellipsis; }
+.portfolio-home-facts dd.portfolio-model-name { font-size: .9rem; letter-spacing: -.015em; overflow-wrap: anywhere; }
+.portfolio-home-facts span { color: var(--muted); font-size: .74rem; line-height: 1.4; }
+.portfolio-contract { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 3rem; }
+.portfolio-contract dl { margin: 0; border-top: 1px solid var(--line-soft); }
+.portfolio-contract dl > div { display: grid; grid-template-columns: minmax(9rem, .58fr) minmax(0, 1fr); gap: 1.5rem; padding: .95rem 0; border-bottom: 1px solid var(--line-soft); }
+.portfolio-contract dt { color: var(--foreground); font-size: .88rem; font-weight: 680; letter-spacing: -.015em; }
+.portfolio-contract dd { margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.55; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1.15rem; }
 .section-heading h2 { margin: 0; }
 .score-input-heading { align-items: end; }
@@ -477,6 +492,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 }
 
 @media (max-width: 900px) {
+  .topbar { gap: .9rem; }
+  .nav-link { padding-right: .65rem; padding-left: .65rem; }
+  .header-search { width: min(15rem, 24vw); }
   .today-grid { grid-template-columns: 1fr; gap: 0; }
   .watchlist-preview { margin-top: 3.5rem; }
   .watchlist-preview-scroll-region { max-height: min(55vh, 34rem); }
@@ -486,7 +504,8 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .rankings-results, .rankings-context { grid-column: 1; grid-row: auto; }
   .rankings-context { position: static; padding: 1rem 0; }
   .ranking-movers { max-width: 28rem; }
-  .operations-health, .operations-history { grid-template-columns: 1fr; gap: 1rem; }
+  .operations-health, .operations-history, .portfolio-home-status, .portfolio-contract { grid-template-columns: 1fr; gap: 1.25rem; }
+  .portfolio-home-facts > div:first-child { padding-left: 0; border-left: 0; }
 }
 
 @media (max-width: 700px) {
@@ -528,6 +547,10 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .operations-list > div, .operations-list > div:first-child, .operations-list > div:last-child { min-height: 0; padding: 1rem 0; border-right: 0; border-bottom: 1px solid var(--line-soft); }
   .operations-list > div:last-child { border-bottom: 0; }
   .operations-history-list li { gap: 1rem; }
+  .portfolio-home-facts { grid-template-columns: 1fr; border-top: 1px solid var(--line-soft); }
+  .portfolio-home-facts > div, .portfolio-home-facts > div:first-child { padding: .9rem 0; border-bottom: 1px solid var(--line-soft); border-left: 0; }
+  .portfolio-home-facts > div:last-child { border-bottom: 0; }
+  .portfolio-contract dl > div { grid-template-columns: 1fr; gap: .35rem; }
   .date-form { flex-direction: column; align-items: stretch; }
   .date-form label, .date-form input { width: 100%; }
   .detail-heading-row { flex-direction: column; align-items: start; gap: .9rem; }

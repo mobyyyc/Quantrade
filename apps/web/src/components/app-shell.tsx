@@ -6,6 +6,7 @@ import { MobileSidebarNav } from "@/components/mobile-sidebar-nav";
 const navigation = [
   { href: "/", label: "Today" },
   { href: "/rankings", label: "Rankings" },
+  { href: "/portfolio", label: "Portfolio" },
   { href: "/watchlist", label: "Watchlist" },
   { href: "/research", label: "Research" },
 ];
@@ -13,7 +14,7 @@ const navigation = [
 export function AppShell({ children, current }: { children: ReactNode; current: string }) {
   return (
     <div className="app-frame">
-      <a className="skip-link" href="#main-content">Skip to research content</a>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <header className="topbar">
         <div className="topbar-brand">
           <MobileSidebarNav navigation={navigation} current={current} />

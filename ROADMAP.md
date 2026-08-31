@@ -180,7 +180,7 @@ be required for daily operations.
 Phase 13 improves how users follow validated research over time without
 presenting daily rankings as trading instructions or daily portfolio changes.
 
-- [ ] P13.1: build a dedicated model-portfolio page instead of redirecting the portfolio route to the research page.
+- [x] P13.1: build a dedicated model-portfolio page instead of redirecting the portfolio route to the research page.
 - [ ] P13.2: show official current holdings, formation date, next-open execution date, weights, and the next scheduled rebalance.
 - [ ] P13.3: add completed official basket history with basket return, SPY return, percentage-point difference, turnover, and applicable transaction-cost assumptions.
 - [ ] P13.4: add daily movement context for rank and score changes plus Top-20 entries and exits, while stating that the monthly basket remains fixed.
