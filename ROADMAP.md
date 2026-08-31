@@ -129,7 +129,7 @@ inference unit; the visible research basket remains monthly.
 - [x] P9C.5: build the label-safe weekly development dataset and nested chronological folds; preserve July 2025–June 2026 as report-only. The 82,551-row dataset spans 172 retained weekly formations, has complete serialized label lineage, gives each represented calendar month aggregate weight one, and passes all four outer plus twelve inner actual-outcome purge audits with zero overlap violations. Five windows crossing an incomplete 2022-03-08 provider session were excluded in full. See `PHASE_9C_MODEL_DATASET_DECISION.md`.
 - [x] P9C.6: replay the exact deployed artifact and an active-family refit, then fit no more than the pre-registered ridge-rank, pairwise-linear, and optional low-DF additive challengers. See `PHASE_9C_MODEL_COMPARISON_DECISION.md`.
 - [x] P9C.7: attribute model versus portfolio effects under both exact Top 20 and Top-20-entry/Top-30-retention rules, with identical construction for every comparison. See `PHASE_9C_PORTFOLIO_ATTRIBUTION_DECISION.md`.
-- [ ] P9C.8: run monthly block-bootstrap, cost, turnover, stability, coverage, and regime diagnostics; issue an immutable freeze or no-freeze decision without relaxing gates.
+- [x] P9C.8: run monthly block-bootstrap, cost, turnover, stability, coverage, and regime diagnostics; issue an immutable freeze or no-freeze decision without relaxing gates. Neither registered challenger cleared all hard gates, so the immutable result is no-freeze and the deployed active model remains unchanged. See `PHASE_9C_FREEZE_DECISION.md`.
 
 ## Phase 10: shadow confirmation and promotion
 
