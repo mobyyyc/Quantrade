@@ -1,0 +1,135 @@
+{
+  "allowed_decisions": [
+    "freeze_for_forward_shadow",
+    "no-freeze"
+  ],
+  "anchor": {
+    "active_artifact_sha256": "36d6accf1c207fa448a4e6908ee7b525e7c811af66fc28fd36c4b4d66bc00294",
+    "active_feature_registry_sha256": "c5a0b1fccfe772691a0866893c50a77875224ab48b24e68731ca369fe64006ec",
+    "active_model_version": "tier_b_monthly_elastic_net_sec_clean_v3",
+    "feature_columns": [
+      "momentum_12_1_percentile",
+      "relative_strength_6m_percentile",
+      "trailing_volatility_60d_percentile",
+      "median_dollar_volume_20d_percentile",
+      "earnings_yield_ttm_percentile",
+      "return_on_assets_ttm_percentile"
+    ],
+    "mathematically_nonzero_inputs": [
+      "momentum_12_1_percentile",
+      "trailing_volatility_60d_percentile",
+      "median_dollar_volume_20d_percentile"
+    ],
+    "mathematically_zero_inputs": [
+      "relative_strength_6m_percentile",
+      "earnings_yield_ttm_percentile",
+      "return_on_assets_ttm_percentile"
+    ],
+    "serialized_coefficients": [
+      0.0013452198987819147,
+      0.0,
+      -0.0009748862873250775,
+      -0.0005527345402204111,
+      0.0,
+      -0.0
+    ]
+  },
+  "baseline_code_commit": "869a5ad48fdb9429620cfae1d9e4c3aa2a359d34",
+  "bootstrap": {
+    "block_length_calendar_months": 3,
+    "resamples": 10000,
+    "seed": 20260830,
+    "type": "paired_circular_moving_block"
+  },
+  "candidate": {
+    "configuration_count": 3,
+    "correction_families": [
+      "investment_issuance",
+      "profitability_quality"
+    ],
+    "family_availability_enters_model": false,
+    "family_rule_version": "phase_9c_weekly_feature_family_v1",
+    "final_score": "anchor_centered_rank + predicted_residual",
+    "fit_intercept": false,
+    "model_key": "anchored_accounting_residual_ridge_v1",
+    "penalties": [
+      1,
+      10,
+      100
+    ],
+    "residual_target": "label_centered_rank - anchor_centered_rank",
+    "sign_constraints": false
+  },
+  "consumed_holdout": {
+    "end": "2026-06-30",
+    "permanently_unavailable_for_selection": true,
+    "start": "2025-07-01"
+  },
+  "frozen_gates": {
+    "maximum_absolute_one_way_turnover": 0.36,
+    "maximum_turnover_above_reference": 0.01,
+    "minimum_25bp_net_relative_return": 0.0,
+    "minimum_25bp_net_relative_return_delta": 0.001,
+    "minimum_aggregate_score_coverage": 0.95,
+    "minimum_bootstrap_probability_positive": 0.9,
+    "minimum_coefficient_absolute_value": 1e-08,
+    "minimum_coefficient_positive_outer_fits": 3,
+    "minimum_consecutive_rank_stability": 0.9,
+    "minimum_correction_family_aggregate_coverage": 0.8,
+    "minimum_correction_family_formation_coverage": 0.7,
+    "minimum_mean_monthly_rank_ic": 0.012,
+    "minimum_mean_monthly_rank_ic_delta": 0.004,
+    "minimum_positive_outer_blocks": 3,
+    "minimum_raw_feature_aggregate_coverage": 0.7,
+    "minimum_weekly_score_coverage": 0.9,
+    "minimum_worst_outer_block_ic_exclusive": -0.02,
+    "require_positive_top_minus_bottom_spread": true,
+    "zero_integrity_violations": true
+  },
+  "outer_evidence_use": "research_readiness_only_not_independent_confirmation",
+  "portfolio": {
+    "cost_diagnostics_one_way_bps": [
+      5,
+      10,
+      25,
+      50
+    ],
+    "entry": "next_regular_session_open",
+    "formation": "final_regular_session_of_calendar_month",
+    "horizon_completed_sessions": 20,
+    "primary_cost_one_way_bps": 25,
+    "primary_rule": "exact_top20_equal_weight",
+    "secondary_non_gate_rule": "top20_entry_top30_retention_equal_weight"
+  },
+  "protocol_document_canonical_sha256": "11243abf32d1e47a775381270f9e760a6ddb9a8c1e594a22ccf169e3670a3548",
+  "protocol_key": "tier_b_anchored_accounting_residual_rank_v1",
+  "registration_date": "2026-08-30",
+  "registration_key": "phase_9d_anchored_stability_registration",
+  "registration_sha256": "a8bcb96190ea6e75269bf27fade251cd70127ba2051dd8d2210c152fa840831a",
+  "registration_version": "v1",
+  "regimes_diagnostic_only": {
+    "annualized_volatility_thresholds": [
+      0.15,
+      0.25
+    ],
+    "lookback_sessions": 60,
+    "trend_thresholds": [
+      -0.05,
+      0.05
+    ]
+  },
+  "source_artifacts": {
+    "phase_9c_attribution_report_sha256": "6a4b365cafd56cb99a378151c8018d8de011a6055d40b00a761efd99d8872eb1",
+    "phase_9c_dataset_report_sha256": "f0dc1eccce537361a7130affdd96f0959944331436892d921bfb90080b861dbc",
+    "phase_9c_feature_panel_report_sha256": "03470f46456b71908a428a055720b8199e0191ffce3eb18b8dae83a08455952b",
+    "phase_9c_fold_sha256": "6e9ea3c770b8f0eaf69ccc809cf405b71a21d83bc86fb0787f890345a93e62a9",
+    "phase_9c_frozen_evaluation_report_sha256": "10e0d8faa0475758ee74bb37bb930227b984ea1029ccab21dc92879d84645ab2",
+    "phase_9c_model_comparison_report_sha256": "59319570e4859b875f1a7d89931e4f023add3968e3099847d2576e55a1fd0184"
+  },
+  "tuning": {
+    "inner_folds_only": true,
+    "objective": "equal_calendar_month_mean_rank_ic",
+    "outer_results_used_for_selection": false,
+    "tie_break": "within_0.002_choose_larger_penalty"
+  }
+}

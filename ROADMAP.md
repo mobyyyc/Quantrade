@@ -131,12 +131,26 @@ inference unit; the visible research basket remains monthly.
 - [x] P9C.7: attribute model versus portfolio effects under both exact Top 20 and Top-20-entry/Top-30-retention rules, with identical construction for every comparison. See `PHASE_9C_PORTFOLIO_ATTRIBUTION_DECISION.md`.
 - [x] P9C.8: run monthly block-bootstrap, cost, turnover, stability, coverage, and regime diagnostics; issue an immutable freeze or no-freeze decision without relaxing gates. Neither registered challenger cleared all hard gates, so the immutable result is no-freeze and the deployed active model remains unchanged. See `PHASE_9C_FREEZE_DECISION.md`.
 
+## Phase 9D: anchored accounting residual research
+
+Phase 9D is a result-informed successor to the Phase 9C no-freeze decision. It
+preserves the deployed score as the anchor and permits only a small accounting
+residual correction. Historical results can qualify a candidate for forward
+shadow collection, but cannot independently confirm or promote it.
+
+- [x] P9D.0: diagnose the Phase 9C failures and preregister one anchored two-family residual-ridge challenger, including the exact bootstrap seed, tightened turnover and stability gates, and the boundary that reused development history cannot count as independent confirmation. See `PHASE_9D_FAILURE_REVIEW.md` and `PHASE_9D_STABILITY_PROTOCOL.md`.
+- [ ] P9D.1: implement and audit the corrected exact deployed-anchor eligibility rule, ignoring only mathematically exact-zero coefficient inputs while requiring byte-identical scores for all previously eligible rows.
+- [ ] P9D.2: materialize the authenticated anchored-residual dataset on the existing Phase 9C folds without reading the consumed holdout.
+- [ ] P9D.3: fit the three registered ridge penalties inside nested chronological folds and write deterministic outer predictions without model expansion.
+- [ ] P9D.4: run identical-construction portfolio attribution and every frozen readiness gate; issue either `freeze_for_forward_shadow` or `no-freeze`.
+
 ## Phase 10: shadow confirmation and promotion
 
-Phase 10 remains queued until Phase 9C produces a qualifying frozen challenger.
-Rejected candidates do not enter shadow scoring. The next genuinely untouched
-confirmation period is forward data collected after the frozen candidate, not
-the consumed historical holdout.
+Phase 10 remains queued until the latest preregistered research phase produces
+a qualifying challenger frozen for forward shadow. Rejected candidates do not
+enter shadow scoring. The next genuinely untouched confirmation period is
+forward data collected after the frozen candidate, not the consumed historical
+holdout.
 
 - [ ] P10.1: score the active model and frozen challenger side by side without changing user-visible rankings.
 - [ ] P10.2: materialize new 20-session forward outcomes and compare both models under identical rules.
