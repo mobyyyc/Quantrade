@@ -9,7 +9,7 @@ import type { DatedScore, PaperPortfolio } from "@/lib/research-read-model";
 
 const initialVisibleCount = 25;
 
-export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previousScores, portfolio }: { scores: DatedScore[]; scoreDate: string; previousScoreDate?: string; previousScores: DatedScore[]; portfolio: PaperPortfolio | null }) {
+export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previousScores, portfolio, previewBasket = false }: { scores: DatedScore[]; scoreDate: string; previousScoreDate?: string; previousScores: DatedScore[]; portfolio: PaperPortfolio | null; previewBasket?: boolean }) {
   const [visibleCount, setVisibleCount] = useState(initialVisibleCount);
   const eligibleScores = scores.filter((score) => score.eligible);
   const withheldCount = scores.length - eligibleScores.length;
@@ -33,7 +33,7 @@ export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previo
       <p>Only complete, dated inputs are ranked. Missing data is withheld rather than estimated.</p>
     </div>
     <div className="rankings-results">
-      <ResearchBasket portfolio={portfolio} from="rankings" />
+      <ResearchBasket portfolio={portfolio} from="rankings" preview={previewBasket ? { scoreDate, positions: eligibleScores } : undefined} />
       <div className="section-heading">
         <div><p className="eyebrow">CURRENT ORDER</p><h2 id="rankings-list-title">Highest scores</h2></div>
       </div>

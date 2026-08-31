@@ -170,6 +170,12 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .rankings-results > .research-basket { margin: 0 0 3rem; }
 .research-basket-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; }
 .research-basket-heading h2 { margin: 0; }
+.research-basket-preview-label { display: flex; align-items: center; gap: .6rem; margin-bottom: .7rem; }
+.research-basket-preview-label .eyebrow { margin: 0; }
+.research-basket-preview-label > span { padding: .28rem .55rem; border: 1px solid var(--line); border-radius: 9999px; color: var(--muted); background: var(--surface); font-size: .58rem; font-weight: 720; letter-spacing: .08em; }
+.research-basket-preview-summary { display: grid; justify-items: end; gap: .12rem; min-width: 10rem; text-align: right; }
+.research-basket-preview-summary strong { color: var(--foreground); font-size: 1.55rem; letter-spacing: -.045em; line-height: 1; }
+.research-basket-preview-summary span { color: var(--muted); font-size: .73rem; }
 .research-basket-result { display: grid; justify-items: end; gap: .16rem; min-width: 17rem; text-align: right; }
 .research-basket-result > span { color: var(--muted); font-size: .72rem; }
 .research-basket-result > strong { color: var(--foreground); font-size: 1.12rem; letter-spacing: -.035em; }
@@ -500,6 +506,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .daily-update-summary { grid-template-columns: 1fr; gap: 1.1rem; }
   .filing-activity { margin-top: 3.5rem; }
   .research-basket-heading, .research-basket-context { align-items: flex-start; flex-direction: column; gap: .8rem; }
+  .research-basket-preview-summary { justify-items: start; min-width: 0; text-align: left; }
   .research-basket-pending { grid-template-columns: 1fr; gap: .8rem; }
   .research-basket-context p:last-child { text-align: left; }
   .research-basket-list { grid-template-columns: 1fr; }
