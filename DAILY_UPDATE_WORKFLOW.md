@@ -38,6 +38,22 @@ Terminal and scheduled runs receive the same concise stage output. Ordinary
 human-readable completion and error lines remain available for logs and failure
 diagnosis. Closing the browser does not cancel the database-backed update.
 
+## Provider retries
+
+The orchestrator retries only idempotent provider-ingestion commands. Benchmark
+and stock bars retain `--only-missing`; SEC filing discovery retains
+`--incremental`. All attempts run beneath the same PostgreSQL advisory lock and
+before score publication, so a partial provider response can be resumed without
+creating duplicate bars, filings, facts, or scores.
+
+Temporary network failures and HTTP 408, 425, 429, 500, 502, 503, and 504
+responses receive at most three total attempts with one- and two-second waits.
+Each retry emits one bounded progress event. Authentication and authorization
+errors, invalid data, code failures, and a current SEC index that has not yet
+been published fail immediately. Scoring and post-publication portfolio work
+are not provider-retried. Windows Task Scheduler's whole-run retries remain a
+separate recovery layer for failures that outlast these short attempts.
+
 ## Windows scheduling
 
 Install or repair the Codex-independent weekday task with:

@@ -46,6 +46,21 @@ class DailyUpdateEntrypointContractTests(unittest.TestCase):
         ):
             self.assertIn(field, script)
 
+    def test_provider_retries_keep_incremental_idempotency_flags(self) -> None:
+        orchestrator = (
+            REPOSITORY_ROOT
+            / "services"
+            / "research"
+            / "src"
+            / "quantrade_research"
+            / "manual_daily_update.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertEqual(orchestrator.count("retry_policy=_PROVIDER_RETRY_POLICY"), 3)
+        self.assertGreaterEqual(orchestrator.count('"--only-missing"'), 2)
+        self.assertIn('"--incremental"', orchestrator)
+        self.assertIn("with _daily_update_lock", orchestrator)
+
 
 if __name__ == "__main__":
     unittest.main()

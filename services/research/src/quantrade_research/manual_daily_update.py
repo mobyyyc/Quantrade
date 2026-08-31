@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
-from typing import Iterator
+import time
+from typing import Callable, Iterator
 
 from .forward_outcomes import materialize_due_forward_score_outcomes
 from .forward_readiness_snapshot import materialize_forward_readiness_snapshot
@@ -26,6 +29,31 @@ _PROGRESS_PREFIX = "QUANTRADE_PROGRESS "
 _PROXY_VARIABLES = (
     "ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "all_proxy", "http_proxy", "https_proxy",
 )
+_TRANSIENT_HTTP_STATUS = re.compile(r"\b(?:http(?: status)?\s+|status[=: ]+)(408|425|429|500|502|503|504)\b", re.IGNORECASE)
+_TRANSIENT_NETWORK_MARKERS = (
+    "connection aborted", "connection refused", "connection reset", "getaddrinfo failed",
+    "name resolution", "network is unreachable", "remote end closed", "sec request failed",
+    "temporary failure", "temporarily unavailable", "timed out", "timeout", "urlopen error",
+)
+
+
+@dataclass(frozen=True)
+class RetryPolicy:
+    attempts: int = 3
+    base_delay_seconds: float = 1.0
+    maximum_delay_seconds: float = 4.0
+
+    def __post_init__(self) -> None:
+        if self.attempts < 1:
+            raise ValueError("retry attempts must be positive")
+        if self.base_delay_seconds < 0 or self.maximum_delay_seconds < 0:
+            raise ValueError("retry delays must be non-negative")
+
+    def delay_before(self, next_attempt: int) -> float:
+        return min(self.base_delay_seconds * (2 ** max(0, next_attempt - 2)), self.maximum_delay_seconds)
+
+
+_PROVIDER_RETRY_POLICY = RetryPolicy()
 
 
 def _progress(stage: str, status: str, message: str, *, score_date: date | None = None) -> None:
@@ -214,14 +242,51 @@ def _published_score_summary(
     return row[0], int(row[1]), int(row[2])
 
 
-def _run(command: list[str], environment: dict[str, str], *, operation: str) -> str:
-    try:
-        completed = subprocess.run(command, env=environment, check=True, text=True, capture_output=True)
-    except subprocess.CalledProcessError as error:
-        output = "\n".join(part.strip() for part in (error.stdout, error.stderr) if part and part.strip())
-        detail = output[-1500:] if output else f"exit code {error.returncode}"
-        raise RuntimeError(f"{operation} failed: {detail}") from error
-    return completed.stdout.strip()
+def _is_transient_provider_failure(output: str) -> bool:
+    normalized = output.casefold()
+    if "has not been published yet" in normalized:
+        return False
+    return bool(_TRANSIENT_HTTP_STATUS.search(output)) or any(
+        marker in normalized for marker in _TRANSIENT_NETWORK_MARKERS
+    )
+
+
+def _run(
+    command: list[str], environment: dict[str, str], *, operation: str,
+    retry_policy: RetryPolicy | None = None,
+    on_retry: Callable[[int, int, float], None] | None = None,
+    runner=subprocess.run, sleep: Callable[[float], None] = time.sleep,
+) -> str:
+    policy = retry_policy or RetryPolicy(attempts=1)
+    for attempt in range(1, policy.attempts + 1):
+        try:
+            completed = runner(command, env=environment, check=True, text=True, capture_output=True)
+            return completed.stdout.strip()
+        except subprocess.CalledProcessError as error:
+            output = "\n".join(part.strip() for part in (error.stdout, error.stderr) if part and part.strip())
+            should_retry = attempt < policy.attempts and _is_transient_provider_failure(output)
+            if not should_retry:
+                detail = output[-1500:] if output else f"exit code {error.returncode}"
+                attempt_note = f" after {attempt} attempts" if attempt > 1 else ""
+                raise RuntimeError(f"{operation} failed{attempt_note}: {detail}") from error
+            next_attempt = attempt + 1
+            delay = policy.delay_before(next_attempt)
+            if on_retry is not None:
+                on_retry(next_attempt, policy.attempts, delay)
+            sleep(delay)
+    raise AssertionError("subprocess retry loop did not return or raise")  # pragma: no cover
+
+
+def _provider_retry_progress(
+    stage: str, score_date: date, operation: str,
+) -> Callable[[int, int, float], None]:
+    def report(next_attempt: int, attempts: int, delay: float) -> None:
+        _progress(
+            stage, "retrying",
+            f"Temporary provider issue; retrying {operation} ({next_attempt} of {attempts}) in {delay:g}s.",
+            score_date=score_date,
+        )
+    return report
 
 
 def _sec_network_environment(environment: dict[str, str]) -> dict[str, str]:
@@ -283,12 +348,14 @@ def main() -> None:
                           "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision,
                           "--corporate-actions-start", source_update_start.isoformat(),
                           "--compact-receipts", "--only-missing"], environment,
-                         operation="benchmark-data ingestion")
+                         operation="benchmark-data ingestion", retry_policy=_PROVIDER_RETRY_POLICY,
+                         on_retry=_provider_retry_progress("market_data", score_date, "benchmark data"))
                     _run([sys.executable, "-m", "quantrade_research.ingest_market_data", "--symbols", symbols,
                           "--start", start.isoformat(), "--end", score_date.isoformat(), "--code-revision", revision,
                           "--corporate-actions-start", source_update_start.isoformat(),
                           "--compact-receipts", "--only-missing"], environment,
-                         operation="market-data ingestion")
+                         operation="market-data ingestion", retry_policy=_PROVIDER_RETRY_POLICY,
+                         on_retry=_provider_retry_progress("market_data", score_date, "market data"))
                     _progress("market_data", "completed", "Missing market data is up to date.", score_date=score_date)
                 else:
                     _progress("market_data", "skipped", "Market data is already current.", score_date=score_date)
@@ -301,7 +368,8 @@ def main() -> None:
                           "--compact-receipts",
                           "--daily-index-start-date", source_update_start.isoformat(),
                           "--daily-index-end-date", score_date.isoformat()], _sec_network_environment(environment),
-                         operation="SEC filing ingestion")
+                         operation="SEC filing ingestion", retry_policy=_PROVIDER_RETRY_POLICY,
+                         on_retry=_provider_retry_progress("sec_filings", score_date, "SEC filings"))
                     _progress("sec_filings", "completed", "New eligible SEC facts and filing metadata are recorded.", score_date=score_date)
                 else:
                     _progress("sec_filings", "skipped", "No SEC identifiers were available for this universe.", score_date=score_date)

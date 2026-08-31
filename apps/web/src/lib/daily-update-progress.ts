@@ -12,7 +12,7 @@ export type DailyUpdateProgressStage =
 export type DailyUpdateProgress = {
   contract: "daily_update_progress_v1";
   stage: DailyUpdateProgressStage;
-  status: "started" | "completed" | "skipped" | "warning" | "failed";
+  status: "started" | "retrying" | "completed" | "skipped" | "warning" | "failed";
   message: string;
   scoreDate?: string;
 };
@@ -32,7 +32,7 @@ const STAGES = new Set<DailyUpdateProgressStage>([
   "initialization", "market_data", "sec_filings", "validation", "scoring", "portfolio", "completion",
 ]);
 const STATUSES = new Set<DailyUpdateProgress["status"]>([
-  "started", "completed", "skipped", "warning", "failed",
+  "started", "retrying", "completed", "skipped", "warning", "failed",
 ]);
 
 export function parseDailyUpdateProgress(line: string): DailyUpdateProgress | null {

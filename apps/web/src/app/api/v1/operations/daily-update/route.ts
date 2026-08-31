@@ -22,6 +22,9 @@ function userFacingError(output: string): string {
   if (output.includes("has not been published yet")) {
     return "SEC has not published today’s daily filing index yet. Please retry after 10:00 p.m. Toronto time; no scores were published.";
   }
+  if (output.includes("after 3 attempts")) {
+    return "A data provider remained unavailable after three safe attempts. No scores were published; try the update again later.";
+  }
   if (output.includes("SEC filing ingestion failed")) {
     return "SEC filing retrieval or validation did not complete. The update stopped safely before publication; no duplicate scores were created.";
   }
