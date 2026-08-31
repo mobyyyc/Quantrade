@@ -333,7 +333,9 @@ def _active_fundamentals(
             and fact.period_start is not None and 330 <= (fact.period_end - fact.period_start).days <= 370
         ]
         if candidates:
-            annual = max(candidates, key=lambda item: (item.period_end, item.available_at, item.filing_id))
+            annual = max(candidates, key=lambda item: (
+                item.period_end, item.available_at, item.filing_id, item.fact_id,
+            ))
             break
     if annual is None or annual.period_start is None:
         return None, None, ()
@@ -343,7 +345,9 @@ def _active_fundamentals(
         if fact.taxonomy == "dei" and fact.concept == "EntityCommonStockSharesOutstanding"
         and fact.unit == "shares"
     ]
-    share = max(shares, key=lambda item: (item.period_end, item.available_at, item.filing_id)) if shares else None
+    share = max(shares, key=lambda item: (
+        item.period_end, item.available_at, item.filing_id, item.fact_id,
+    )) if shares else None
     earnings_yield = None
     if share is not None and share.value > 0 and split_close is not None and split_close[0] > 0:
         earnings_yield = annual.value / (split_close[0] * share.value)
@@ -354,8 +358,12 @@ def _active_fundamentals(
     ]
     beginning = [fact for fact in assets if 0 <= (annual.period_start - fact.period_end).days <= 7]
     ending = [fact for fact in assets if fact.period_end == annual.period_end]
-    beginning_fact = max(beginning, key=lambda item: (item.period_end, item.available_at, item.filing_id)) if beginning else None
-    ending_fact = max(ending, key=lambda item: (item.period_end, item.available_at, item.filing_id)) if ending else None
+    beginning_fact = max(beginning, key=lambda item: (
+        item.period_end, item.available_at, item.filing_id, item.fact_id,
+    )) if beginning else None
+    ending_fact = max(ending, key=lambda item: (
+        item.period_end, item.available_at, item.filing_id, item.fact_id,
+    )) if ending else None
     return_on_assets = None
     if beginning_fact is not None and ending_fact is not None and beginning_fact.value > 0 and ending_fact.value > 0:
         return_on_assets = annual.value / ((beginning_fact.value + ending_fact.value) / 2.0)

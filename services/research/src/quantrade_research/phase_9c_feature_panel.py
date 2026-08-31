@@ -120,7 +120,22 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _load_context(database_url: str, *, start: date, end: date):
+def _formation_dates(sessions: Iterable[date], rule: str) -> tuple[date, ...]:
+    periods: dict[tuple[int, int], date] = {}
+    for session in sorted(sessions):
+        if rule == "weekly":
+            year, week, _ = session.isocalendar()
+            periods[(year, week)] = session
+        elif rule == "month_end":
+            periods[(session.year, session.month)] = session
+        else:
+            raise DataQualityError(f"unsupported Phase 9C formation rule: {rule}")
+    return tuple(sorted(periods.values()))
+
+
+def _load_context(
+    database_url: str, *, start: date, end: date, formation_rule: str = "weekly",
+):
     import psycopg
 
     with psycopg.connect(database_url) as connection, connection.cursor() as cursor:
@@ -140,13 +155,9 @@ def _load_context(database_url: str, *, start: date, end: date):
                 ORDER BY session_date""",
             (start, end),
         )
-        weeks: dict[tuple[int, int], date] = {}
-        for (session,) in cursor:
-            year, week, _ = session.isocalendar()
-            weeks[(year, week)] = session
-        formations = tuple(sorted(weeks.values()))
+        formations = _formation_dates((session for (session,) in cursor), formation_rule)
         if len(security_ids) != 500 or not formations:
-            raise DataQualityError("Phase 9C panel requires 500 securities and non-empty weekly formations")
+            raise DataQualityError("Phase 9C panel requires 500 securities and non-empty formations")
         latest_decision = _decision_at(formations[-1])
         cursor.execute(
             """SELECT daily_price_bar_id::text,security_id::text,session_date,close_price,
