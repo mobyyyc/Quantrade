@@ -33,8 +33,8 @@ export default async function StockDetailPage({ params, searchParams }: { params
       if (score) explanations = await getScoreExplanations(score.scoreSnapshotId);
     }
   } catch (error) { unavailable = error instanceof ResearchReadModelError; }
-  const returnTo = from === "today" ? "/" : from === "watchlist" ? "/watchlist" : from === "rankings" ? "/rankings" : "/search";
-  const returnLabel = from === "today" ? "Today" : from === "watchlist" ? "Watchlist" : from === "rankings" ? "Rankings" : "Search";
+  const returnTo = from === "today" ? "/" : from === "watchlist" ? "/watchlist" : from === "rankings" ? "/rankings" : from === "portfolio" ? "/portfolio" : "/search";
+  const returnLabel = from === "today" ? "Today" : from === "watchlist" ? "Watchlist" : from === "rankings" ? "Rankings" : from === "portfolio" ? "Portfolio" : "Search";
   const factorContext: Record<string, string> = {
     momentum_12_1: "Price strength over the prior year, excluding the most recent month.",
     relative_strength_6m: "Six-month price strength relative to the benchmark.",

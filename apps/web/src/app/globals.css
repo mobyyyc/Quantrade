@@ -88,12 +88,31 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .portfolio-home-status { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 3rem; padding: 2rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .portfolio-home-copy p:not(.eyebrow) { max-width: 33rem; color: var(--muted); font-size: .92rem; line-height: 1.65; }
 .portfolio-home-copy .text-link { display: inline-flex; margin: .25rem 0 0 -.85rem; }
-.portfolio-home-facts { display: grid; grid-template-columns: .7fr .7fr 1.6fr; margin: 0; }
+.portfolio-home-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; border-top: 1px solid var(--line-soft); }
 .portfolio-home-facts > div { display: grid; align-content: center; gap: .16rem; min-width: 0; padding: .35rem 1.25rem; border-left: 1px solid var(--line-soft); }
+.portfolio-home-facts > div:nth-child(n + 3) { border-top: 1px solid var(--line-soft); }
 .portfolio-home-facts dt { color: var(--subtle); font-size: .7rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
 .portfolio-home-facts dd { overflow: hidden; margin: .2rem 0 0; color: var(--foreground); font-size: 1.45rem; font-weight: 730; letter-spacing: -.045em; text-overflow: ellipsis; }
-.portfolio-home-facts dd.portfolio-model-name { font-size: .9rem; letter-spacing: -.015em; overflow-wrap: anywhere; }
+.portfolio-home-facts dd.portfolio-schedule { font-size: .9rem; line-height: 1.35; letter-spacing: -.015em; white-space: normal; }
 .portfolio-home-facts span { color: var(--muted); font-size: .74rem; line-height: 1.4; }
+.portfolio-holdings-heading { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; margin-bottom: 1rem; }
+.portfolio-holdings-heading h2 { margin: 0; }
+.portfolio-holdings-heading > p { max-width: 30rem; margin: 0; color: var(--subtle); font-size: .76rem; text-align: right; overflow-wrap: anywhere; }
+.portfolio-holdings-columns, .portfolio-holdings-list a { display: grid; grid-template-columns: 3rem minmax(0, 1fr) 6rem 7rem; gap: 1rem; align-items: center; }
+.portfolio-holdings-columns { padding: 0 .9rem .55rem; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+.portfolio-holdings-columns span:nth-child(n + 3) { text-align: right; }
+.portfolio-holdings-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-soft); }
+.portfolio-holdings-list li { position: relative; border-bottom: 1px solid var(--line-soft); }
+.portfolio-holdings-list li::before { position: absolute; inset: 0; content: ""; background: linear-gradient(90deg, rgb(22 22 22 / 0), rgb(22 22 22 / .82) 12%, var(--surface-raised) 50%, rgb(22 22 22 / .82) 88%, rgb(22 22 22 / 0)); opacity: 0; pointer-events: none; transition: opacity 150ms var(--ease); }
+.portfolio-holdings-list a { position: relative; z-index: 1; min-height: 4.65rem; padding: .65rem .9rem; }
+.portfolio-holding-rank { color: var(--subtle); font-size: .82rem; }
+.portfolio-holding-company { display: grid; gap: .14rem; min-width: 0; }
+.portfolio-holding-company strong { color: var(--foreground); font-size: .98rem; letter-spacing: -.02em; }
+.portfolio-holding-company > span { overflow: hidden; color: var(--muted); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.portfolio-holding-value { display: grid; justify-items: end; gap: .08rem; }
+.portfolio-holding-value strong { color: var(--foreground); font-size: .94rem; letter-spacing: -.025em; }
+.portfolio-holding-value small { color: var(--subtle); font-size: .66rem; }
+.portfolio-holdings-note { max-width: 46rem; margin: .9rem 0 0; color: var(--subtle); font-size: .76rem; line-height: 1.5; }
 .portfolio-contract { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 3rem; }
 .portfolio-contract dl { margin: 0; border-top: 1px solid var(--line-soft); }
 .portfolio-contract dl > div { display: grid; grid-template-columns: minmax(9rem, .58fr) minmax(0, 1fr); gap: 1.5rem; padding: .95rem 0; border-bottom: 1px solid var(--line-soft); }
@@ -489,6 +508,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .row-menu summary:hover { border-color: var(--line); background: var(--surface-raised); color: var(--foreground); }
   .row-menu-popover button:hover { background: var(--surface-raised); }
   .research-basket-list li:hover::before { opacity: 1; }
+  .portfolio-holdings-list li:hover::before { opacity: 1; }
 }
 
 @media (max-width: 900px) {
@@ -505,7 +525,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .rankings-context { position: static; padding: 1rem 0; }
   .ranking-movers { max-width: 28rem; }
   .operations-health, .operations-history, .portfolio-home-status, .portfolio-contract { grid-template-columns: 1fr; gap: 1.25rem; }
-  .portfolio-home-facts > div:first-child { padding-left: 0; border-left: 0; }
+  .portfolio-home-facts > div:nth-child(odd) { padding-left: 0; border-left: 0; }
 }
 
 @media (max-width: 700px) {
@@ -550,6 +570,12 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .portfolio-home-facts { grid-template-columns: 1fr; border-top: 1px solid var(--line-soft); }
   .portfolio-home-facts > div, .portfolio-home-facts > div:first-child { padding: .9rem 0; border-bottom: 1px solid var(--line-soft); border-left: 0; }
   .portfolio-home-facts > div:last-child { border-bottom: 0; }
+  .portfolio-holdings-heading { align-items: flex-start; flex-direction: column; gap: .4rem; }
+  .portfolio-holdings-heading > p { text-align: left; }
+  .portfolio-holdings-columns { display: none; }
+  .portfolio-holdings-list a { grid-template-columns: 2rem minmax(0, 1fr) 3.4rem 4.5rem; gap: .65rem; padding-right: .2rem; padding-left: .2rem; }
+  .portfolio-holding-value strong { font-size: .86rem; }
+  .portfolio-holding-value small { font-size: .6rem; }
   .portfolio-contract dl > div { grid-template-columns: 1fr; gap: .35rem; }
   .date-form { flex-direction: column; align-items: stretch; }
   .date-form label, .date-form input { width: 100%; }

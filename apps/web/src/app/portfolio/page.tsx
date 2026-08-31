@@ -1,8 +1,21 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { formatIssuerName, formatResearchDate, formatScore } from "@/lib/format";
 import { getLatestPaperPortfolio, ResearchReadModelError } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
+
+function formatWeight(value: string) {
+  return `${(Number(value) * 100).toFixed(2).replace(/\.00$/, "")}%`;
+}
+
+function nextRebalanceRule(executionDate: string) {
+  const date = new Date(`${executionDate}T00:00:00Z`);
+  const month = new Intl.DateTimeFormat("en-CA", {
+    month: "long", year: "numeric", timeZone: "UTC",
+  }).format(date);
+  return `First open after the final ${month} session`;
+}
 
 export default async function PortfolioPage() {
   let portfolio: Awaited<ReturnType<typeof getLatestPaperPortfolio>> = null;
@@ -32,13 +45,14 @@ export default async function PortfolioPage() {
           <div className="portfolio-home-copy">
             <p className="eyebrow">CURRENT STATUS</p>
             <h2 id="portfolio-status-title">Official basket active.</h2>
-            <p>This is a recorded monthly research object. Daily score and rank changes do not rewrite its membership.</p>
+            <p>These holdings were recorded at the next regular-session open. Daily score and rank changes do not rewrite them.</p>
             <Link href="/research#track-record" className="text-link">Review the research method</Link>
           </div>
           <dl className="portfolio-home-facts">
-            <div><dt>State</dt><dd>Active</dd><span>Official monthly record</span></div>
-            <div><dt>Companies</dt><dd>{portfolio.positions.length}</dd><span>Held until the next formation</span></div>
-            <div><dt>Model</dt><dd className="portfolio-model-name">{portfolio.modelVersion}</dd><span>Frozen deployed version</span></div>
+            <div><dt>Formation</dt><dd>{formatResearchDate(portfolio.scoreDate)}</dd><span>Final eligible monthly ranking</span></div>
+            <div><dt>Next-open execution</dt><dd>{formatResearchDate(portfolio.executionDate)}</dd><span>Recorded regular-session open</span></div>
+            <div><dt>Holdings</dt><dd>{portfolio.positions.length}</dd><span>Fixed monthly positions</span></div>
+            <div><dt>Next rebalance</dt><dd className="portfolio-schedule">{nextRebalanceRule(portfolio.executionDate)}</dd><span>Subject to a completed eligible score run</span></div>
           </dl>
         </section>
       ) : (
@@ -46,6 +60,37 @@ export default async function PortfolioPage() {
           <h2>Awaiting the first official basket.</h2>
           <p>The portfolio will appear after a completed calendar month is formed from its final eligible ranking and recorded at the next regular-session open.</p>
           <Link href="/research#track-record" className="primary-link">Read the methodology</Link>
+        </section>
+      )}
+
+      {portfolio && (
+        <section className="content-section portfolio-holdings" aria-labelledby="portfolio-holdings-title">
+          <div className="portfolio-holdings-heading">
+            <div>
+              <p className="eyebrow">CURRENT HOLDINGS</p>
+              <h2 id="portfolio-holdings-title">Recorded formation weights</h2>
+            </div>
+            <p>{portfolio.positions.length} positions · {portfolio.modelVersion}</p>
+          </div>
+          <div className="portfolio-holdings-columns" aria-hidden="true">
+            <span>Rank</span><span>Company</span><span>Score</span><span>Weight</span>
+          </div>
+          <ol className="portfolio-holdings-list">
+            {portfolio.positions.map((position) => (
+              <li key={position.securityId}>
+                <Link
+                  href={`/stocks/${position.securityId}?date=${portfolio.scoreDate}&from=portfolio`}
+                  aria-label={`${position.ticker}, formation rank ${position.rank}, score ${formatScore(position.score)} out of 100, ${formatWeight(position.weight)} formation weight`}
+                >
+                  <span className="portfolio-holding-rank">{position.rank}</span>
+                  <span className="portfolio-holding-company"><strong>{position.ticker}</strong><span>{formatIssuerName(position.issuerName)}</span></span>
+                  <span className="portfolio-holding-value"><strong>{formatScore(position.score)}</strong><small>/100</small></span>
+                  <span className="portfolio-holding-value"><strong>{formatWeight(position.weight)}</strong><small>at formation</small></span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+          <p className="portfolio-holdings-note">Weights reflect the immutable next-open formation ledger. They are not recalculated from today&apos;s prices.</p>
         </section>
       )}
 

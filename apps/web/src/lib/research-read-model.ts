@@ -89,6 +89,7 @@ export type PaperPortfolio = {
     ticker: string;
     issuerName: string;
     quantity: string;
+    weight: string;
     rank: number;
     score: string;
     predictedBenchmarkRelativeReturn?: string;
@@ -622,9 +623,14 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
   const row = result.rows[0] as Record<string, unknown>;
   const [positions, outcomes, previousResult] = await Promise.all([
     databasePool().query(
-    `SELECT p.security_id, p.quantity, s.issuer_name, l.ticker, snapshot.rank, snapshot.score,
+    `SELECT p.security_id, p.quantity, trade.notional / $4::numeric AS weight,
+            s.issuer_name, l.ticker, snapshot.rank, snapshot.score,
             prediction.predicted_benchmark_relative_return
      FROM quantrade.paper_portfolio_positions p
+     JOIN quantrade.paper_portfolio_trades trade
+       ON trade.paper_portfolio_run_id = p.paper_portfolio_run_id
+      AND trade.security_id = p.security_id
+      AND trade.side = 'buy'
      JOIN quantrade.securities s ON s.security_id = p.security_id
      JOIN quantrade.score_snapshots snapshot
        ON snapshot.security_id = p.security_id
@@ -647,7 +653,7 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
      ) l ON TRUE
      WHERE p.paper_portfolio_run_id = $1
      ORDER BY snapshot.rank ASC`,
-      [row.paper_portfolio_run_id, row.score_date, row.model_version],
+      [row.paper_portfolio_run_id, row.score_date, row.model_version, row.starting_nav],
     ),
     databasePool().query(
       `SELECT horizon_sessions, status, outcome_date::text AS outcome_date,
@@ -699,6 +705,7 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
       ticker: item.ticker ? String(item.ticker) : "Unavailable",
       issuerName: String(item.issuer_name),
       quantity: String(item.quantity),
+      weight: String(item.weight),
       rank: Number(item.rank),
       score: String(item.score),
       ...(item.predicted_benchmark_relative_return === null
