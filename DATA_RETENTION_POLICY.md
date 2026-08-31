@@ -105,3 +105,12 @@ verify a source URL, retrieval receipt, hash, and extracted fields, but cannot
 open a local archival copy of the original payload. If external audit-grade
 document retention becomes necessary, it requires a separate storage policy and
 possibly licensed data rights.
+
+## Database backup retention
+
+Operational PostgreSQL backups are separate from raw-provider retention. A
+verified custom-format backup is created daily and retained for 30 days, with a
+minimum floor of seven newest archives. Expiration runs only after the new
+archive passes checksum and restore-catalog validation. Metadata sidecars expire
+with their matching archives; partial or unverifiable archives never trigger
+retention.

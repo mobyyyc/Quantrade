@@ -172,7 +172,7 @@ be required for daily operations.
 - [x] P12.2: replace Codex-dependent scheduling with a verified Windows Task Scheduler job that invokes the canonical script on weekdays at 10:15 p.m. Toronto time; require only a powered-on PC with the current Windows user signed in, PostgreSQL, internet access, and configured credentials.
 - [x] P12.3: expose structured progress for market data, SEC retrieval, validation, scoring, portfolio publication, and completion without excessive console or UI updates.
 - [x] P12.4: add bounded retries for temporary provider failures while preserving idempotency and duplicate prevention.
-- [ ] P12.5: implement automated PostgreSQL backups, retention rules, and a tested restore procedure.
+- [x] P12.5: implement automated PostgreSQL backups, retention rules, and a tested restore procedure.
 - [ ] P12.6: add a concise operations-history view for successful, skipped, failed, retried, and duplicate-prevented runs.
 
 ## Phase 13: portfolio and research experience

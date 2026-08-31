@@ -28,6 +28,14 @@ block publication automatically, but require recorded review.
 6. Record the cause, correction, evidence, and final monitor result with the
    run artifacts.
 
+## Database recovery
+
+PostgreSQL backup creation, verification, isolated restore drills, retention,
+and production cutover safeguards are defined in
+[`POSTGRESQL_BACKUP_RUNBOOK.md`](POSTGRESQL_BACKUP_RUNBOOK.md). Always restore
+into a new database and validate it before changing `DATABASE_URL`; never
+overwrite `quantdb` in place.
+
 ## Score-anomaly review
 
 For an eligible-count drop above 30% or a mean-score shift above 20 points,
