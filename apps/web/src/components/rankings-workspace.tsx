@@ -5,11 +5,11 @@ import Link from "next/link";
 import { ScoreList } from "@/components/score-list";
 import { ResearchBasket } from "@/components/research-basket";
 import { formatIssuerName, formatPublicationTime, formatResearchDate, formatScore } from "@/lib/format";
-import type { DatedScore, PaperPortfolio, PreviousPaperPortfolioResult } from "@/lib/research-read-model";
+import type { DatedScore, PaperPortfolio } from "@/lib/research-read-model";
 
 const initialVisibleCount = 25;
 
-export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previousScores, portfolio, previewBasket = false, previewResult }: { scores: DatedScore[]; scoreDate: string; previousScoreDate?: string; previousScores: DatedScore[]; portfolio: PaperPortfolio | null; previewBasket?: boolean; previewResult?: PreviousPaperPortfolioResult }) {
+export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previousScores, portfolio }: { scores: DatedScore[]; scoreDate: string; previousScoreDate?: string; previousScores: DatedScore[]; portfolio: PaperPortfolio | null }) {
   const [visibleCount, setVisibleCount] = useState(initialVisibleCount);
   const eligibleScores = scores.filter((score) => score.eligible);
   const withheldCount = scores.length - eligibleScores.length;
@@ -33,7 +33,7 @@ export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previo
       <p>Only complete, dated inputs are ranked. Missing data is withheld rather than estimated.</p>
     </div>
     <div className="rankings-results">
-      <ResearchBasket portfolio={portfolio} from="rankings" preview={previewBasket ? { scoreDate, positions: eligibleScores, ...(previewResult ? { previousResult: previewResult } : {}) } : undefined} />
+      <ResearchBasket portfolio={portfolio} from="rankings" />
       <div className="section-heading">
         <div><p className="eyebrow">CURRENT ORDER</p><h2 id="rankings-list-title">Highest scores</h2></div>
       </div>

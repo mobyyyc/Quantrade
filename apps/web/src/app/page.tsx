@@ -5,26 +5,18 @@ import { WatchlistPreview } from "@/components/watchlist-preview";
 import { TodayRankingStream } from "@/components/today-ranking-stream";
 import { ResearchBasket } from "@/components/research-basket";
 import { formatResearchDate, formatScore } from "@/lib/format";
-import { getLatestDatedScores, getLatestPaperPortfolio, getRetrospectiveBasketPreview, getTodayFilingSummary, ResearchReadModelError } from "@/lib/research-read-model";
+import { getLatestDatedScores, getLatestPaperPortfolio, getTodayFilingSummary, ResearchReadModelError } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ basketPreview?: string }> }) {
-  const { basketPreview } = await searchParams;
-  const previewEnabled = basketPreview !== "0";
+export default async function Home() {
   let latest: Awaited<ReturnType<typeof getLatestDatedScores>> = null;
   let portfolio: Awaited<ReturnType<typeof getLatestPaperPortfolio>> = null;
   let filingSummary: Awaited<ReturnType<typeof getTodayFilingSummary>> = { filingCount: 0 };
-  let previewResult: Awaited<ReturnType<typeof getRetrospectiveBasketPreview>>;
   let unavailable = false;
   try {
     [latest, portfolio] = await Promise.all([getLatestDatedScores(), getLatestPaperPortfolio()]);
-    if (latest) {
-      [filingSummary, previewResult] = await Promise.all([
-        getTodayFilingSummary(latest.scoreDate),
-        previewEnabled ? getRetrospectiveBasketPreview(latest.scoreDate) : Promise.resolve(undefined),
-      ]);
-    }
+    filingSummary = latest ? await getTodayFilingSummary(latest.scoreDate) : filingSummary;
   } catch (error) {
     unavailable = error instanceof ResearchReadModelError;
   }
@@ -56,7 +48,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ b
             <section className="content-section today-candidates">
               <div className="section-heading"><div><p className="eyebrow">TOP RANKED</p><h2>Highest scores</h2></div>{lead && <Link href={`/rankings?date=${latest.scoreDate}`} className="text-link">View rankings</Link>}</div>
               {lead ? <TodayRankingStream scores={eligibleScores} /> : <p className="empty-inline">No companies met every required quality condition on {formatResearchDate(latest.scoreDate)}.</p>}
-              {lead ? <ResearchBasket portfolio={portfolio} from="today" preview={previewEnabled ? { scoreDate: latest.scoreDate, positions: eligibleScores, ...(previewResult ? { previousResult: previewResult } : {}) } : undefined} /> : null}
+              {lead ? <ResearchBasket portfolio={portfolio} from="today" /> : null}
             </section>
             <WatchlistPreview scores={latest.scores} scoreDate={latest.scoreDate} />
           </div>

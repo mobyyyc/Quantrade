@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatIssuerName, formatRelativeReturn, formatResearchDate, formatScore } from "@/lib/format";
-import type { DatedScore, PaperPortfolio, PreviousPaperPortfolioResult } from "@/lib/research-read-model";
+import type { PaperPortfolio, PreviousPaperPortfolioResult } from "@/lib/research-read-model";
 
 const BASKET_SIZE = 20;
 
@@ -12,11 +12,11 @@ function returnDirection(value: string | number | undefined): "positive-change" 
   return undefined;
 }
 
-function PreviousBasketResult({ result, retrospectivePreview = false }: { result?: PreviousPaperPortfolioResult; retrospectivePreview?: boolean }) {
+function PreviousBasketResult({ result }: { result?: PreviousPaperPortfolioResult }) {
   if (!result) {
     return (
       <div className="research-basket-result">
-        <span>{retrospectivePreview ? "Simulated prior result" : "Previous basket result"}</span>
+        <span>Previous basket result</span>
         <strong>Unavailable</strong>
         <small>No earlier official monthly basket.</small>
       </div>
@@ -26,7 +26,7 @@ function PreviousBasketResult({ result, retrospectivePreview = false }: { result
   if (result.status === "pending") {
     return (
       <div className="research-basket-result">
-        <span>{retrospectivePreview ? "Simulated prior result" : "Previous basket result"}</span>
+        <span>Previous basket result</span>
         <strong>Pending</strong>
         <small>Formed {formatResearchDate(result.scoreDate)}. Waiting for its 20th market close.</small>
       </div>
@@ -36,7 +36,7 @@ function PreviousBasketResult({ result, retrospectivePreview = false }: { result
   if (result.status === "withheld" || result.portfolioReturn === undefined || result.benchmarkReturn === undefined || result.benchmarkRelativeReturn === undefined) {
     return (
       <div className="research-basket-result">
-        <span>{retrospectivePreview ? "Simulated prior result" : "Previous basket result"}</span>
+        <span>Previous basket result</span>
         <strong>Unavailable</strong>
         <small>{result.unavailableReason ?? "The 20-session comparison did not pass data-quality checks."}</small>
       </div>
@@ -48,7 +48,7 @@ function PreviousBasketResult({ result, retrospectivePreview = false }: { result
 
   return (
     <div className="research-basket-result">
-      <span>{retrospectivePreview ? "Simulated prior result" : "Previous basket result"}</span>
+      <span>Previous basket result</span>
       <strong className="research-basket-comparison">
         <span className={returnDirection(relativeReturn)}>{difference}</span>
         <span>vs SPY</span>
@@ -57,9 +57,7 @@ function PreviousBasketResult({ result, retrospectivePreview = false }: { result
         <div><dt>Basket</dt><dd className={returnDirection(result.portfolioReturn)}>{formatRelativeReturn(result.portfolioReturn)}</dd></div>
         <div><dt>SPY</dt><dd className={returnDirection(result.benchmarkReturn)}>{formatRelativeReturn(result.benchmarkReturn)}</dd></div>
       </dl>
-      <small>{retrospectivePreview
-        ? `Look-ahead-biased UI sample using the preceding 20 sessions ending ${formatResearchDate(result.outcomeDate ?? "")}. Not official performance.`
-        : `20 sessions ending ${formatResearchDate(result.outcomeDate ?? "")}`}</small>
+      <small>20 sessions ending {formatResearchDate(result.outcomeDate ?? "")}</small>
     </div>
   );
 }
@@ -67,65 +65,11 @@ function PreviousBasketResult({ result, retrospectivePreview = false }: { result
 export function ResearchBasket({
   portfolio,
   from,
-  preview,
 }: {
   portfolio: PaperPortfolio | null;
   from: "today" | "rankings";
-  preview?: {
-    scoreDate: string;
-    positions: DatedScore[];
-    previousResult?: PreviousPaperPortfolioResult;
-  };
 }) {
   const titleId = `${from}-research-basket-title`;
-  if (preview) {
-    const positions = preview.positions.slice(0, BASKET_SIZE);
-    const weight = 100 / BASKET_SIZE;
-    return (
-      <section className="research-basket research-basket-preview" aria-labelledby={titleId}>
-        <div className="research-basket-heading">
-          <div>
-            <div className="research-basket-preview-label">
-              <p className="eyebrow">SIMULATED MONTHLY PORTFOLIO</p>
-              <span>SCREENSHOT PREVIEW</span>
-            </div>
-            <h2 id={titleId}>Current Top 20 research basket</h2>
-          </div>
-          {preview.previousResult
-            ? <PreviousBasketResult result={preview.previousResult} retrospectivePreview />
-            : <div className="research-basket-preview-summary" aria-label={`${positions.length} companies at ${weight}% model weight each`}><strong>{positions.length}</strong><span>companies · {weight}% each</span></div>}
-        </div>
-        <div className="research-basket-context">
-          <p>
-            Simulated from the active model&apos;s top {positions.length} eligible names on {formatResearchDate(preview.scoreDate)}.
-            This preview shows how the next monthly basket would look if it formed from the current ranking.
-          </p>
-          <p>Preview only, no official performance record.</p>
-        </div>
-        <ol className="research-basket-list">
-          {positions.map((position, index) => (
-            <li key={position.securityId}>
-              <Link
-                href={`/stocks/${position.securityId}?date=${preview.scoreDate}&from=${from}`}
-                aria-label={`${position.ticker}, preview rank ${index + 1}, score ${formatScore(position.score)} out of 100, ${weight}% model weight`}
-              >
-                <span className="research-basket-position">{index + 1}</span>
-                <span className="research-basket-company">
-                  <strong>{position.ticker}</strong>
-                  <span>{formatIssuerName(position.issuerName)}</span>
-                </span>
-                <span className="research-basket-score">{formatScore(position.score)}<small>/100</small></span>
-                <span className="research-basket-weight">{weight}%</span>
-              </Link>
-            </li>
-          ))}
-        </ol>
-        <p className="research-basket-note">
-          The official portfolio still forms only from the final eligible ranking of a completed calendar month and is recorded at the next regular-session open.
-        </p>
-      </section>
-    );
-  }
   if (!portfolio) {
     return (
       <section className="research-basket research-basket-pending" aria-labelledby={titleId}>
