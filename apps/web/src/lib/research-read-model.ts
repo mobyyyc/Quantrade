@@ -450,7 +450,19 @@ export async function getPreviousDatedScores(beforeDate: string): Promise<{
   scores: DatedScore[];
 } | null> {
   const result = await databasePool().query<{ score_date: string }>(
-    "SELECT MAX(score_date)::text AS score_date FROM quantrade.daily_research_runs WHERE status = 'completed' AND score_date < $1",
+    `SELECT MAX(run.score_date)::text AS score_date
+     FROM quantrade.daily_research_runs run
+     WHERE run.status = 'completed'
+       AND run.score_date < $1
+       AND EXISTS (
+         SELECT 1
+         FROM quantrade.score_snapshots snapshot
+         WHERE snapshot.score_date = run.score_date
+           AND snapshot.model_version = (
+             SELECT model_version FROM quantrade.model_deployments
+             ORDER BY deployed_at DESC LIMIT 1
+           )
+       )`,
     [beforeDate],
   );
   const scoreDate = result.rows[0]?.score_date;

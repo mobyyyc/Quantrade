@@ -299,17 +299,31 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .ranking-run-facts dt { color: var(--subtle); font-size: .76rem; }
 .ranking-run-facts dd { margin: 0; color: var(--foreground); font-size: .78rem; text-align: right; }
 .rankings-context > p:not(.eyebrow) { margin: 1.2rem 0 0; color: var(--muted); font-size: .82rem; line-height: 1.55; }
-.ranking-movers { margin-top: 1.25rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--line-soft); }
-.ranking-movers .eyebrow { margin-bottom: .45rem; }
-.ranking-movers h3 { margin: 0; color: var(--foreground); font-size: 1rem; letter-spacing: -.025em; }
-.ranking-movers-date, .ranking-movers-empty { margin: .35rem 0 0; color: var(--muted); font-size: .78rem; line-height: 1.5; }
-.ranking-movers ol { margin: .75rem 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line-soft); }
-.ranking-movers li { border-bottom: 1px solid var(--line-soft); }
-.ranking-movers a { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .6rem 0; }
-.ranking-movers a > div { display: grid; min-width: 0; gap: .08rem; }
-.ranking-movers a strong { color: var(--foreground); font-size: .84rem; letter-spacing: -.02em; }
-.ranking-movers a span { overflow: hidden; color: var(--subtle); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
-.ranking-movers a b { color: var(--foreground); font-size: .8rem; font-weight: 680; white-space: nowrap; }
+.ranking-movement { margin: 3rem 0; padding: 1.5rem 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+.ranking-movement-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, .72fr); gap: 2.5rem; align-items: end; }
+.ranking-movement-heading h2 { margin: 0; }
+.ranking-movement-heading > div:first-child > p:last-child { margin: .4rem 0 0; color: var(--muted); font-size: .8rem; }
+.ranking-basket-status { display: grid; gap: .16rem; padding-left: 1.15rem; border-left: 1px solid var(--line-soft); }
+.ranking-basket-status > span { color: var(--subtle); font-size: .67rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+.ranking-basket-status strong { color: var(--foreground); font-size: .87rem; }
+.ranking-basket-status small { max-width: 28rem; color: var(--muted); font-size: .72rem; line-height: 1.45; }
+.ranking-basket-status .text-link { justify-self: start; margin: .05rem 0 0 -.85rem; font-size: .74rem; }
+.ranking-movement-groups { display: grid; grid-template-columns: 1.15fr repeat(2, minmax(0, .85fr)); gap: 2rem; margin-top: 1.5rem; }
+.ranking-movement-group { min-width: 0; padding-top: .85rem; border-top: 1px solid var(--line-soft); }
+.ranking-movement-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.ranking-movement-group-heading h3 { margin: 0; color: var(--foreground); font-size: .92rem; letter-spacing: -.02em; }
+.ranking-movement-group-heading span { color: var(--subtle); font-size: .68rem; }
+.ranking-movement-group ol { margin: .55rem 0 0; padding: 0; list-style: none; }
+.ranking-movement-group li + li { border-top: 1px solid var(--line-soft); }
+.ranking-movement-group a { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .7rem; align-items: center; min-height: 3.55rem; padding: .45rem .2rem; transition: background-color 150ms var(--ease), color 150ms var(--ease); }
+.ranking-movement-company, .ranking-movement-value { display: grid; min-width: 0; gap: .06rem; }
+.ranking-movement-company strong, .ranking-movement-value strong { color: var(--foreground); font-size: .8rem; letter-spacing: -.015em; }
+.ranking-movement-company small { overflow: hidden; color: var(--muted); font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.ranking-movement-value { justify-items: end; text-align: right; white-space: nowrap; }
+.ranking-movement-value small { color: var(--subtle); font-size: .66rem; }
+.ranking-movement-empty, .ranking-movement-more { margin: .75rem 0 0; color: var(--muted); font-size: .73rem; line-height: 1.5; }
+.ranking-movement-more { color: var(--subtle); }
+.ranking-movement-empty-wide { margin-bottom: .2rem; padding-top: 1rem; border-top: 1px solid var(--line-soft); }
 .rankings-date-form { display: grid; gap: .55rem; margin-top: 1.2rem; }
 .rankings-date-form label { display: grid; gap: .4rem; color: var(--muted); font-size: .78rem; }
 .rankings-date-form input { width: 100%; min-height: 2.45rem; border: 1px solid var(--line); border-radius: 9999px; padding: 0 .8rem; background: var(--surface); color: var(--foreground); box-shadow: var(--control-shadow); }
@@ -542,7 +556,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .rankings-layout { grid-template-columns: 1fr; gap: 2.5rem; }
   .rankings-results, .rankings-context { grid-column: 1; grid-row: auto; }
   .rankings-context { position: static; padding: 1rem 0; }
-  .ranking-movers { max-width: 28rem; }
+  .ranking-movement-heading { grid-template-columns: 1fr; gap: 1rem; }
+  .ranking-basket-status { padding-left: 0; border-left: 0; }
+  .ranking-movement-groups { grid-template-columns: 1fr; gap: 1.25rem; }
   .operations-health, .operations-history, .portfolio-home-status, .portfolio-contract, .portfolio-history-heading { grid-template-columns: 1fr; gap: 1.25rem; }
   .portfolio-cost-note { padding-left: 0; border-left: 0; }
   .portfolio-home-facts > div:nth-child(odd) { padding-left: 0; border-left: 0; }
