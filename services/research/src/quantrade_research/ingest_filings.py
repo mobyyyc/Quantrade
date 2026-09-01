@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import date, datetime, time as wall_time, timezone
+from datetime import date, datetime, time as wall_time, timedelta, timezone
 from pathlib import Path
 import time
 from zoneinfo import ZoneInfo
@@ -134,11 +134,63 @@ def _fetch_daily_master_index_with_retry(
     raise AssertionError("daily index retry loop did not return or raise")  # pragma: no cover
 
 
-def _daily_index_dates(start_date: date, end_date: date) -> list[date]:
-    """Return every calendar date in the inclusive filing-discovery interval."""
+def _nth_weekday(year: int, month: int, weekday: int, occurrence: int) -> date:
+    first = date(year, month, 1)
+    offset = (weekday - first.weekday()) % 7
+    return first + timedelta(days=offset + 7 * (occurrence - 1))
+
+
+def _last_weekday(year: int, month: int, weekday: int) -> date:
+    if month == 12:
+        final = date(year + 1, 1, 1) - timedelta(days=1)
+    else:
+        final = date(year, month + 1, 1) - timedelta(days=1)
+    return final - timedelta(days=(final.weekday() - weekday) % 7)
+
+
+def _observed_fixed_holiday(year: int, month: int, day: int) -> date:
+    holiday = date(year, month, day)
+    if holiday.weekday() == 5:
+        return holiday - timedelta(days=1)
+    if holiday.weekday() == 6:
+        return holiday + timedelta(days=1)
+    return holiday
+
+
+def _edgar_federal_holidays(year: int) -> set[date]:
+    """Return observed federal holidays on which EDGAR does not accept filings."""
+    holidays = {
+        _observed_fixed_holiday(year, 1, 1),
+        _nth_weekday(year, 1, 0, 3),
+        _nth_weekday(year, 2, 0, 3),
+        _last_weekday(year, 5, 0),
+        _observed_fixed_holiday(year, 6, 19),
+        _observed_fixed_holiday(year, 7, 4),
+        _nth_weekday(year, 9, 0, 1),
+        _nth_weekday(year, 10, 0, 2),
+        _observed_fixed_holiday(year, 11, 11),
+        _nth_weekday(year, 11, 3, 4),
+        _observed_fixed_holiday(year, 12, 25),
+    }
+    next_new_year_observed = _observed_fixed_holiday(year + 1, 1, 1)
+    if next_new_year_observed.year == year:
+        holidays.add(next_new_year_observed)
+    return {holiday for holiday in holidays if holiday.year == year}
+
+
+def _is_edgar_publication_date(value: date) -> bool:
+    return value.weekday() < 5 and value not in _edgar_federal_holidays(value.year)
+
+
+def _calendar_dates(start_date: date, end_date: date) -> list[date]:
     if end_date < start_date:
         raise ValueError("daily index end date must not precede the start date")
     return [date.fromordinal(value) for value in range(start_date.toordinal(), end_date.toordinal() + 1)]
+
+
+def _daily_index_dates(start_date: date, end_date: date) -> list[date]:
+    """Return expected EDGAR publication dates in the inclusive discovery interval."""
+    return [value for value in _calendar_dates(start_date, end_date) if _is_edgar_publication_date(value)]
 
 
 def _is_pending_current_daily_index(
@@ -204,10 +256,19 @@ def main() -> None:
     company_facts_requests = 0
     source_inputs: list[SourceInput] = []
     try:
-        missing_index_dates: list[date] = []
+        skipped_non_publication_dates: list[date] = []
         if arguments.daily_index_start_date:
             indexed_ciks: set[str] = set()
-            for filing_date in _daily_index_dates(arguments.daily_index_start_date, arguments.daily_index_end_date):
+            expected_index_dates = _daily_index_dates(
+                arguments.daily_index_start_date, arguments.daily_index_end_date,
+            )
+            expected_index_date_set = set(expected_index_dates)
+            skipped_non_publication_dates = [
+                value for value in _calendar_dates(
+                    arguments.daily_index_start_date, arguments.daily_index_end_date,
+                ) if value not in expected_index_date_set
+            ]
+            for filing_date in expected_index_dates:
                 try:
                     index_payload = _fetch_daily_master_index_with_retry(
                         client, filing_date, attempts=arguments.daily_index_attempts,
@@ -220,8 +281,10 @@ def main() -> None:
                             f"SEC daily filing index for {filing_date.isoformat()} has not been published yet; "
                             "retry after 10:00 p.m. Toronto time"
                         ) from error
-                    missing_index_dates.append(filing_date)
-                    continue
+                    raise SecEdgarError(
+                        f"daily index discovery is incomplete for expected EDGAR publication date "
+                        f"{filing_date.isoformat()}; no cohort-wide submissions fallback will run"
+                    ) from error
                 except SecEdgarError as error:
                     if _is_pending_current_daily_index(filing_date, error):
                         raise SecEdgarError(
@@ -326,7 +389,7 @@ def main() -> None:
               f"company_facts_requests={company_facts_requests}; "
               f"daily_index_start_date={arguments.daily_index_start_date.isoformat() if arguments.daily_index_start_date else 'none'}; "
               f"daily_index_end_date={arguments.daily_index_end_date.isoformat() if arguments.daily_index_end_date else 'none'}; "
-              f"missing_daily_indexes={','.join(item.isoformat() for item in missing_index_dates) or 'none'}; "
+              f"skipped_non_publication_dates={','.join(item.isoformat() for item in skipped_non_publication_dates) or 'none'}; "
               "daily_index_fallback=none; "
               f"receipt_mode={'compact' if arguments.compact_receipts else 'payload_retained'}; "
               f"history_included={arguments.include_history}; filing_availability=acceptance_timestamp"),

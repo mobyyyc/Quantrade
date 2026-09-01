@@ -47,10 +47,20 @@ class FilingParserTests(unittest.TestCase):
         with self.assertRaisesRegex(SecEdgarError, "invalid row"):
             parse_daily_master_index(payload)
 
-    def test_keeps_weekend_dates_in_the_discovery_interval(self) -> None:
+    def test_skips_weekends_in_the_daily_index_interval(self) -> None:
         self.assertEqual(
             _daily_index_dates(date(2026, 8, 21), date(2026, 8, 24)),
-            [date(2026, 8, 21), date(2026, 8, 22), date(2026, 8, 23), date(2026, 8, 24)],
+            [date(2026, 8, 21), date(2026, 8, 24)],
+        )
+
+    def test_skips_federal_holidays_but_not_other_weekdays(self) -> None:
+        self.assertEqual(
+            _daily_index_dates(date(2026, 9, 4), date(2026, 9, 8)),
+            [date(2026, 9, 4), date(2026, 9, 8)],
+        )
+        self.assertEqual(
+            _daily_index_dates(date(2026, 4, 3), date(2026, 4, 3)),
+            [date(2026, 4, 3)],
         )
 
     def test_identifies_only_unseen_current_submission_accessions(self) -> None:
