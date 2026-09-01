@@ -97,6 +97,22 @@ export type PaperPortfolio = {
   outcomes: PaperPortfolioOutcome[];
 };
 
+export type CompletedPaperPortfolioHistoryEntry = {
+  scoreDate: string;
+  executionDate: string;
+  outcomeDate: string;
+  modelVersion: string;
+  benchmarkTicker: string;
+  positionCount: number;
+  portfolioReturn: string;
+  benchmarkReturn: string;
+  benchmarkRelativeReturn: string;
+  oneWayTurnover: string;
+};
+
+// Mirrors the pre-registered one-way cost case used by the deployed portfolio evaluation.
+export const PAPER_PORTFOLIO_ONE_WAY_COST_BPS = 25;
+
 export type DailyPricePoint = {
   sessionDate: string;
   closePrice: string;
@@ -722,6 +738,79 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
       ...(item.unavailable_reason ? { unavailableReason: String(item.unavailable_reason) } : {}),
     })),
   };
+}
+
+export async function getCompletedPaperPortfolioHistory(
+  limit = 24,
+): Promise<CompletedPaperPortfolioHistoryEntry[]> {
+  const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 120);
+  const result = await databasePool().query(
+    `WITH official AS (
+       SELECT portfolio.paper_portfolio_run_id, portfolio.score_date,
+              portfolio.execution_date, portfolio.model_version,
+              portfolio.benchmark_ticker, portfolio.starting_nav,
+              LAG(portfolio.paper_portfolio_run_id) OVER (
+                ORDER BY portfolio.score_date, portfolio.paper_portfolio_run_id
+              ) AS previous_run_id
+       FROM quantrade.paper_portfolio_runs portfolio
+       WHERE portfolio.formation_protocol = 'monthly_last_session_next_open_v1'
+     ),
+     weights AS (
+       SELECT trade.paper_portfolio_run_id, trade.security_id,
+              SUM(CASE WHEN trade.side = 'buy' THEN trade.notional ELSE -trade.notional END)
+                / run.starting_nav AS weight
+       FROM quantrade.paper_portfolio_trades trade
+       JOIN quantrade.paper_portfolio_runs run
+         ON run.paper_portfolio_run_id = trade.paper_portfolio_run_id
+       WHERE run.formation_protocol = 'monthly_last_session_next_open_v1'
+       GROUP BY trade.paper_portfolio_run_id, trade.security_id, run.starting_nav
+     )
+     SELECT official.score_date::text, official.execution_date::text,
+            outcome.outcome_date::text, official.model_version,
+            official.benchmark_ticker,
+            (SELECT COUNT(*) FROM weights current_weight
+             WHERE current_weight.paper_portfolio_run_id = official.paper_portfolio_run_id) AS position_count,
+            outcome.portfolio_return, outcome.benchmark_return,
+            outcome.benchmark_relative_return,
+            CASE
+              WHEN official.previous_run_id IS NULL THEN COALESCE((
+                SELECT SUM(current_weight.weight)
+                FROM weights current_weight
+                WHERE current_weight.paper_portfolio_run_id = official.paper_portfolio_run_id
+              ), 0)
+              ELSE COALESCE((
+                SELECT SUM(ABS(COALESCE(current_weight.weight, 0) - COALESCE(previous_weight.weight, 0))) / 2
+                FROM (
+                  SELECT security_id, weight FROM weights
+                  WHERE paper_portfolio_run_id = official.paper_portfolio_run_id
+                ) current_weight
+                FULL OUTER JOIN (
+                  SELECT security_id, weight FROM weights
+                  WHERE paper_portfolio_run_id = official.previous_run_id
+                ) previous_weight USING (security_id)
+              ), 0)
+            END AS one_way_turnover
+     FROM official
+     JOIN quantrade.paper_portfolio_outcomes outcome
+       ON outcome.paper_portfolio_run_id = official.paper_portfolio_run_id
+      AND outcome.horizon_sessions = 20
+      AND outcome.status = 'completed'
+     ORDER BY official.score_date DESC
+     LIMIT $1`,
+    [boundedLimit],
+  );
+  return result.rows.map((row) => ({
+    scoreDate: String(row.score_date),
+    executionDate: String(row.execution_date),
+    outcomeDate: String(row.outcome_date),
+    modelVersion: String(row.model_version),
+    benchmarkTicker: String(row.benchmark_ticker),
+    positionCount: Number(row.position_count),
+    portfolioReturn: String(row.portfolio_return),
+    benchmarkReturn: String(row.benchmark_return),
+    benchmarkRelativeReturn: String(row.benchmark_relative_return),
+    oneWayTurnover: String(row.one_way_turnover),
+  }));
 }
 
 export async function searchSecurities(query: string): Promise<SecuritySearchResult[]> {

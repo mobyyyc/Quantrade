@@ -113,6 +113,25 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .portfolio-holding-value strong { color: var(--foreground); font-size: .94rem; letter-spacing: -.025em; }
 .portfolio-holding-value small { color: var(--subtle); font-size: .66rem; }
 .portfolio-holdings-note { max-width: 46rem; margin: .9rem 0 0; color: var(--subtle); font-size: .76rem; line-height: 1.5; }
+.portfolio-history-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, .62fr); gap: 3rem; align-items: end; margin-bottom: 1.25rem; }
+.portfolio-history-heading h2 { margin: 0; }
+.portfolio-cost-note { display: grid; gap: .18rem; padding-left: 1.25rem; border-left: 1px solid var(--line-soft); }
+.portfolio-cost-note span { color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+.portfolio-cost-note strong { color: var(--foreground); font-size: .86rem; font-weight: 680; }
+.portfolio-cost-note small { color: var(--muted); font-size: .73rem; line-height: 1.45; }
+.portfolio-history-columns, .portfolio-history-list li { display: grid; grid-template-columns: minmax(12rem, 1fr) repeat(4, minmax(5.6rem, .42fr)); gap: 1rem; align-items: center; }
+.portfolio-history-columns { padding: 0 .5rem .55rem; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+.portfolio-history-columns span:not(:first-child), .portfolio-history-list li > span:not(:first-child) { text-align: right; }
+.portfolio-history-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-soft); }
+.portfolio-history-list li { min-height: 4.6rem; padding: .7rem .5rem; border-bottom: 1px solid var(--line-soft); font-variant-numeric: tabular-nums; }
+.portfolio-history-formation { display: grid; gap: .16rem; min-width: 0; }
+.portfolio-history-formation strong { color: var(--foreground); font-size: .88rem; font-weight: 680; }
+.portfolio-history-formation small { overflow: hidden; color: var(--muted); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.portfolio-history-list li > span:not(.portfolio-history-formation) { color: var(--foreground); font-size: .9rem; font-weight: 680; }
+.portfolio-history-list li > span.positive { color: var(--positive); }
+.portfolio-history-list li > span.negative { color: var(--negative); }
+.portfolio-history-list li > span.portfolio-history-turnover { color: var(--foreground); }
+.portfolio-history-note, .portfolio-history-empty { max-width: 48rem; margin: .9rem 0 0; color: var(--subtle); font-size: .76rem; line-height: 1.55; }
 .portfolio-contract { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 3rem; }
 .portfolio-contract dl { margin: 0; border-top: 1px solid var(--line-soft); }
 .portfolio-contract dl > div { display: grid; grid-template-columns: minmax(9rem, .58fr) minmax(0, 1fr); gap: 1.5rem; padding: .95rem 0; border-bottom: 1px solid var(--line-soft); }
@@ -524,7 +543,8 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .rankings-results, .rankings-context { grid-column: 1; grid-row: auto; }
   .rankings-context { position: static; padding: 1rem 0; }
   .ranking-movers { max-width: 28rem; }
-  .operations-health, .operations-history, .portfolio-home-status, .portfolio-contract { grid-template-columns: 1fr; gap: 1.25rem; }
+  .operations-health, .operations-history, .portfolio-home-status, .portfolio-contract, .portfolio-history-heading { grid-template-columns: 1fr; gap: 1.25rem; }
+  .portfolio-cost-note { padding-left: 0; border-left: 0; }
   .portfolio-home-facts > div:nth-child(odd) { padding-left: 0; border-left: 0; }
 }
 
@@ -574,6 +594,14 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .portfolio-holdings-heading > p { text-align: left; }
   .portfolio-holdings-columns { display: none; }
   .portfolio-holdings-list a { grid-template-columns: 2rem minmax(0, 1fr) 3.4rem 4.5rem; gap: .65rem; padding-right: .2rem; padding-left: .2rem; }
+  .portfolio-history-columns { display: none; }
+  .portfolio-history-list li { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem 1rem; padding: .85rem 0; }
+  .portfolio-history-formation { grid-column: 1 / -1; padding-bottom: .55rem; border-bottom: 1px solid var(--line-soft); }
+  .portfolio-history-list li > span:not(:first-child) { display: grid; grid-template-columns: 1fr auto; text-align: right; }
+  .portfolio-history-list li > span:nth-child(2)::before { content: "Basket"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+  .portfolio-history-list li > span:nth-child(3)::before { content: "SPY"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+  .portfolio-history-list li > span:nth-child(4)::before { content: "Difference"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+  .portfolio-history-list li > span:nth-child(5)::before { content: "Turnover"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
   .portfolio-holding-value strong { font-size: .86rem; }
   .portfolio-holding-value small { font-size: .6rem; }
   .portfolio-contract dl > div { grid-template-columns: 1fr; gap: .35rem; }

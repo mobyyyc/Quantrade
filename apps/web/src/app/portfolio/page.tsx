@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { formatIssuerName, formatResearchDate, formatScore } from "@/lib/format";
-import { getLatestPaperPortfolio, ResearchReadModelError } from "@/lib/research-read-model";
+import { formatIssuerName, formatPercentagePoints, formatRelativeReturn, formatResearchDate, formatScore } from "@/lib/format";
+import { getCompletedPaperPortfolioHistory, getLatestPaperPortfolio, PAPER_PORTFOLIO_ONE_WAY_COST_BPS, ResearchReadModelError } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 
 function formatWeight(value: string) {
   return `${(Number(value) * 100).toFixed(2).replace(/\.00$/, "")}%`;
+}
+
+function returnTone(value: string) {
+  return Number(value) >= 0 ? "positive" : "negative";
 }
 
 function nextRebalanceRule(executionDate: string) {
@@ -19,9 +23,13 @@ function nextRebalanceRule(executionDate: string) {
 
 export default async function PortfolioPage() {
   let portfolio: Awaited<ReturnType<typeof getLatestPaperPortfolio>> = null;
+  let history: Awaited<ReturnType<typeof getCompletedPaperPortfolioHistory>> = [];
   let unavailable = false;
   try {
-    portfolio = await getLatestPaperPortfolio();
+    [portfolio, history] = await Promise.all([
+      getLatestPaperPortfolio(),
+      getCompletedPaperPortfolioHistory(),
+    ]);
   } catch (error) {
     if (!(error instanceof ResearchReadModelError)) throw error;
     unavailable = true;
@@ -93,6 +101,50 @@ export default async function PortfolioPage() {
           <p className="portfolio-holdings-note">Weights reflect the immutable next-open formation ledger. They are not recalculated from today&apos;s prices.</p>
         </section>
       )}
+
+      <section className="content-section portfolio-history" aria-labelledby="portfolio-history-title">
+        <div className="portfolio-history-heading">
+          <div>
+            <p className="eyebrow">COMPLETED HISTORY</p>
+            <h2 id="portfolio-history-title">Official 20-session results</h2>
+          </div>
+          <div className="portfolio-cost-note">
+            <span>Cost assumption</span>
+            <strong>{PAPER_PORTFOLIO_ONE_WAY_COST_BPS} bps × one-way turnover</strong>
+            <small>Shown returns are gross; commissions, slippage, and taxes are not deducted.</small>
+          </div>
+        </div>
+
+        {unavailable ? (
+          <p className="portfolio-history-empty">History is unavailable while the research database is disconnected.</p>
+        ) : history.length ? (
+          <>
+            <div className="portfolio-history-columns" aria-hidden="true">
+              <span>Formation</span><span>Basket</span><span>SPY</span><span>Difference</span><span>Turnover</span>
+            </div>
+            <ol className="portfolio-history-list">
+              {history.map((entry) => (
+                <li
+                  key={`${entry.scoreDate}-${entry.modelVersion}`}
+                  aria-label={`${formatResearchDate(entry.scoreDate)} formation, executed ${formatResearchDate(entry.executionDate)}, basket return ${formatRelativeReturn(entry.portfolioReturn)}, ${entry.benchmarkTicker} return ${formatRelativeReturn(entry.benchmarkReturn)}, difference ${formatPercentagePoints(entry.benchmarkRelativeReturn)}, one-way turnover ${formatWeight(entry.oneWayTurnover)}`}
+                >
+                  <span className="portfolio-history-formation">
+                    <strong>{formatResearchDate(entry.scoreDate)}</strong>
+                    <small>{entry.positionCount} names · closed {formatResearchDate(entry.outcomeDate)}</small>
+                  </span>
+                  <span className={returnTone(entry.portfolioReturn)}>{formatRelativeReturn(entry.portfolioReturn)}</span>
+                  <span className={returnTone(entry.benchmarkReturn)}>{formatRelativeReturn(entry.benchmarkReturn)}</span>
+                  <span className={returnTone(entry.benchmarkRelativeReturn)}>{formatPercentagePoints(entry.benchmarkRelativeReturn)}</span>
+                  <span className="portfolio-history-turnover">{formatWeight(entry.oneWayTurnover)}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="portfolio-history-note">Turnover compares immutable target weights with the preceding official basket; the first basket measures deployment from cash.</p>
+          </>
+        ) : (
+          <p className="portfolio-history-empty">No official basket has completed its 20-session measurement window yet. The first result will appear here without reconstructing it from later data.</p>
+        )}
+      </section>
 
       <section className="content-section portfolio-contract">
         <div>
