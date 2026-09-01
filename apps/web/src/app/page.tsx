@@ -1,22 +1,34 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { DailyResearchSummary } from "@/components/daily-research-summary";
 import { DailyUpdateControl } from "@/components/daily-update-control";
 import { WatchlistPreview } from "@/components/watchlist-preview";
 import { TodayRankingStream } from "@/components/today-ranking-stream";
 import { ResearchBasket } from "@/components/research-basket";
 import { formatResearchDate, formatScore } from "@/lib/format";
-import { getLatestDatedScores, getLatestPaperPortfolio, getTodayFilingSummary, ResearchReadModelError } from "@/lib/research-read-model";
+import { getDailyOperationsStatus, getLatestDatedScores, getLatestPaperPortfolio, getPreviousDatedScores, getTodayFilingSummary, ResearchReadModelError } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   let latest: Awaited<ReturnType<typeof getLatestDatedScores>> = null;
   let portfolio: Awaited<ReturnType<typeof getLatestPaperPortfolio>> = null;
+  let previous: Awaited<ReturnType<typeof getPreviousDatedScores>> = null;
   let filingSummary: Awaited<ReturnType<typeof getTodayFilingSummary>> = { filingCount: 0 };
+  let operations: Awaited<ReturnType<typeof getDailyOperationsStatus>> = {};
   let unavailable = false;
   try {
-    [latest, portfolio] = await Promise.all([getLatestDatedScores(), getLatestPaperPortfolio()]);
-    filingSummary = latest ? await getTodayFilingSummary(latest.scoreDate) : filingSummary;
+    [latest, portfolio, operations] = await Promise.all([
+      getLatestDatedScores(),
+      getLatestPaperPortfolio(),
+      getDailyOperationsStatus(),
+    ]);
+    if (latest) {
+      [previous, filingSummary] = await Promise.all([
+        getPreviousDatedScores(latest.scoreDate),
+        getTodayFilingSummary(latest.scoreDate),
+      ]);
+    }
   } catch (error) {
     unavailable = error instanceof ResearchReadModelError;
   }
@@ -44,6 +56,16 @@ export default async function Home() {
               <p>A dated score snapshot was created, but no company passed every required market, filing, and sector-data quality gate. Quantrade does not estimate a score when an input is missing.</p>
               <Link href="/research" className="text-link">Review research limits</Link>
             </section>}
+          <DailyResearchSummary
+            scores={latest.scores}
+            scoreDate={latest.scoreDate}
+            previousScores={previous?.scores ?? []}
+            previousScoreDate={previous?.scoreDate}
+            filingCount={filingSummary.filingCount}
+            filingSinceDate={filingSummary.sinceScoreDate}
+            portfolio={portfolio}
+            operations={operations}
+          />
           <div className="today-grid">
             <section className="content-section today-candidates">
               <div className="section-heading"><div><p className="eyebrow">TOP RANKED</p><h2>Highest scores</h2></div>{lead && <Link href={`/rankings?date=${latest.scoreDate}`} className="text-link">View rankings</Link>}</div>
@@ -52,13 +74,6 @@ export default async function Home() {
             </section>
             <WatchlistPreview scores={latest.scores} scoreDate={latest.scoreDate} />
           </div>
-          <section className="content-section filing-activity" aria-labelledby="filing-activity-title">
-            <div className="section-heading">
-              <div><p className="eyebrow">MARKET ACTIVITY</p><h2 id="filing-activity-title">Today’s filings</h2></div>
-              <p className="section-context">SEC documents accepted on {formatResearchDate(latest.scoreDate)}.</p>
-            </div>
-            <p className="filing-activity-summary"><strong>{filingSummary.filingCount}</strong><span>research-relevant SEC filings today</span></p>
-          </section>
         </>
       ) : (
         <section className="empty-state">

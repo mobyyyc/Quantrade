@@ -141,6 +141,7 @@ export type ScoreRunSummary = {
 
 export type TodayFilingSummary = {
   filingCount: number;
+  sinceScoreDate?: string;
 };
 
 export type DailyOperationRunStatus = "running" | "completed" | "failed" | "skipped";
@@ -488,13 +489,26 @@ export async function getRecentScoreRuns(limit = 5): Promise<ScoreRunSummary[]> 
 
 export async function getTodayFilingSummary(scoreDate: string): Promise<TodayFilingSummary> {
   const result = await databasePool().query(
-    `SELECT COUNT(*)::int AS filing_count
-     FROM quantrade.filings
-     WHERE (accepted_at AT TIME ZONE 'America/Toronto')::date = $1::date
-       AND form IN ('10-K', '10-Q', '20-F', '40-F', '8-K')`,
+    `WITH previous_publication AS (
+       SELECT MAX(score_date) AS score_date
+       FROM quantrade.daily_research_runs
+       WHERE status = 'completed' AND score_date < $1::date
+     )
+     SELECT COUNT(filing.*)::int AS filing_count,
+            previous_publication.score_date::text AS since_score_date
+     FROM previous_publication
+     LEFT JOIN quantrade.filings filing
+       ON (filing.accepted_at AT TIME ZONE 'America/Toronto')::date
+            > COALESCE(previous_publication.score_date, $1::date - 1)
+      AND (filing.accepted_at AT TIME ZONE 'America/Toronto')::date <= $1::date
+      AND filing.form IN ('10-K', '10-Q', '20-F', '40-F', '8-K')
+     GROUP BY previous_publication.score_date`,
     [scoreDate],
   );
-  return { filingCount: Number(result.rows[0]?.filing_count ?? 0) };
+  return {
+    filingCount: Number(result.rows[0]?.filing_count ?? 0),
+    ...(result.rows[0]?.since_score_date ? { sinceScoreDate: String(result.rows[0].since_score_date) } : {}),
+  };
 }
 
 export async function getDailyOperationsStatus(): Promise<DailyOperationsStatus> {

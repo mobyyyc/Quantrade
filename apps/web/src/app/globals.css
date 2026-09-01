@@ -83,6 +83,23 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .today-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, .43fr); gap: 3.5rem; align-items: start; }
 .today-candidates { min-width: 0; }
 
+.daily-research-brief { margin-top: 3.5rem; padding: 1.4rem 0 0; border-top: 1px solid var(--line-soft); }
+.daily-research-brief-heading { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 1.1rem; }
+.daily-research-brief-heading h2 { margin: 0; }
+.daily-research-brief-heading > p { max-width: 31rem; margin: 0; color: var(--muted); font-size: .78rem; line-height: 1.5; text-align: right; }
+.daily-research-brief-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+.daily-research-brief-item { display: flex; min-width: 0; min-height: 8.6rem; flex-direction: column; align-items: flex-start; padding: 1rem 1.15rem 1rem 0; }
+.daily-research-brief-item + .daily-research-brief-item { padding-left: 1.15rem; border-left: 1px solid var(--line-soft); }
+.daily-research-brief-item > span { color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+.daily-research-brief-item > strong { margin-top: .48rem; color: var(--foreground); font-size: .92rem; letter-spacing: -.02em; }
+.daily-research-brief-item > small { margin-top: .28rem; color: var(--muted); font-size: .7rem; line-height: 1.45; }
+.daily-research-brief-item > a { margin: auto 0 -.35rem -.55rem; padding: .35rem .55rem; border-radius: 9999px; color: var(--muted); font-size: .7rem; font-weight: 650; transition: color 150ms var(--ease), background-color 150ms var(--ease); }
+.daily-research-brief-movements ul { display: grid; width: 100%; gap: .28rem; margin: .42rem 0 0; padding: 0; list-style: none; }
+.daily-research-brief-movements li + li { padding-top: .28rem; border-top: 1px solid var(--line-soft); }
+.daily-research-brief-movements li a { display: flex; align-items: baseline; justify-content: space-between; gap: .45rem; padding: .1rem 0; }
+.daily-research-brief-movements li strong { color: var(--foreground); font-size: .82rem; }
+.daily-research-brief-movements li small { color: var(--muted); font-size: .68rem; white-space: nowrap; }
+
 .content-section, .watchlist-preview { margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--line-soft); }
 .portfolio-intro { max-width: 51rem; }
 .portfolio-home-status { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 3rem; padding: 2rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -253,11 +270,6 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .research-basket-score small { margin-left: .12rem; color: var(--subtle); font-size: .67rem; font-weight: 600; }
 .research-basket-weight { justify-self: end; color: var(--muted); font-size: .75rem; font-weight: 650; }
 .research-basket-note { margin: .85rem 0 0; color: var(--subtle); font-size: .76rem; line-height: 1.5; }
-
-.filing-activity { margin-top: 4.5rem; }
-.filing-activity-summary { display: inline-flex; align-items: baseline; gap: .5rem; margin: 0; color: var(--muted); }
-.filing-activity-summary strong { color: var(--foreground); font-size: 2rem; letter-spacing: -.06em; }
-.filing-activity-summary span { font-size: .94rem; }
 
 .daily-update-control { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-top: 4.5rem; padding: 1.35rem 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
 .daily-update-control h2 { margin-bottom: .35rem; }
@@ -564,6 +576,8 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .row-menu-popover button:hover { background: var(--surface-raised); }
   .research-basket-list li:hover::before { opacity: 1; }
   .portfolio-holdings-list li:hover::before { opacity: 1; }
+  .daily-research-brief-item > a:hover { background: var(--surface-raised); color: var(--foreground); }
+  .daily-research-brief-movements li a:hover strong { color: #d1d5db; }
 }
 
 @media (max-width: 900px) {
@@ -571,6 +585,10 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .nav-link { padding-right: .65rem; padding-left: .65rem; }
   .header-search { width: min(15rem, 24vw); }
   .today-grid { grid-template-columns: 1fr; gap: 0; }
+  .daily-research-brief-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .daily-research-brief-item { border-bottom: 1px solid var(--line-soft); }
+  .daily-research-brief-item:nth-child(odd) { padding-left: 0; border-left: 0; }
+  .daily-research-brief-item:nth-child(5) { grid-column: 1 / -1; border-bottom: 0; }
   .watchlist-preview { margin-top: 3.5rem; }
   .watchlist-preview-scroll-region { max-height: min(55vh, 34rem); }
   .today-ranking-scroll .scroll-fade-region { max-height: min(55vh, 34rem); }
@@ -604,7 +622,8 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .daily-update-action { width: 100%; justify-items: start; }
   .daily-update-message { text-align: left; }
   .daily-update-summary { grid-template-columns: 1fr; gap: 1.1rem; }
-  .filing-activity { margin-top: 3.5rem; }
+  .daily-research-brief-heading { align-items: flex-start; flex-direction: column; gap: .45rem; }
+  .daily-research-brief-heading > p { text-align: left; }
   .research-basket-heading, .research-basket-context { align-items: flex-start; flex-direction: column; gap: .8rem; }
   .research-basket-pending { grid-template-columns: 1fr; gap: .8rem; }
   .research-basket-context p:last-child { text-align: left; }
@@ -621,6 +640,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .section-context { max-width: none; text-align: left; }
   .daily-update-summary dl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
   .daily-update-summary > .text-link { margin-left: -.85rem; }
+  .daily-research-brief-grid { grid-template-columns: 1fr; }
+  .daily-research-brief-item, .daily-research-brief-item + .daily-research-brief-item { min-height: 7.25rem; padding: .95rem 0; border-left: 0; }
+  .daily-research-brief-item:nth-child(5) { grid-column: auto; }
   .operations-list { grid-template-columns: 1fr; }
   .operations-list > div, .operations-list > div:first-child, .operations-list > div:last-child { min-height: 0; padding: 1rem 0; border-right: 0; border-bottom: 1px solid var(--line-soft); }
   .operations-list > div:last-child { border-bottom: 0; }
