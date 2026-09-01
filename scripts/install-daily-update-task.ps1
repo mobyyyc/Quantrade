@@ -23,7 +23,9 @@ $dailyUpdateScript = (Resolve-Path (Join-Path $workspaceRoot "scripts\run-daily-
 $envFile = (Resolve-Path (Join-Path $workspaceRoot ".env")).Path
 $powershellExecutable = (Get-Command powershell.exe -ErrorAction Stop).Source
 $pythonLauncher = (Get-Command py.exe -ErrorAction Stop).Source
-$currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+$currentIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+$currentUser = $currentIdentity.Name
+$currentUserSid = $currentIdentity.User.Value
 $triggerTime = [datetime]::Today.Add(
     [TimeSpan]::ParseExact($At, 'hh\:mm', [System.Globalization.CultureInfo]::InvariantCulture)
 )
@@ -32,6 +34,7 @@ $actionArguments = @(
     "-NoLogo",
     "-NoProfile",
     "-NonInteractive",
+    "-WindowStyle Hidden",
     "-ExecutionPolicy Bypass",
     "-File `"$dailyUpdateScript`"",
     "-EnvFile `"$envFile`""
@@ -59,6 +62,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -RestartCount 2 `
     -RestartInterval (New-TimeSpan -Minutes 10) `
     -StartWhenAvailable `
+    -Hidden `
     -RunOnlyIfNetworkAvailable `
     -WakeToRun `
     -AllowStartIfOnBatteries `
@@ -83,11 +87,14 @@ $registered = Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
 $registeredAction = @($registered.Actions)[0]
 $registeredTrigger = @($registered.Triggers)[0]
 $expectedScriptArgument = "-File `"$dailyUpdateScript`""
+$registeredUserSid = ([System.Security.Principal.NTAccount] $registered.Principal.UserId).Translate(
+    [System.Security.Principal.SecurityIdentifier]
+).Value
 if (
     $registeredAction.Execute -ne $powershellExecutable `
     -or -not $registeredAction.Arguments.Contains($expectedScriptArgument) `
     -or $registeredAction.WorkingDirectory -ne $workspaceRoot `
-    -or $registered.Principal.UserId -ne $currentUser
+    -or $registeredUserSid -ne $currentUserSid
 ) {
     throw "The registered task does not match the canonical Quantrade launch contract."
 }
@@ -103,6 +110,7 @@ if (
     EnvironmentFile = $envFile
     PowerShell = $powershellExecutable
     PythonLauncher = $pythonLauncher
+    Contract = "windows_daily_update_task_v2"
     CodexRequired = $false
     WebAppRequired = $false
 }

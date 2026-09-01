@@ -28,7 +28,7 @@ $powershellExecutable = (Get-Command powershell.exe -ErrorAction Stop).Source
 $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 $triggerTime = [datetime]::Today.Add([TimeSpan]::ParseExact($At, 'hh\:mm', [Globalization.CultureInfo]::InvariantCulture))
 $actionArguments = @(
-    "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy Bypass",
+    "-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle Hidden", "-ExecutionPolicy Bypass",
     "-File `"$backupScript`"", "-EnvFile `"$envFile`"", "-BackupDirectory `"$resolvedBackupDirectory`"",
     "-RetentionDays $RetentionDays", "-MinimumBackups $MinimumBackups"
 ) -join " "
@@ -36,15 +36,15 @@ $action = New-ScheduledTaskAction -Execute $powershellExecutable -Argument $acti
 $trigger = New-ScheduledTaskTrigger -Daily -At $triggerTime
 $principal = New-ScheduledTaskPrincipal -UserId $currentUser -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 2) `
-    -StartWhenAvailable -WakeToRun -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
-$description = "Creates and verifies an atomic Quantrade PostgreSQL backup, then applies $RetentionDays-day retention while preserving at least $MinimumBackups archives. Codex and the web app are not required."
+    -StartWhenAvailable -Hidden -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+$description = "Silently creates and verifies an atomic Quantrade PostgreSQL backup when the computer is available, then applies $RetentionDays-day retention while preserving at least $MinimumBackups archives. It does not wake the computer. Codex and the web app are not required."
 
 if (-not $PSCmdlet.ShouldProcess($TaskName, "Register or replace Windows scheduled backup task")) { return }
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal `
     -Settings $settings -Description $description -Force | Out-Null
 
 [pscustomobject]@{
-    Contract = "windows_postgresql_backup_task_v1"
+    Contract = "windows_postgresql_backup_task_v2"
     TaskName = $TaskName
     Schedule = "Daily $At $expectedTimeZone"
     BackupDirectory = $resolvedBackupDirectory

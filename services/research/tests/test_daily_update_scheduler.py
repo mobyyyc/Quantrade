@@ -17,6 +17,10 @@ class DailyUpdateSchedulerContractTests(unittest.TestCase):
             "RunOnlyIfNetworkAvailable",
             "RestartCount 2",
             "LogonType Interactive",
+            "currentUserSid",
+            "registeredUserSid",
+            '"-WindowStyle Hidden"',
+            "-Hidden",
         ):
             self.assertIn(contract, installer)
         self.assertNotIn("quantrade_research.manual_daily_update", installer)
@@ -30,7 +34,7 @@ class DailyUpdateSchedulerContractTests(unittest.TestCase):
     def test_verifier_checks_the_installed_contract(self) -> None:
         verifier = (REPOSITORY_ROOT / "scripts" / "verify-daily-update-task.ps1").read_text(encoding="utf-8")
         for contract in (
-            "windows_daily_update_task_v1",
+            "windows_daily_update_task_v2",
             "run-daily-update.ps1",
             "LogonType",
             "RunLevel",
@@ -38,6 +42,7 @@ class DailyUpdateSchedulerContractTests(unittest.TestCase):
             "RunOnlyIfNetworkAvailable",
             "StartWhenAvailable",
             "WakeToRun",
+            "Hidden",
             "StartBoundary",
         ):
             self.assertIn(contract, verifier)

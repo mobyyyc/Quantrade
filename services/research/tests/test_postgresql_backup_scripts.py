@@ -16,6 +16,8 @@ class PostgreSqlBackupScriptContractTests(unittest.TestCase):
         self.assertIn("Get-FileHash", script)
         self.assertIn("$MinimumBackups", script)
         self.assertIn("$RetentionDays", script)
+        self.assertIn('Get-ChildItem -LiteralPath $resolvedBackupDirectory -Filter "*.partial"', script)
+        self.assertIn("RemovedStalePartials", script)
         self.assertIn('contract = "quantrade_postgresql_backup_v1"', script)
 
     def test_password_is_passed_through_environment_not_command_arguments(self) -> None:
@@ -38,11 +40,15 @@ class PostgreSqlBackupScriptContractTests(unittest.TestCase):
         verifier = (SCRIPTS / "verify-postgresql-backup-task.ps1").read_text(encoding="utf-8")
         for content in (installer, verifier):
             self.assertIn("backup-postgresql.ps1", content)
-            self.assertIn("windows_postgresql_backup_task_v1", content)
+            self.assertIn("windows_postgresql_backup_task_v2", content)
             self.assertIn("CodexRequired = $false", content)
             self.assertIn("WebAppRequired = $false", content)
         self.assertIn("New-ScheduledTaskTrigger -Daily", installer)
         self.assertIn("-MultipleInstances IgnoreNew", installer)
+        self.assertIn('"-WindowStyle Hidden"', installer)
+        self.assertIn("-Hidden", installer)
+        self.assertNotIn("-WakeToRun", installer)
+        self.assertIn("$task.Settings.WakeToRun", verifier)
 
     def test_backup_directory_is_git_ignored(self) -> None:
         gitignore = (REPOSITORY_ROOT / ".gitignore").read_text(encoding="utf-8")

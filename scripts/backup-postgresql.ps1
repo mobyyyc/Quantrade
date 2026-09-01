@@ -21,12 +21,17 @@ $lockPath = Join-Path $resolvedBackupDirectory ".backup.lock"
 $lock = $null
 $partialPath = $null
 $metadataPartialPath = $null
+$removedStalePartials = [System.Collections.Generic.List[string]]::new()
 
 try {
     try {
         $lock = [System.IO.File]::Open($lockPath, 'OpenOrCreate', 'ReadWrite', 'None')
     } catch {
         throw "Another Quantrade PostgreSQL backup is already running."
+    }
+    foreach ($stalePartial in @(Get-ChildItem -LiteralPath $resolvedBackupDirectory -Filter "*.partial" -File)) {
+        Remove-Item -LiteralPath $stalePartial.FullName -Force
+        $removedStalePartials.Add($stalePartial.Name)
     }
     $timestamp = [DateTime]::UtcNow.ToString("yyyyMMddTHHmmssfffZ")
     $fileName = "$($database.Database)_$timestamp.dump"
@@ -84,6 +89,7 @@ try {
         RestoreEntries = $entryCount
         RetentionDays = $RetentionDays
         MinimumBackups = $MinimumBackups
+        RemovedStalePartials = @($removedStalePartials)
         RemovedExpiredBackups = @($removed)
     } | ConvertTo-Json -Depth 4
 } finally {

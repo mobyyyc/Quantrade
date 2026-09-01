@@ -14,6 +14,7 @@ $taskInfo = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction Stop
 $action = @($task.Actions)[0]
 $trigger = @($task.Triggers)[0]
 $expectedArguments = @(
+    "-WindowStyle Hidden",
     "-File `"$dailyUpdateScript`"",
     "-EnvFile `"$envFile`""
 )
@@ -30,6 +31,7 @@ if ($task.Settings.MultipleInstances -ne "IgnoreNew") { $violations.Add("overlap
 if (-not $task.Settings.RunOnlyIfNetworkAvailable) { $violations.Add("network availability is not required") }
 if (-not $task.Settings.StartWhenAvailable) { $violations.Add("missed-run recovery is disabled") }
 if (-not $task.Settings.WakeToRun) { $violations.Add("wake-to-run is disabled") }
+if (-not $task.Settings.Hidden) { $violations.Add("task is not hidden") }
 if (-not $trigger.Enabled) { $violations.Add("trigger is disabled") }
 if (-not $trigger.StartBoundary.Contains("T$At")) { $violations.Add("unexpected trigger time") }
 
@@ -38,7 +40,7 @@ if ($violations.Count) {
 }
 
 [pscustomobject]@{
-    Contract = "windows_daily_update_task_v1"
+    Contract = "windows_daily_update_task_v2"
     TaskName = $task.TaskName
     State = $task.State
     User = $task.Principal.UserId
@@ -55,6 +57,7 @@ if ($violations.Count) {
     RunOnlyIfNetworkAvailable = $task.Settings.RunOnlyIfNetworkAvailable
     StartWhenAvailable = $task.Settings.StartWhenAvailable
     WakeToRun = $task.Settings.WakeToRun
+    Hidden = $task.Settings.Hidden
     CodexRequired = $false
     WebAppRequired = $false
 }
