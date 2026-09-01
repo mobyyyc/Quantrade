@@ -153,6 +153,25 @@ python -m quantrade_research.ingest_market_data \
 This requires paired local Alpaca credentials and an already-ingested security
 master. The command is intentionally not a license or data-quality approval.
 
+### Periodic market-data reconciliation
+
+Run the read-only reconciliation after a completed daily update, or at least
+monthly. It refetches a bounded Alpaca window and compares raw and
+split-adjusted prices, expected SPY sessions, splits, cash dividends, and stock
+dividends with the normalized ledger. It never repairs data in place. Provider
+total-return marks remain part of the separate wealth-ledger research audit.
+
+```powershell
+.\scripts\run-market-reconciliation.ps1
+```
+
+The default window is the 45 calendar days ending on the latest stored SPY
+session. Reports are immutable local files under
+`data/derived/market-reconciliation/`. Use `-FailOnFindings` in a monitoring or
+release check; a non-clean result then exits unsuccessfully after writing the
+report. Provider omissions and ledger omissions remain separate so a free-feed
+coverage limitation is not mistaken for local data loss.
+
 ## SEC filings and XBRL facts
 
 P2.4 fetches a CIK's submissions metadata and company-facts payload, stores
