@@ -199,6 +199,38 @@ cohort:
 .\scripts\run-historical-sec-backfill.ps1
 ```
 
+### SEC coverage reports
+
+P14.2 inventories the fixed `sp500_current_survivors_v1` cohort from one
+database-enforced read-only, repeatable-read snapshot. It uses the existing
+point-in-time resolver for the seven accounting concepts selected by the
+Phase 9C feature pipeline; it does not download filings or change source data.
+
+```powershell
+.\scripts\run-sec-coverage-report.ps1
+# Full historical reporting-period inventory at an explicit cutoff:
+.\scripts\run-sec-coverage-report.ps1 -PeriodStart 2020-01-01 -AsOf '2026-09-01T23:00:00-04:00'
+```
+
+The default cutoff is now; the default fact window covers period-end dates in
+the preceding 730 calendar days. Filing counts include all stored approved-form
+filings accepted by the cutoff, independently of the narrower fact window.
+Progress prints once per 50 companies. Each new directory under
+`data/derived/sec-coverage/` contains `summary.md`, detailed `coverage.json`,
+and a last-written `manifest.json` with checksums. A directory without the
+completed manifest is an incomplete report, not a published result. Existing
+reports are never overwritten.
+
+Breakdowns cover every company (including zero-coverage companies), canonical
+and amended submitted forms, selected concepts/units, and exact reporting
+start/end dates. Repeated versions of the same accession-level fact do not
+inflate coverage; separate amended accessions remain separate. Later observed
+revisions cannot enter earlier cutoffs. Frozen legacy values retain their
+explicit Tier-B limitation. Missing tags are not proof of ingestion failure,
+and inventory presence alone is not a model-readiness or SEC-completeness check.
+An 8-K does not have to supply accounting facts; YTD and annual facts are not
+relabelled as individual quarters.
+
 ## Data-quality gates
 
 P2.5 supplies fail-closed checks for the next pipeline stage. A dated panel or

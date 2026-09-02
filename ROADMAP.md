@@ -193,7 +193,7 @@ Phase 14 strengthens the existing free-data foundation without changing the
 active model or weakening point-in-time rules.
 
 - [x] P14.1: periodically reconcile Alpaca prices, splits, dividends, and missing sessions against the normalized market-data ledger.
-- [ ] P14.2: publish SEC coverage reports by company, accepted form, selected concept, and reporting period.
+- [x] P14.2: publish SEC coverage reports by company, accepted form, selected concept, and reporting period.
 - [ ] P14.3: monitor database size and per-table growth, with thresholds for unexpected expansion.
 - [ ] P14.4: enforce documented retention rules for manifests, compact receipts, logs, and raw artifacts.
 - [ ] P14.5: define provider-failover interfaces so another market-data source can be added without rewriting normalized ingestion.
