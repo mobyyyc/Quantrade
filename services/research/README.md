@@ -231,6 +231,31 @@ and inventory presence alone is not a model-readiness or SEC-completeness check.
 An 8-K does not have to supply accounting facts; YTD and annual facts are not
 relabelled as individual quarters.
 
+### Database storage monitoring
+
+Run the P14.3 storage monitor after large backfills and at least weekly:
+
+```powershell
+.\scripts\run-database-storage-monitor.ps1
+.\scripts\run-database-storage-monitor.ps1 -FailOnWarning
+```
+
+It measures total database allocation plus heap, index, auxiliary/TOAST, and
+estimated row counts for every `quantrade` table from a read-only,
+repeatable-read transaction. The first run establishes a baseline. Later runs
+compare only with the latest completed report whose checksum is valid; partial
+or tampered directories are ignored. Reports are immutable under
+`data/derived/database-storage/` and the completion manifest is written last.
+
+Database warnings require both 512 MiB and 5% growth; critical findings require
+both 2 GiB and 15%. Per-table warnings require both 128 MiB and 10%; critical
+findings require both 512 MiB and 30%. These versioned thresholds reduce noise
+from ordinary daily updates while catching sudden large expansion. New or
+removed tables are informational. `-FailOnWarning` makes warning/critical
+results fail a monitoring check after preserving its report. The command never
+deletes, vacuums, downloads, or modifies database data, and row counts are
+explicitly statistical estimates rather than expensive exact scans.
+
 ## Data-quality gates
 
 P2.5 supplies fail-closed checks for the next pipeline stage. A dated panel or
