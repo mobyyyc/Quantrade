@@ -19,6 +19,25 @@ The private-beta routes render from dated research outputs when a normalized
 research database is connected. Without it, they state the unavailable reason
 instead of showing invented market examples.
 
+## End-to-end tests
+
+From the repository root, run:
+
+```bash
+pnpm test:e2e
+```
+
+The suite builds the production web app, resets a dedicated `quantrade_e2e`
+database, applies every research migration, loads deterministic fixtures, and
+tests search, rankings, stock details, watchlists, the streamed daily-update
+experience, and official portfolio history in Chromium. It never runs the real
+daily research worker or writes to the production research database.
+
+The configured PostgreSQL user must be allowed to create databases. By default,
+the suite derives a local administrator connection from `.env.local`; set
+`QUANTRADE_E2E_ADMIN_DATABASE_URL` explicitly when using another test host. The
+database name is always forced to `quantrade_e2e` and is reset before every run.
+
 ## Dated research APIs
 
 P6.2 exposes Node.js route handlers that read only normalized research outputs:
