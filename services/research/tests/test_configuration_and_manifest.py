@@ -13,6 +13,12 @@ from quantrade_research.run_manifest import RunManifest, SourceInput
 
 
 class SettingsTests(unittest.TestCase):
+    def test_market_provider_defaults_to_alpaca_and_is_not_secret(self) -> None:
+        self.assertEqual(Settings.from_environment({}).market_data_provider, "alpaca")
+        settings = Settings.from_environment({"MARKET_DATA_PROVIDER": "ALTERNATE"})
+        self.assertEqual(settings.market_data_provider, "alternate")
+        self.assertEqual(settings.redacted_summary()["marketDataProvider"], "alternate")
+
     def test_alpaca_credentials_must_be_paired(self) -> None:
         with self.assertRaises(ConfigurationError):
             Settings.from_environment({"APCA_API_KEY_ID": "only-one-half"})

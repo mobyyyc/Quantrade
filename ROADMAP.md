@@ -196,7 +196,7 @@ active model or weakening point-in-time rules.
 - [x] P14.2: publish SEC coverage reports by company, accepted form, selected concept, and reporting period.
 - [x] P14.3: monitor database size and per-table growth, with thresholds for unexpected expansion.
 - [x] P14.4: enforce documented retention rules for manifests, compact receipts, logs, and raw artifacts. See `docs/STORAGE_RETENTION_POLICY.md`.
-- [ ] P14.5: define provider-failover interfaces so another market-data source can be added without rewriting normalized ingestion.
+- [x] P14.5: define provider-failover interfaces so another market-data source can be added without rewriting normalized ingestion. See `PROVIDER_FAILOVER.md`.
 - [ ] P14.6: evaluate an approved paid historical-membership source when Phase 11 is authorized; keep verified data isolated from Tier-B research.
 
 ## Phase 15: quality, performance, and security

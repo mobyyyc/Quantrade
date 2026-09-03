@@ -27,6 +27,7 @@ class Settings:
     database_url: str | None = field(repr=False)
     raw_artifacts_uri: str | None
     sec_user_agent: str | None
+    market_data_provider: str
     alpaca_key_id: str | None = field(repr=False)
     alpaca_secret_key: str | None = field(repr=False)
     fred_api_key: str | None = field(repr=False)
@@ -50,6 +51,7 @@ class Settings:
             database_url=_optional_value(source, "DATABASE_URL"),
             raw_artifacts_uri=_optional_value(source, "RAW_ARTIFACTS_URI"),
             sec_user_agent=_optional_value(source, "SEC_USER_AGENT"),
+            market_data_provider=(_optional_value(source, "MARKET_DATA_PROVIDER") or "alpaca").lower(),
             alpaca_key_id=alpaca_key_id,
             alpaca_secret_key=alpaca_secret_key,
             fred_api_key=_optional_value(source, "FRED_API_KEY"),
@@ -79,6 +81,7 @@ class Settings:
             "databaseConfigured": self.database_url is not None,
             "rawArtifactsConfigured": self.raw_artifacts_uri is not None,
             "secUserAgentConfigured": self.sec_user_agent is not None,
+            "marketDataProvider": self.market_data_provider,
             "alpacaCredentialsConfigured": self.alpaca_key_id is not None,
             "fredCredentialsConfigured": self.fred_api_key is not None,
         }

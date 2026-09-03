@@ -1,4 +1,4 @@
-"""PostgreSQL persistence for normalized Alpaca daily bars and corporate actions."""
+"""Provider-neutral PostgreSQL persistence for normalized market data."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from hashlib import sha256
 import json
 from typing import Callable
 
-from .alpaca import AlpacaCorporateAction, AlpacaDailyBar
+from .market_provider import CorporateAction, DailyBar
 from .security_master import FileRawArtifactStore, RawArtifact
 
 
@@ -39,29 +39,32 @@ class PostgresMarketDataRepository:
     def close(self) -> None:
         self._connection.close()
 
-    def persist_raw_artifact(self, artifact: RawArtifact, source_reference: str) -> str:
+    def persist_raw_artifact(self, artifact: RawArtifact, source_reference: str, *, provider: str) -> str:
         with self._connection.cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO quantrade.raw_artifacts
                     (provider, source_reference, storage_uri, retrieved_at, content_sha256)
-                VALUES ('alpaca', %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT (storage_uri) DO UPDATE SET storage_uri = EXCLUDED.storage_uri
-                RETURNING raw_artifact_id
+                RETURNING raw_artifact_id, provider
                 """,
-                (source_reference, artifact.storage_uri, artifact.retrieved_at, artifact.content_sha256),
+                (provider, source_reference, artifact.storage_uri, artifact.retrieved_at, artifact.content_sha256),
             )
-            identifier = str(cursor.fetchone()[0])
+            row = cursor.fetchone()
+            if row[1] != provider:
+                raise ValueError("raw artifact storage URI is already owned by another provider")
+            identifier = str(row[0])
             cursor.execute(
                 """INSERT INTO quantrade.raw_documents (provider, content_sha256, canonical_storage_uri)
-                   VALUES ('alpaca', %s, %s)
+                   VALUES (%s, %s, %s)
                    ON CONFLICT (provider, content_sha256) DO NOTHING""",
-                (artifact.content_sha256, artifact.storage_uri),
+                (provider, artifact.content_sha256, artifact.storage_uri),
             )
             cursor.execute(
                 """SELECT raw_document_id FROM quantrade.raw_documents
-                   WHERE provider = 'alpaca' AND content_sha256 = %s""",
-                (artifact.content_sha256,),
+                   WHERE provider = %s AND content_sha256 = %s""",
+                (provider, artifact.content_sha256),
             )
             document_id = cursor.fetchone()[0]
             cursor.execute(
@@ -76,38 +79,38 @@ class PostgresMarketDataRepository:
 
     def persist_compact_receipt(
         self, payload: bytes, source_reference: str, response_category: str,
-        retrieved_at: datetime, *, parser_version: str,
+        retrieved_at: datetime, *, parser_version: str, provider: str,
     ) -> CompactMarketReceipt:
         """Persist market-source metadata without retaining the response payload."""
         content_sha256 = sha256(payload).hexdigest()
         source_key = sha256(source_reference.encode("utf-8")).hexdigest()
-        storage_uri = f"receipt://alpaca/{source_key}/{content_sha256}"
+        storage_uri = f"receipt://{provider}/{source_key}/{content_sha256}"
         with self._connection.cursor() as cursor:
             cursor.execute(
                 """INSERT INTO quantrade.raw_artifacts
                        (provider, source_reference, storage_uri, retrieved_at, content_sha256)
-                   VALUES ('alpaca', %s, %s, %s, %s)
+                   VALUES (%s, %s, %s, %s, %s)
                    ON CONFLICT (storage_uri) DO UPDATE SET storage_uri = EXCLUDED.storage_uri
                    RETURNING raw_artifact_id""",
-                (source_reference, storage_uri, retrieved_at, content_sha256),
+                (provider, source_reference, storage_uri, retrieved_at, content_sha256),
             )
             raw_artifact_id = str(cursor.fetchone()[0])
             cursor.execute(
                 """INSERT INTO quantrade.source_receipts
                        (provider, source_reference, response_category, content_sha256, byte_count, parser_version,
                         payload_retained, content_type)
-                   VALUES ('alpaca', %s, %s, %s, %s, %s, FALSE, 'application/json')
+                   VALUES (%s, %s, %s, %s, %s, %s, FALSE, 'application/json')
                    ON CONFLICT (provider, source_reference, content_sha256, parser_version) DO NOTHING
                    RETURNING source_receipt_id""",
-                (source_reference, response_category, content_sha256, len(payload), parser_version),
+                (provider, source_reference, response_category, content_sha256, len(payload), parser_version),
             )
             row = cursor.fetchone()
             if row is None:
                 cursor.execute(
                     """SELECT source_receipt_id FROM quantrade.source_receipts
-                       WHERE provider = 'alpaca' AND source_reference = %s
+                       WHERE provider = %s AND source_reference = %s
                          AND content_sha256 = %s AND parser_version = %s""",
-                    (source_reference, content_sha256, parser_version),
+                    (provider, source_reference, content_sha256, parser_version),
                 )
                 row = cursor.fetchone()
             source_receipt_id = str(row[0])
@@ -215,8 +218,8 @@ class PostgresMarketDataRepository:
         return row[0]
 
     def upsert_daily_bars(
-        self, bars: list[AlpacaDailyBar], adjustment_basis: str, raw_artifact_id: str,
-        source_reference: str, available_at: datetime | Callable[[AlpacaDailyBar], datetime],
+        self, bars: list[DailyBar], adjustment_basis: str, raw_artifact_id: str,
+        source_reference: str, available_at: datetime | Callable[[DailyBar], datetime],
         availability_rule_id: str, *, source_receipt_id: str | None = None,
         skip_existing: bool = False,
     ) -> int:
@@ -251,9 +254,9 @@ class PostgresMarketDataRepository:
         return persisted
 
     def upsert_benchmark_daily_bars(
-        self, bars: list[AlpacaDailyBar], benchmark_ticker: str, adjustment_basis: str,
+        self, bars: list[DailyBar], benchmark_ticker: str, adjustment_basis: str,
         raw_artifact_id: str, source_reference: str,
-        available_at: datetime | Callable[[AlpacaDailyBar], datetime], availability_rule_id: str,
+        available_at: datetime | Callable[[DailyBar], datetime], availability_rule_id: str,
         *, source_receipt_id: str | None = None, skip_existing: bool = False,
     ) -> int:
         persisted = 0
@@ -287,8 +290,8 @@ class PostgresMarketDataRepository:
         return persisted
 
     def upsert_corporate_actions(
-        self, actions: list[AlpacaCorporateAction], raw_artifact_id: str, source_reference: str,
-        available_at: datetime | Callable[[AlpacaCorporateAction], datetime], *,
+        self, actions: list[CorporateAction], raw_artifact_id: str, source_reference: str,
+        available_at: datetime | Callable[[CorporateAction], datetime], *,
         skip_unmapped: bool = False, source_receipt_id: str | None = None,
         retain_provider_payload: bool = True,
     ) -> int:
@@ -322,10 +325,10 @@ class PostgresMarketDataRepository:
         return persisted
 
     def insert_benchmark_corporate_actions(
-        self, *, benchmark_ticker: str, actions: list[AlpacaCorporateAction],
+        self, *, benchmark_ticker: str, actions: list[CorporateAction],
         raw_artifact_id: str, source_reference: str, source_receipt_id: str | None,
         availability_rule_id: str,
-        available_at: datetime | Callable[[AlpacaCorporateAction], datetime],
+        available_at: datetime | Callable[[CorporateAction], datetime],
     ) -> int:
         """Append compact benchmark actions without polluting the equity master."""
         persisted = 0
@@ -357,14 +360,14 @@ class PostgresMarketDataRepository:
 def record_market_source(
     repository: PostgresMarketDataRepository, store: FileRawArtifactStore, payload: bytes,
     retrieved_at: datetime, source_reference: str, *, response_category: str,
-    raw_category: str, compact_receipts: bool, parser_version: str,
+    raw_category: str, compact_receipts: bool, parser_version: str, provider: str,
 ) -> MarketSource:
     """Store either a full raw response or a compact, hash-backed source receipt."""
     if compact_receipts:
         receipt = repository.persist_compact_receipt(
             payload, source_reference, response_category, retrieved_at,
-            parser_version=parser_version,
+            parser_version=parser_version, provider=provider,
         )
         return MarketSource(receipt.raw_artifact_id, receipt.storage_uri, receipt.source_receipt_id)
     artifact = store.store(payload, retrieved_at, category=raw_category)
-    return MarketSource(repository.persist_raw_artifact(artifact, source_reference), artifact.storage_uri)
+    return MarketSource(repository.persist_raw_artifact(artifact, source_reference, provider=provider), artifact.storage_uri)

@@ -60,7 +60,9 @@ def execute_historical_corporate_action_chunks(*, database_url: str, raw_artifac
                     payload = client.fetch_corporate_actions(list(chunk.symbols), chunk.start_date, chunk.end_date, token)
                     actions, token = parse_corporate_actions(payload)
                     artifact = store.store(payload, retrieved_at, category="historical-corporate-actions")
-                    artifact_id = repository.persist_raw_artifact(artifact, ALPACA_CORPORATE_ACTIONS_URL)
+                    artifact_id = repository.persist_raw_artifact(
+                        artifact, ALPACA_CORPORATE_ACTIONS_URL, provider="alpaca",
+                    )
                     chunk_actions += repository.upsert_corporate_actions(
                         actions, artifact_id, ALPACA_CORPORATE_ACTIONS_URL,
                         lambda action: historical_eod_available_at(action.process_date),

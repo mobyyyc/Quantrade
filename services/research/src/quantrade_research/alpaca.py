@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal
 import json
-from typing import Any
 from urllib.parse import urlencode
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+
+from .market_provider import (
+    CorporateAction as AlpacaCorporateAction,
+    DailyBar as AlpacaDailyBar,
+    MarketProviderMetadata,
+    ProviderPage,
+)
 
 
 ALPACA_BARS_URL = "https://data.alpaca.markets/v2/stocks/bars"
@@ -28,31 +33,6 @@ def _alpaca_symbol(ticker: str) -> str:
 def _security_master_ticker(ticker: str) -> str:
     """Translate Alpaca's share-class separator back to the master notation."""
     return ticker.upper().replace(".", "-")
-
-
-@dataclass(frozen=True, slots=True)
-class AlpacaDailyBar:
-    ticker: str
-    session_date: date
-    observed_at: datetime
-    open_price: Decimal
-    high_price: Decimal
-    low_price: Decimal
-    close_price: Decimal
-    volume: Decimal
-
-
-@dataclass(frozen=True, slots=True)
-class AlpacaCorporateAction:
-    provider_action_id: str
-    ticker: str
-    action_type: str
-    process_date: date
-    effective_date: date | None
-    cash_amount: Decimal | None
-    ratio_numerator: Decimal | None
-    ratio_denominator: Decimal | None
-    payload: dict[str, Any]
 
 
 def _parse_timestamp(value: object) -> datetime:
@@ -182,3 +162,51 @@ class AlpacaClient:
         if page_token:
             parameters["page_token"] = page_token
         return self._fetch(ALPACA_CORPORATE_ACTIONS_URL, parameters)
+
+
+ALPACA_PROVIDER_METADATA = MarketProviderMetadata(
+    provider_id="alpaca",
+    bars_source_reference=ALPACA_BARS_URL,
+    actions_source_reference=ALPACA_CORPORATE_ACTIONS_URL,
+    bars_response_category="alpaca_daily_bars",
+    actions_response_category="alpaca_corporate_actions",
+    bars_parser_version="alpaca_parser_v1",
+    actions_parser_version="alpaca_corporate_actions_v1",
+    equity_bar_availability_rule=("alpaca_retrieval", "v1"),
+    benchmark_bar_availability_rule=("alpaca_retrieval", "v1-benchmark"),
+    benchmark_action_availability_rule=("alpaca_retrieval", "v1-benchmark-corporate-action"),
+)
+
+
+class AlpacaMarketDataProvider:
+    """Translate Alpaca transport and wire formats into canonical records."""
+
+    metadata = ALPACA_PROVIDER_METADATA
+    _adjustments = {
+        "unadjusted": "raw",
+        "split_adjusted": "split",
+        "total_return_adjusted": "all",
+    }
+
+    def __init__(self, key_id: str, secret_key: str, timeout_seconds: float = 30.0) -> None:
+        self._client = AlpacaClient(key_id, secret_key, timeout_seconds)
+
+    def fetch_daily_bars(
+        self, symbols: list[str], start: date, end: date, adjustment_basis: str,
+        page_token: str | None = None,
+    ) -> ProviderPage[AlpacaDailyBar]:
+        try:
+            adjustment = self._adjustments[adjustment_basis]
+        except KeyError as error:
+            raise AlpacaError(f"unsupported canonical adjustment basis: {adjustment_basis}") from error
+        payload = self._client.fetch_daily_bars(symbols, start, end, adjustment, page_token)
+        records, token = parse_daily_bars(payload)
+        return ProviderPage(tuple(records), payload, token)
+
+    def fetch_corporate_actions(
+        self, symbols: list[str], start: date, end: date,
+        page_token: str | None = None,
+    ) -> ProviderPage[AlpacaCorporateAction]:
+        payload = self._client.fetch_corporate_actions(symbols, start, end, page_token)
+        records, token = parse_corporate_actions(payload)
+        return ProviderPage(tuple(records), payload, token)

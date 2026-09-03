@@ -26,6 +26,7 @@ in `.env.example`.
 - [Historical free-track coverage](data/derived/historical-coverage/)
 - [Canonical daily-update workflow](DAILY_UPDATE_WORKFLOW.md)
 - [Operational monitoring](OPERATIONAL_MONITORING.md)
+- [Market-data provider and failover boundary](PROVIDER_FAILOVER.md)
 - [Recovery runbook](RECOVERY_RUNBOOK.md)
 - [Release runbook](RELEASE_RUNBOOK.md)
 

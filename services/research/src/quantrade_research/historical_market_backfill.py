@@ -312,7 +312,9 @@ def execute_historical_market_chunks(
                     )
                     bars, token = parse_daily_bars(payload)
                     artifact = store.store(payload, retrieved_at, category="historical-market-data")
-                    artifact_id = repository.persist_raw_artifact(artifact, ALPACA_BARS_URL)
+                    artifact_id = repository.persist_raw_artifact(
+                        artifact, ALPACA_BARS_URL, provider="alpaca",
+                    )
                     persisted = repository.upsert_daily_bars(
                         bars, chunk.adjustment_basis, artifact_id, ALPACA_BARS_URL,
                         lambda bar: bar_available_at(bar.session_date), rule_id,
@@ -355,7 +357,9 @@ def execute_historical_market_chunks(
                     payload = client.fetch_daily_bars(["SPY"], chunk.start_date, chunk.end_date, chunk.alpaca_adjustment, token)
                     bars, token = parse_daily_bars(payload)
                     artifact = store.store(payload, retrieved_at, category="historical-benchmark-data")
-                    artifact_id = repository.persist_raw_artifact(artifact, ALPACA_BARS_URL)
+                    artifact_id = repository.persist_raw_artifact(
+                        artifact, ALPACA_BARS_URL, provider="alpaca",
+                    )
                     persisted = repository.upsert_benchmark_daily_bars(
                         bars, "SPY", chunk.adjustment_basis, artifact_id, ALPACA_BARS_URL,
                         lambda bar: bar_available_at(bar.session_date), benchmark_rule_id,

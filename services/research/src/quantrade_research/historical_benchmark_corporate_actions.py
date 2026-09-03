@@ -48,6 +48,7 @@ def backfill_benchmark_corporate_actions(
                     "alpaca_corporate_actions",
                     retrieved_at,
                     parser_version=PARSER_VERSION,
+                    provider="alpaca",
                 )
                 persisted += repository.insert_benchmark_corporate_actions(
                     benchmark_ticker=benchmark_ticker,
