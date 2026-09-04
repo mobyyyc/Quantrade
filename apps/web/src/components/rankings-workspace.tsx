@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ScoreList } from "@/components/score-list";
+import { ScoreList, type ScoreListItem } from "@/components/score-list";
 import { ResearchBasket } from "@/components/research-basket";
 import { formatIssuerName, formatPublicationTime, formatResearchDate } from "@/lib/format";
 import type { DatedScore, PaperPortfolio } from "@/lib/research-read-model";
 
 const initialVisibleCount = 25;
 const movementListLimit = 5;
+export type RankingWorkspaceScore = ScoreListItem & Pick<DatedScore, "eligible" | "publishedAt">;
 
 function formatPointChange(value: number) {
   const absolute = Math.abs(value);
@@ -22,7 +23,7 @@ function MovementCompany({
   detail,
   value,
 }: {
-  score: DatedScore;
+  score: RankingWorkspaceScore;
   scoreDate: string;
   detail: string;
   value: string;
@@ -47,8 +48,8 @@ function DailyRankingMovement({
   previousScoreDate,
   portfolio,
 }: {
-  scores: DatedScore[];
-  previousScores: DatedScore[];
+  scores: RankingWorkspaceScore[];
+  previousScores: RankingWorkspaceScore[];
   scoreDate: string;
   previousScoreDate?: string;
   portfolio: PaperPortfolio | null;
@@ -130,7 +131,7 @@ function DailyRankingMovement({
   );
 }
 
-export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previousScores, portfolio }: { scores: DatedScore[]; scoreDate: string; previousScoreDate?: string; previousScores: DatedScore[]; portfolio: PaperPortfolio | null }) {
+export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previousScores, portfolio }: { scores: RankingWorkspaceScore[]; scoreDate: string; previousScoreDate?: string; previousScores: RankingWorkspaceScore[]; portfolio: PaperPortfolio | null }) {
   const [visibleCount, setVisibleCount] = useState(initialVisibleCount);
   const eligibleScores = scores.filter((score) => score.eligible);
   const withheldCount = scores.length - eligibleScores.length;

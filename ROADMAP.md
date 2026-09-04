@@ -205,7 +205,7 @@ Phase 15 prepares Quantrade to behave like a reliable beta product under
 repeat use and eventual external access.
 
 - [x] P15.1: add end-to-end tests for search, rankings, stock details, watchlists, daily updates, and official portfolio history.
-- [ ] P15.2: profile slow server-rendered pages and database queries; add indexes or bounded caching only where measurement justifies them.
+- [x] P15.2: profile slow server-rendered pages and database queries; add indexes or bounded caching only where measurement justifies them. See `docs/WEB_PERFORMANCE_PROFILE.md`.
 - [ ] P15.3: complete an accessibility audit covering keyboard navigation, focus, contrast, chart alternatives, and screen-reader labels.
 - [ ] P15.4: add database-migration verification and production web builds to continuous integration.
 - [ ] P15.5: audit secrets and configuration, rotate previously exposed provider credentials, and prevent secrets from entering source control or logs.

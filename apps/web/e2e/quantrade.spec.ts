@@ -41,6 +41,13 @@ test("watchlist persists saved companies and displays live score and price conte
 
   await page.goto(`/stocks/${microsoftId}`);
   await page.getByRole("button", { name: "Save to watchlist" }).click();
+
+  await page.goto("/");
+  const preview = page.locator("section.watchlist-preview");
+  await expect(preview.getByRole("link", { name: /AAPL Apple Inc\./ })).toBeVisible();
+  await expect(preview.getByText("$228.00")).toBeVisible();
+  await expect(preview.getByText("84/100")).toBeVisible();
+
   await page.goto("/watchlist");
 
   await expect(page.getByText("2 saved")).toBeVisible();

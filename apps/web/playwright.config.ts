@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
-import { e2eDatabaseUrls } from "./e2e/database-url";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { e2eDatabaseUrls } = require("./e2e/database-url.cjs") as {
+  e2eDatabaseUrls: () => { testUrl: string };
+};
 
 const { testUrl } = e2eDatabaseUrls();
 
@@ -9,7 +12,6 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
-  globalSetup: "./e2e/global-setup.ts",
   use: {
     baseURL: "http://127.0.0.1:3100",
     trace: "retain-on-failure",

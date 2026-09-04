@@ -255,7 +255,7 @@ function scoreFromRow(row: Record<string, unknown>): DatedScore {
   };
 }
 
-export async function listDatedScores(scoreDate: string): Promise<DatedScore[]> {
+export async function listDatedScores(scoreDate: string, securityIds?: string[]): Promise<DatedScore[]> {
   const result = await databasePool().query(
     `SELECT ss.score_snapshot_id, ss.security_id, s.issuer_name, l.ticker, ss.score_date::text AS score_date, ss.decision_at, ss.published_at, ss.score, ss.rank,
             eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at,
@@ -281,9 +281,10 @@ export async function listDatedScores(scoreDate: string): Promise<DatedScore[]> 
      LEFT JOIN quantrade.score_predictions prediction
        ON prediction.score_snapshot_id = ss.score_snapshot_id
      WHERE ss.score_date = $1
+       AND ($2::uuid[] IS NULL OR ss.security_id = ANY($2::uuid[]))
        AND ss.model_version = (SELECT model_version FROM quantrade.model_deployments ORDER BY deployed_at DESC LIMIT 1)
      ORDER BY ss.eligible DESC, ss.rank ASC NULLS LAST, ss.security_id ASC`,
-    [scoreDate],
+    [scoreDate, securityIds?.length ? securityIds : null],
   );
   return result.rows.map(scoreFromRow);
 }

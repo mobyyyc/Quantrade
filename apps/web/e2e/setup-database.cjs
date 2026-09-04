@@ -1,10 +1,12 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { Client } from "pg";
-import { e2eDatabaseUrls } from "./database-url";
+/* eslint-disable @typescript-eslint/no-require-imports */
+const fs = require("node:fs/promises");
+const path = require("node:path");
+const { Client } = require("pg");
+const { e2eDatabaseUrls } = require("./database-url.cjs");
 
-export default async function globalSetup() {
+async function setupDatabase() {
   const { adminUrl, testUrl, testDatabaseName } = e2eDatabaseUrls();
+  if (!testDatabaseName.endsWith("_e2e")) throw new Error("Refusing to reset a database without the _e2e suffix.");
   const admin = new Client({ connectionString: adminUrl });
   await admin.connect();
   try {
@@ -29,3 +31,8 @@ export default async function globalSetup() {
     await database.end();
   }
 }
+
+setupDatabase().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
+});

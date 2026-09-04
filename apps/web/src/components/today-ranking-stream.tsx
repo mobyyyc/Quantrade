@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatIssuerName, formatScore } from "@/lib/format";
-import type { DatedScore } from "@/lib/research-read-model";
+import type { ScoreListItem } from "@/components/score-list";
 
 const ROW_HEIGHT = 86;
 const OVERSCAN = 5;
 const INITIAL_VIEWPORT_HEIGHT = 592;
 
-export function TodayRankingStream({ scores }: { scores: DatedScore[] }) {
+export function TodayRankingStream({ scores }: { scores: ScoreListItem[] }) {
   const regionRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(INITIAL_VIEWPORT_HEIGHT);

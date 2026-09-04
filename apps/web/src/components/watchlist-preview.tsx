@@ -6,9 +6,12 @@ import { formatMarketSessionDate, formatPriceChange, formatScore, formatUsdPrice
 import type { DatedScore, LatestPriceSummary } from "@/lib/research-read-model";
 import { readWatchlist, type WatchlistEntry } from "@/components/watchlist-storage";
 
-export function WatchlistPreview({ scores, scoreDate }: { scores: DatedScore[]; scoreDate?: string }) {
+export type WatchlistPreviewScore = Pick<DatedScore, "securityId" | "score" | "rank" | "eligible">;
+
+export function WatchlistPreview({ scoreDate }: { scoreDate?: string }) {
   const [watchlist, setWatchlist] = useState<WatchlistEntry[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [scores, setScores] = useState<WatchlistPreviewScore[]>([]);
   const [prices, setPrices] = useState<LatestPriceSummary[]>([]);
   const [pricesUnavailable, setPricesUnavailable] = useState(false);
   const scrollRegionRef = useRef<HTMLDivElement>(null);
@@ -25,20 +28,28 @@ export function WatchlistPreview({ scores, scoreDate }: { scores: DatedScore[]; 
   useEffect(() => {
     if (!hydrated || !watchlist.length) return;
     const controller = new AbortController();
-    const loadPrices = async () => {
+    const loadContext = async () => {
       try {
-        const response = await fetch(`/api/v1/prices?securityIds=${encodeURIComponent(watchlist.map((entry) => entry.securityId).join(","))}`, { signal: controller.signal });
-        if (!response.ok) throw new Error("Price request failed");
-        const body = await response.json() as { prices: LatestPriceSummary[] };
-        setPrices(body.prices);
+        const securityIds = encodeURIComponent(watchlist.map((entry) => entry.securityId).join(","));
+        const [priceResponse, scoreResponse] = await Promise.all([
+          fetch(`/api/v1/prices?securityIds=${securityIds}`, { signal: controller.signal }),
+          scoreDate ? fetch(`/api/v1/scores?date=${scoreDate}&securityIds=${securityIds}`, { signal: controller.signal }) : null,
+        ]);
+        if (!priceResponse.ok || (scoreResponse && !scoreResponse.ok)) throw new Error("Watchlist context request failed");
+        const priceBody = await priceResponse.json() as { prices: LatestPriceSummary[] };
+        setPrices(priceBody.prices);
+        if (scoreResponse) {
+          const scoreBody = await scoreResponse.json() as { scores: WatchlistPreviewScore[] };
+          setScores(scoreBody.scores);
+        }
         setPricesUnavailable(false);
       } catch (error) {
         if ((error as Error).name !== "AbortError") setPricesUnavailable(true);
       }
     };
-    void loadPrices();
+    void loadContext();
     return () => controller.abort();
-  }, [hydrated, watchlist]);
+  }, [hydrated, scoreDate, watchlist]);
 
   useEffect(() => {
     const region = scrollRegionRef.current;

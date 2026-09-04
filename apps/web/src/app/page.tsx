@@ -9,6 +9,7 @@ import { formatResearchDate, formatScore } from "@/lib/format";
 import { getDailyOperationsStatus, getLatestDatedScores, getLatestPaperPortfolio, getPreviousDatedScores, getTodayFilingSummary, ResearchReadModelError } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
+const TODAY_RANKING_PREVIEW_LIMIT = 20;
 
 export default async function Home() {
   let latest: Awaited<ReturnType<typeof getLatestDatedScores>> = null;
@@ -34,6 +35,15 @@ export default async function Home() {
   }
   const lead = latest?.scores.find((score) => score.eligible);
   const eligibleScores = latest?.scores.filter((score) => score.eligible) ?? [];
+  const rankingPreviewScores = eligibleScores.slice(0, TODAY_RANKING_PREVIEW_LIMIT).map((score) => ({
+    scoreSnapshotId: score.scoreSnapshotId,
+    securityId: score.securityId,
+    issuerName: score.issuerName,
+    ticker: score.ticker,
+    scoreDate: score.scoreDate,
+    score: score.score,
+    rank: score.rank,
+  }));
   return (
     <AppShell current="/">
       <section className="page-intro">
@@ -69,10 +79,10 @@ export default async function Home() {
           <div className="today-grid">
             <section className="content-section today-candidates">
               <div className="section-heading"><div><p className="eyebrow">TOP RANKED</p><h2>Highest scores</h2></div>{lead && <Link href={`/rankings?date=${latest.scoreDate}`} className="text-link">View rankings</Link>}</div>
-              {lead ? <TodayRankingStream scores={eligibleScores} /> : <p className="empty-inline">No companies met every required quality condition on {formatResearchDate(latest.scoreDate)}.</p>}
+              {lead ? <TodayRankingStream scores={rankingPreviewScores} /> : <p className="empty-inline">No companies met every required quality condition on {formatResearchDate(latest.scoreDate)}.</p>}
               {lead ? <ResearchBasket portfolio={portfolio} from="today" /> : null}
             </section>
-            <WatchlistPreview scores={latest.scores} scoreDate={latest.scoreDate} />
+            <WatchlistPreview scoreDate={latest.scoreDate} />
           </div>
         </>
       ) : (
