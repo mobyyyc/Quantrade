@@ -1,30 +1,67 @@
 # Accessibility Review
 
-## Scope
+## P15.3 audit, 2026-09-05
 
-This review covers the P6 private-beta research routes. It is a code and
-interaction review, not a claim of formal WCAG conformance.
+Completed a source, automated-browser, keyboard, and screenshot review of Today,
+Rankings, Watchlist, Portfolio, Research, Search, and stock detail. This is not
+a formal WCAG conformance claim. The audit uses the isolated `quantrade_e2e`
+database, not production research data. No live daily update was triggered.
 
-## Implemented safeguards
+## Findings and corrections
 
-- Every page has a keyboard-visible skip link that moves directly to the main
-  research content.
-- Links, controls, and the current route expose visible focus indicators.
-- Desktop and mobile navigation use semantic `nav` landmarks and identify the
-  current page with `aria-current`.
-- The date picker and search controls have programmatic labels.
-- Research lists use ordered-list semantics; the detail link gives assistive
-  technology a meaningful destination.
-- The mobile navigation controls are at least 44 CSS pixels high.
-- Research status, rank, and eligibility use visible text, not color alone.
-- Motion is limited to short control feedback and is reduced for users who set
-  an operating-system reduced-motion preference.
-- The unavailable chart state is written text rather than an inaccessible,
-  decorative stand-in.
+- **Mobile navigation:** the previous ARIA modal allowed focus to leave the
+  drawer and did not restore focus. A native modal dialog now makes background
+  content inert, contains forward/reverse Tab navigation, closes with Escape,
+  restores the opener, locks background scrolling, and closes at desktop width.
+- **Rankings:** virtualized preview rows could leave the accessibility tree as
+  users scrolled. The already-bounded top-20 preview now renders every row in
+  normal document flow. All links remain keyboard reachable; scrolling and
+  edge fades remain. Row focus outlines sit inside clipped scroll containers.
+- **Contrast:** secondary `--subtle` text changed from `#6b7280` to neutral
+  `#929292`. Its computed contrast is at least 5.47:1 on the four design-system
+  surfaces (`#080808`, `#111111`, `#161616`, `#1c1c1c`). Existing red and green
+  numeric text remains at least 4.52:1 and 7.47:1 respectively on those surfaces.
+  Directional values retain signs/text, so color is not the only cue.
+- **Charts:** retained the descriptive trend/value/period label and arrow-key
+  inspection; added Home/End shortcuts and an expandable semantic table with
+  every supplied observation, full ISO dates, USD prices, caption, column/row
+  headers, and a keyboard-scrollable region. The copy explicitly says missing
+  sessions are not filled; it does not imply that sparse history is complete.
+- **Screen-reader structure:** corrected invalid definition-list markup in
+  Portfolio facts, stock input counts, Research coverage, and forward-label
+  readiness. Supporting descriptions now belong to their values.
+- **Reflow:** long Research model identifiers now wrap instead of causing
+  horizontal page scrolling at a 320px viewport.
 
-## Release checks still required
+Impeccable informed the focus, hierarchy, and contrast review. The owner's
+neutral-black palette, movement-free controls, and no-skeleton rules take
+precedence over generic skill defaults.
 
-- Perform keyboard and screen-reader checks with connected research data.
-- Test browser zoom and small mobile viewports with real long issuer names.
-- Before publishing a price chart, add a text alternative with its period,
-  trend, latest value, and material gaps.
+## Verification
+
+- `corepack pnpm lint:web`: passed.
+- `corepack pnpm build:web`: passed, including TypeScript.
+- `corepack pnpm --filter @quantrade/web test:e2e`: **11 passed**.
+- Axe WCAG A/AA checks (`wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa`): no detected
+  violations on all seven routes at 1280px, 390px, and 320px.
+- Expanded chart table and open mobile dialog also pass full default Axe scans.
+- Keyboard assertions cover skip-to-main, search shortcut, drawer containment
+  in both directions, Escape/focus return, route selection, ranked links with
+  visible focus, chart endpoints, and table expansion.
+- Reduced-motion check confirms smooth scrolling is disabled.
+- No document-level horizontal overflow on the audited route/viewport matrix.
+- Inspected captured chart/table and mobile drawer screenshots. Screenshots
+  and traces remain local test artifacts, not committed assets.
+
+The Axe dependency is development-only. Existing functional tests still cover
+search, dated scores, saved stocks/prices, mocked update progress, and official
+portfolio history. Production data, model artifacts, and schedules are untouched.
+
+## Remaining release validation
+
+Automated scans do not establish screen-reader usability or cover every state.
+Before external beta, manually test NVDA/Firefox and VoiceOver/Safari reading
+order, live announcements, watchlist editing/removal, chart exploration, and
+route changes. Also test real 200%/400% browser zoom, forced-colors mode, and
+large production datasets, long notes, sparse histories, and all error/empty
+states. Narrow viewport checks are not a substitute for browser zoom testing.

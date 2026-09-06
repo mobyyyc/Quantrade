@@ -57,10 +57,10 @@ export default async function PortfolioPage() {
             <Link href="/research#track-record" className="text-link">Review the research method</Link>
           </div>
           <dl className="portfolio-home-facts">
-            <div><dt>Formation</dt><dd>{formatResearchDate(portfolio.scoreDate)}</dd><span>Final eligible monthly ranking</span></div>
-            <div><dt>Next-open execution</dt><dd>{formatResearchDate(portfolio.executionDate)}</dd><span>Recorded regular-session open</span></div>
-            <div><dt>Holdings</dt><dd>{portfolio.positions.length}</dd><span>Fixed monthly positions</span></div>
-            <div><dt>Next rebalance</dt><dd className="portfolio-schedule">{nextRebalanceRule(portfolio.executionDate)}</dd><span>Subject to a completed eligible score run</span></div>
+            <div><dt>Formation</dt><dd>{formatResearchDate(portfolio.scoreDate)}<span>Final eligible monthly ranking</span></dd></div>
+            <div><dt>Next-open execution</dt><dd>{formatResearchDate(portfolio.executionDate)}<span>Recorded regular-session open</span></dd></div>
+            <div><dt>Holdings</dt><dd>{portfolio.positions.length}<span>Fixed monthly positions</span></dd></div>
+            <div><dt>Next rebalance</dt><dd className="portfolio-schedule">{nextRebalanceRule(portfolio.executionDate)}<span>Subject to a completed eligible score run</span></dd></div>
           </dl>
         </section>
       ) : (

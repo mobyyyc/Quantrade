@@ -64,8 +64,10 @@ export function PriceChart({ points, ticker }: PriceChartProps) {
   }
 
   function moveWithKeyboard(event: KeyboardEvent<SVGSVGElement>) {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
+    if (event.key === "Home") { setActiveIndex(0); return; }
+    if (event.key === "End") { setActiveIndex(points.length - 1); return; }
     const current = activeIndex ?? points.length - 1;
     setActiveIndex(Math.max(0, Math.min(points.length - 1, current + (event.key === "ArrowLeft" ? -1 : 1))));
   }
@@ -91,5 +93,14 @@ export function PriceChart({ points, ticker }: PriceChartProps) {
       {activePoint && activePrice !== null && activeDate && <output className={`price-chart-tooltip ${tooltipAlignment}`} style={{ left: `${(activePoint.x / width) * 100}%`, top: `${(activePoint.y / height) * 100}%` }}><strong>{formatPrice(activePrice)}</strong><span>{activeDate}</span></output>}
     </div>
     <div className="price-chart-axis" aria-label={`Chart dates from ${start} to ${end}`}>{axisIndexes.map((index, position) => <time key={points[index].sessionDate} dateTime={points[index].sessionDate} className={position === 0 ? "axis-start" : position === axisIndexes.length - 1 ? "axis-end" : ""} style={{ left: `${(coordinates[index].x / width) * 100}%` }}>{formatAxisDate(points[index].sessionDate)}</time>)}</div>
+    <details className="price-history-details">
+      <summary>View price history as a table</summary>
+      <p className="quiet-copy">{points.length} available observations from {points[0].sessionDate} to {points.at(-1)?.sessionDate}. Only recorded sessions are shown; missing sessions are not filled. Use Left and Right arrows on the chart to inspect prices, or Home and End to jump to the first and latest observation.</p>
+      <div className="price-history-table-region" role="region" aria-label={`${ticker} recorded prices`} tabIndex={0}>
+        <table><caption>{ticker} daily closing prices in USD</caption><thead><tr><th scope="col">Session date</th><th scope="col">Close (USD)</th></tr></thead>
+          <tbody>{points.map((point) => <tr key={point.sessionDate}><th scope="row"><time dateTime={point.sessionDate}>{point.sessionDate}</time></th><td>{formatPrice(Number(point.closePrice))}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </details>
   </section>;
 }
