@@ -3,9 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ScoreList, type ScoreListItem } from "@/components/score-list";
-import { ResearchBasket } from "@/components/research-basket";
 import { formatIssuerName, formatPublicationTime, formatResearchDate } from "@/lib/format";
-import type { DatedScore, PaperPortfolio } from "@/lib/research-read-model";
+import type { DatedScore } from "@/lib/research-read-model";
 
 const initialVisibleCount = 25;
 const movementListLimit = 5;
@@ -46,13 +45,11 @@ function DailyRankingMovement({
   previousScores,
   scoreDate,
   previousScoreDate,
-  portfolio,
 }: {
   scores: RankingWorkspaceScore[];
   previousScores: RankingWorkspaceScore[];
   scoreDate: string;
   previousScoreDate?: string;
-  portfolio: PaperPortfolio | null;
 }) {
   const eligibleScores = scores.filter((score) => score.eligible && score.rank !== undefined);
   const eligiblePreviousScores = previousScores.filter((score) => score.eligible && score.rank !== undefined);
@@ -83,12 +80,6 @@ function DailyRankingMovement({
           <p className="eyebrow">DAILY MOVEMENT</p>
           <h2 id="ranking-movement-title">What changed in the ranking</h2>
           <p>{previousScoreDate ? `Compared with ${formatResearchDate(previousScoreDate)}.` : "A prior publication from the same model is required for comparison."}</p>
-        </div>
-        <div className="ranking-basket-status">
-          <span>{portfolio ? "MONTHLY BASKET UNCHANGED" : "MONTHLY FORMATION"}</span>
-          <strong>{portfolio ? "Official holdings remain fixed." : "No official basket is active yet."}</strong>
-          <small>Daily score and rank movement does not create or rebalance a portfolio.</small>
-          <Link href="/portfolio" className="text-link">View portfolio</Link>
         </div>
       </div>
 
@@ -131,7 +122,7 @@ function DailyRankingMovement({
   );
 }
 
-export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previousScores, portfolio }: { scores: RankingWorkspaceScore[]; scoreDate: string; previousScoreDate?: string; previousScores: RankingWorkspaceScore[]; portfolio: PaperPortfolio | null }) {
+export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previousScores }: { scores: RankingWorkspaceScore[]; scoreDate: string; previousScoreDate?: string; previousScores: RankingWorkspaceScore[] }) {
   const [visibleCount, setVisibleCount] = useState(initialVisibleCount);
   const eligibleScores = scores.filter((score) => score.eligible);
   const withheldCount = scores.length - eligibleScores.length;
@@ -147,8 +138,7 @@ export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previo
       <p>Only complete, dated inputs are ranked. Missing data is withheld rather than estimated.</p>
     </div>
     <div className="rankings-results">
-      <ResearchBasket portfolio={portfolio} from="rankings" />
-      <DailyRankingMovement scores={scores} previousScores={previousScores} scoreDate={scoreDate} previousScoreDate={previousScoreDate} portfolio={portfolio} />
+      <DailyRankingMovement scores={scores} previousScores={previousScores} scoreDate={scoreDate} previousScoreDate={previousScoreDate} />
       <div className="section-heading">
         <div><p className="eyebrow">CURRENT ORDER</p><h2 id="rankings-list-title">Highest scores</h2></div>
       </div>
