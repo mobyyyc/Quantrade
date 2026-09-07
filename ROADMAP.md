@@ -2,6 +2,33 @@
 
 Each item is intended to fit a focused development session. A negative research result is complete when it is documented and reproducible.
 
+## Approved execution order — September 7, 2026
+
+Prioritize operational reliability and valid model comparisons before additional
+model complexity or cosmetic redesign. This sequence supersedes numerical phase
+order; completed work below remains historical, not a guarantee that no follow-up
+is needed. Execute one approved task per run and request approval for the next.
+
+1. **P12.7–P12.9:** correct portfolio maintenance and missed-run reporting, reconcile decision-time rules, and align schedules with PC availability.
+2. **P15.4:** verify migrations and production builds in CI.
+3. **P15.5:** audit configuration and rotate exposed credentials.
+4. **P9D.0a:** amend the comparison protocol before any residual fitting.
+5. **P9D.1:** audit zero-weight eligibility and live/research consistency.
+6. **P9D.2–P9D.4:** reuse authenticated research data, fit the bounded challenger, and record a reproducible readiness decision.
+7. **P10.1–P10.3:** proceed only for a qualifying frozen challenger; retain the live model until confirmation gates pass. Forward collection must not block independent product work.
+8. **P13.7:** polish operational clarity and model evidence, not a broad visual redesign.
+9. **P15.6, then Phase 16:** secure the application before staging and external beta access.
+
+The inspection found repeated post-publication portfolio warnings despite completed
+score runs and no official monthly basket. It also found that the exact deployed
+artifact was trained through April 2025 but replayed against earlier validation
+windows: that replay is diagnostic, not an out-of-sample reference. Correct the
+comparison procedure rather than discarding authenticated datasets or assuming a
+challenger is superior. Preserve prior research decisions as records, the consumed
+July 2025–June 2026 holdout as report-only, and Tier-B survivorship/static-sector
+limitations. P11 and P14.6 remain separately gated; no paid source, model promotion,
+bulk rebuild, or deployment is authorized by this roadmap update.
+
 ## Phase 0: charter and data decision
 
 - [x] P0.1: record scope, audience, benchmark, target, costs, and exclusions.
@@ -134,13 +161,16 @@ inference unit; the visible research basket remains monthly.
 ## Phase 9D: anchored accounting residual research
 
 Phase 9D is a result-informed successor to the Phase 9C no-freeze decision. It
-preserves the deployed score as the anchor and permits only a small accounting
-residual correction. Historical results can qualify a candidate for forward
-shadow collection, but cannot independently confirm or promote it.
+permits only a small accounting residual correction. Fitting is paused until
+P9D.0a freezes a superseding protocol with fold-local anchors; the final deployed
+artifact is retained as a diagnostic replay, not an out-of-sample benchmark.
+Historical results can qualify a candidate for forward shadow collection, but
+cannot independently confirm or promote it.
 
 - [x] P9D.0: diagnose the Phase 9C failures and preregister one anchored two-family residual-ridge challenger, including the exact bootstrap seed, tightened turnover and stability gates, and the boundary that reused development history cannot count as independent confirmation. See `PHASE_9D_FAILURE_REVIEW.md` and `PHASE_9D_STABILITY_PROTOCOL.md`.
-- [ ] P9D.1: implement and audit the corrected exact deployed-anchor eligibility rule, ignoring only mathematically exact-zero coefficient inputs while requiring byte-identical scores for all previously eligible rows.
-- [ ] P9D.2: materialize the authenticated anchored-residual dataset on the existing Phase 9C folds without reading the consumed holdout.
+- [ ] P9D.0a: freeze a versioned protocol amendment before further fitting. Train reference models, select parameters, fit preprocessing, and determine samples using only admissible earlier data within each chronological fold. Distinguish a faithful elastic-net recipe refit from alternative reference families; construct training residuals from chronological cross-fitted anchors. Keep exact final-artifact replay diagnostic only, preserve earlier decision records, and do not relax gates or reopen the consumed holdout to rescue a candidate.
+- [ ] P9D.1: implement and audit eligibility that ignores only mathematically exact-zero coefficient inputs. Require byte-identical raw predictions for previously eligible rows; separately measure and version changes to coverage, percentile scores, ranks, and explanations when the eligible universe expands. Verify live/research decision-time consistency under P12.8; any live eligibility rollout requires explicit approval.
+- [ ] P9D.2: materialize the authenticated anchored-residual dataset on the existing Phase 9C folds under the amended protocol, using chronological cross-fitted training anchors and complete lineage without reading the consumed holdout. Reuse validated features and labels; regenerate only affected derived artifacts, not the raw SEC store.
 - [ ] P9D.3: fit the three registered ridge penalties inside nested chronological folds and write deterministic outer predictions without model expansion.
 - [ ] P9D.4: run identical-construction portfolio attribution and every frozen readiness gate; issue either `freeze_for_forward_shadow` or `no-freeze`.
 
@@ -174,6 +204,9 @@ be required for daily operations.
 - [x] P12.4: add bounded retries for temporary provider failures while preserving idempotency and duplicate prevention.
 - [x] P12.5: implement automated PostgreSQL backups, retention rules, and a tested restore procedure.
 - [x] P12.6: add a concise operations-history view for successful, skipped, failed, retried, and duplicate-prevented runs.
+- [ ] P12.7: correct monthly portfolio candidate selection and recoverable post-publication maintenance. Ordinary trading days must not attempt invalid month-end formation; retry maintenance independently of already-completed scores, preserve idempotency, and distinguish fully completed runs from scores published with maintenance warnings. Add regression tests for ordinary days, month-ends, repeated runs, and partial failures.
+- [ ] P12.8: define and test honest missed-run recovery and a versioned decision-time contract. Reconcile the research 8:00 p.m. cutoff with actual live observation/decision timestamps around 10:15 p.m.; explicitly approve the chosen convention before rollout. Backfill missing market observations without backdating knowledge, scores, or official holdings. Report unavailable missed formations rather than fabricating a basket using later information; preserve existing timestamps and lineage.
+- [ ] P12.9: audit and align daily-update and backup schedules with the user's PC availability, including the remaining 1:30 a.m. backup trigger, missed-start/logon behavior, and hidden launchers. Confirm the replacement timing with the user and verify bounded catch-up, logs, and no visible PowerShell windows without requiring Codex usage.
 
 ## Phase 13: portfolio and research experience
 
@@ -186,6 +219,7 @@ presenting daily rankings as trading instructions or daily portfolio changes.
 - [x] P13.4: add daily movement context for rank and score changes plus Top-20 entries and exits, while stating that the monthly basket remains fixed.
 - [x] P13.5: add private watchlist notes, optional tags, and changed-since-last-update indicators.
 - [x] P13.6: add a compact daily research summary covering new scores, largest movements, research-relevant filings, portfolio status, and data-quality warnings.
+- [ ] P13.7: refine targeted UX for full versus partial update completion, data freshness, missing official monthly baskets, and understandable active-model evidence. Use the existing design rules and tested operational states; do not substitute a cosmetic redesign for reliability or imply unavailable results exist.
 
 ## Phase 14: data reliability and storage
 
