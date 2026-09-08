@@ -2,19 +2,19 @@
 
 ## Status
 
-Version 0.1. This protocol governs every baseline backtest and research run until it is replaced by a dated, committed version. It operationalizes the scope in `RESEARCH_CHARTER.md`.
+Version 0.2. This protocol governs every baseline backtest and research run until it is replaced by a dated, committed version. It operationalizes the scope in `RESEARCH_CHARTER.md`.
 
 ## Clock and decision sequence
 
 All timestamps use America/Toronto time.
 
-1. On every eligible trading day, ingest available data after market close.
-2. At 8:00 p.m., create an end-of-day score snapshot only after data-quality checks pass.
-3. A score may use the regular-session close for that date and any source record whose `available_at` is no later than 8:00 p.m.
+1. Historical replay uses `historical_replay_2000_toronto_v1`: a fixed 8:00 p.m. decision timestamp and only records public by that timestamp.
+2. Live daily publication uses `live_after_validation_v1`: after market close, incremental ingestion and validation finish first, then `decision_at` captures the actual local time. The normal scheduler currently begins around 10:15 p.m.
+3. A failed live attempt without immutable scores does not reserve its earlier cutoff. Its retry receives a new actual post-validation timestamp, so later-retrieved information is never backdated.
 4. The score is never executed at that same closing price.
 5. On a rebalance date, execute model trades at the next eligible regular-session open.
 
-If daily data completeness is not confirmed by 8:00 p.m., no score is published for that date. The run records the skipped snapshot and its reason.
+If completeness is not confirmed, no score is published. Missing market observations may be caught up later, but scores and official holdings are never backfilled. A missed month-end execution window is recorded as unavailable instead of being reconstructed with later knowledge.
 
 ## Rebalance rule
 
@@ -29,7 +29,7 @@ Market holidays, missing next-day opens, and halted securities are not silently 
 ## Feature availability
 
 - Price-based features use data through the formation-date regular-session close.
-- Fundamental features may only use filings accepted and available by the 8:00 p.m. decision timestamp.
+- Fundamental features may only use filings accepted and available by the applicable versioned decision timestamp.
 - Macro features may only use the relevant historical vintage available by the decision timestamp.
 - Features must be calculated before ranking, then cross-sectionally normalized within the eligible universe.
 

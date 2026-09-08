@@ -1,18 +1,40 @@
 import argparse
 from contextlib import redirect_stdout
-from datetime import date
+from datetime import date, datetime
 from io import StringIO
 import json
 import subprocess
 import unittest
+from unittest.mock import MagicMock, patch
 
 from quantrade_research.ingest_filings import _ciks
 from quantrade_research.manual_daily_update import (
     RetryPolicy, _is_transient_provider_failure, _progress, _run, _sec_network_environment,
+    _set_live_decision_at,
 )
 
 
 class DailyUpdateParsingTests(unittest.TestCase):
+    def test_live_cutoff_uses_the_actual_post_validation_time(self) -> None:
+        connection = MagicMock()
+        observed = datetime.fromisoformat("2026-09-08T22:17:04-04:00")
+        self.assertEqual(_set_live_decision_at(connection, observed.date(), observed), observed)
+        parameters = connection.cursor.return_value.__enter__.return_value.execute.call_args.args[1]
+        self.assertEqual(parameters, (observed, "live_after_validation_v1", observed.date()))
+
+    def test_failed_attempt_does_not_reuse_its_prior_cutoff(self) -> None:
+        connection = MagicMock()
+        cursor = connection.cursor.return_value.__enter__.return_value
+        cursor.fetchone.return_value = (1,)
+        with patch("quantrade_research.manual_daily_update._run_row", return_value=("failed", datetime.fromisoformat("2026-09-08T20:00:00-04:00"))), patch(
+            "quantrade_research.manual_daily_update._record_operation_event"
+        ):
+            from quantrade_research.manual_daily_update import _start_or_resume
+            self.assertTrue(_start_or_resume(connection, date(2026, 9, 8)))
+        upsert = cursor.execute.call_args_list[1].args[0]
+        self.assertIn("decision_at = NULL", upsert)
+        self.assertIn("decision_contract_version = NULL", upsert)
+
     def test_retries_a_transient_provider_failure_with_the_identical_command(self) -> None:
         calls: list[list[str]] = []
 

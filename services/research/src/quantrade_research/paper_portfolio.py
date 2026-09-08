@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
 from .config import Settings
 from .quality import DataQualityError
 from .rebalance import NextOpenPrice, PortfolioState, build_next_open_rebalance_ledger
-from .score_run import _dotenv_values
+from .score_run import TORONTO, _dotenv_values
 
 
 DEFAULT_STARTING_NAV = Decimal("100000")
 MONTHLY_FORMATION_PROTOCOL = "monthly_last_session_next_open_v1"
+LIVE_DECISION_CONTRACT = "live_after_validation_v1"
 
 
 def _settings(env_file: Path) -> Settings:
@@ -32,7 +33,15 @@ def is_monthly_formation(formation_date: date, next_session_date: date) -> bool:
     )
 
 
-def publish_paper_portfolio(*, settings: Settings, score_date: date, starting_nav: Decimal = DEFAULT_STARTING_NAV) -> int:
+def is_execution_window_open(expected_execution_date: date, observed_date: date) -> bool:
+    """Official next-open holdings may be materialized only on that session date."""
+    return expected_execution_date == observed_date
+
+
+def publish_paper_portfolio(
+    *, settings: Settings, score_date: date, starting_nav: Decimal = DEFAULT_STARTING_NAV,
+    execution_as_of_date: date | None = None,
+) -> int:
     """Create one immutable monthly portfolio from the active model's dated scores."""
     settings.require_runtime_storage()
     assert settings.database_url is not None
@@ -83,6 +92,11 @@ def publish_paper_portfolio(*, settings: Settings, score_date: date, starting_na
             raise DataQualityError("next regular-session open is not available yet")
         if not is_monthly_formation(score_date, execution_date):
             raise DataQualityError("paper portfolio formation must be the final market session of a calendar month")
+        observed_date = execution_as_of_date or datetime.now(TORONTO).date()
+        if not is_execution_window_open(execution_date, observed_date):
+            raise DataQualityError(
+                "paper portfolio execution window has elapsed; record the formation as unavailable"
+            )
         cursor.execute(
             """SELECT security_id::text, session_date, open_price
                FROM quantrade.daily_price_bars
@@ -184,9 +198,60 @@ def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) ->
                 due_dates.append(score_date)
     published: list[date] = []
     for score_date in due_dates:
-        if publish_paper_portfolio(settings=settings, score_date=score_date):
+        if publish_paper_portfolio(
+            settings=settings, score_date=score_date, execution_as_of_date=execution_date,
+        ):
             published.append(score_date)
     return tuple(published)
+
+
+def record_missed_paper_portfolio_formations(*, settings: Settings, as_of_date: date) -> tuple[date, ...]:
+    """Record elapsed monthly execution windows without reconstructing holdings.
+
+    Monitoring begins at the live contract's effective date, so historical replay
+    sessions and pre-contract operations are not retroactively classified.
+    """
+    settings.require_runtime_storage()
+    assert settings.database_url is not None
+    import psycopg
+    with psycopg.connect(settings.database_url) as connection, connection.cursor() as cursor:
+        cursor.execute(
+            """WITH contract AS (
+                 SELECT (effective_at AT TIME ZONE 'America/Toronto')::date AS effective_date
+                 FROM quantrade.decision_time_contracts
+                 WHERE decision_contract_version = %s
+               ), ordered_sessions AS (
+                 SELECT session_date AS formation_date,
+                        LEAD(session_date) OVER (ORDER BY session_date) AS execution_date
+                 FROM quantrade.benchmark_daily_price_bars
+                 WHERE benchmark_ticker = 'SPY' AND session = 'regular'
+                   AND adjustment_basis = 'unadjusted' AND session_date <= %s
+               ), missed AS (
+                 SELECT sessions.formation_date, sessions.execution_date,
+                        CASE WHEN EXISTS (
+                          SELECT 1 FROM quantrade.daily_research_runs run
+                          WHERE run.score_date = sessions.formation_date AND run.status = 'completed'
+                        ) THEN 'execution_window_missed' ELSE 'month_end_score_unavailable' END AS reason_code
+                 FROM ordered_sessions sessions CROSS JOIN contract
+                 WHERE sessions.formation_date >= contract.effective_date
+                   AND sessions.execution_date < %s
+                   AND date_trunc('month', sessions.formation_date) < date_trunc('month', sessions.execution_date)
+                   AND NOT EXISTS (
+                     SELECT 1 FROM quantrade.paper_portfolio_runs portfolio
+                     WHERE portfolio.score_date = sessions.formation_date
+                   )
+               )
+               INSERT INTO quantrade.missed_paper_portfolio_formations
+                   (formation_date, expected_execution_date, reason_code, decision_contract_version)
+               SELECT formation_date, execution_date, reason_code, %s
+               FROM missed
+               ON CONFLICT (formation_date) DO NOTHING
+               RETURNING formation_date""",
+            (LIVE_DECISION_CONTRACT, as_of_date, as_of_date, LIVE_DECISION_CONTRACT),
+        )
+        recorded = tuple(row[0] for row in cursor.fetchall())
+        connection.commit()
+    return recorded
 
 
 def main() -> None:

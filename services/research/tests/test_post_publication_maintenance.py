@@ -16,7 +16,8 @@ class MaintenanceTests(unittest.TestCase):
 
     def operations(self, stack):
         return [stack.enter_context(patch.object(daily, name)) for name in (
-            "publish_due_paper_portfolios", "materialize_due_paper_portfolio_outcomes",
+            "publish_due_paper_portfolios", "record_missed_paper_portfolio_formations",
+            "materialize_due_paper_portfolio_outcomes",
             "materialize_due_forward_score_outcomes", "materialize_forward_readiness_snapshot")]
 
     def test_failed_step_does_not_block_independent_steps_and_retry_completes(self):
@@ -50,10 +51,10 @@ class MaintenanceTests(unittest.TestCase):
             stack.enter_context(patch.object(daily, "_maintenance_completed", return_value=False))
             stack.enter_context(patch.object(daily, "_record_operation_event"))
             operations = self.operations(stack)
-            operations[2].side_effect = RuntimeError("provider gap")
+            operations[3].side_effect = RuntimeError("provider gap")
             with self.assertRaises(SystemExit):
                 daily._finish_maintenance(self.connection, self.settings, self.day)
-            operations[3].assert_not_called()
+            operations[4].assert_not_called()
 
     def test_checkpoint_failure_is_partial_not_unqualified_success(self):
         with patch.object(daily, "_maintenance_completed", side_effect=RuntimeError("database down")), redirect_stdout(StringIO()) as output:
@@ -80,7 +81,7 @@ class MaintenanceTests(unittest.TestCase):
             stack.enter_context(patch.object(daily, "_ciks", return_value=[]))
             stack.enter_context(patch.object(daily.subprocess, "check_output", return_value="revision"))
             stack.enter_context(patch.object(daily, "_daily_update_lock", side_effect=lock))
-            stack.enter_context(patch.object(daily, "_start_or_resume", return_value=(False, None)))
+            stack.enter_context(patch.object(daily, "_start_or_resume", return_value=False))
             maintenance = stack.enter_context(patch.object(daily, "_finish_maintenance", side_effect=finish))
             command = stack.enter_context(patch.object(daily, "_run"))
             scores = stack.enter_context(patch.object(daily, "_published_score_summary"))

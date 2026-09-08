@@ -49,8 +49,18 @@ whether maintenance is still pending; historical warning events are retained.
 - Exit **0** means completion, a fully maintained duplicate, or a non-market skip;
   ordinary pre-publication failures continue to exit nonzero.
 
-This does not backfill missed official month-end baskets or reconcile absent
-market-calendar observations. Missed-run and decision-time policy is P12.8.
+Missing market observations are fetched on the next run, but knowledge is never
+backdated. Live scores use the versioned `live_after_validation_v1` contract: the
+cutoff is the actual time after ingestion and validation. A failed attempt without
+immutable scores gets a fresh cutoff when retried; an existing immutable score set
+keeps its original timestamp. Historical replay remains separately identified as
+`historical_replay_2000_toronto_v1` with a fixed 8:00 p.m. Toronto cutoff.
+
+Official monthly portfolios are still created only for their exact next-session
+execution date. Once that window has elapsed, the formation is stored in
+`missed_paper_portfolio_formations` as unavailable; later data cannot be used to
+invent its holdings. Monitoring begins with the live contract's effective date,
+so older historical replay dates are not retroactively labeled as operational misses.
 Restart an already-running web server after code changes so it uses the new route.
 
 P12.7 verification (September 7, 2026): 371 research tests, 12 browser tests,

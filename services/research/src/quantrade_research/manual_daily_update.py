@@ -17,7 +17,7 @@ from typing import Callable, Iterator
 
 from .forward_outcomes import materialize_due_forward_score_outcomes
 from .forward_readiness_snapshot import materialize_forward_readiness_snapshot
-from .paper_portfolio import publish_due_paper_portfolios
+from .paper_portfolio import LIVE_DECISION_CONTRACT, publish_due_paper_portfolios, record_missed_paper_portfolio_formations
 from .portfolio_outcomes import materialize_due_paper_portfolio_outcomes
 from .score_run import TORONTO, _dotenv_values, _settings
 from .universe_symbols import canonical_ticker
@@ -199,13 +199,17 @@ def _post_publication_maintenance(connection, settings, score_date: date) -> Non
     failures: list[str] = []
     operations = (
         ("monthly portfolios", publish_due_paper_portfolios, {"execution_date": score_date}),
+        ("missed monthly formations", record_missed_paper_portfolio_formations, {"as_of_date": score_date}),
         ("portfolio outcomes", materialize_due_paper_portfolio_outcomes, {"as_of_date": score_date}),
         ("forward outcomes", materialize_due_forward_score_outcomes, {"as_of_date": score_date}),
     )
     forward_ready = False
+    missed_formations: tuple[date, ...] = ()
     for name, operation, kwargs in operations:
         try:
-            operation(settings=settings, **kwargs)
+            result = operation(settings=settings, **kwargs)
+            if name == "missed monthly formations":
+                missed_formations = result
             if name == "forward outcomes":
                 forward_ready = True
         except Exception as error:
@@ -224,7 +228,11 @@ def _post_publication_maintenance(connection, settings, score_date: date) -> Non
         raise SystemExit(2)
     _record_operation_event(connection, score_date, "completed", stage="portfolio",
                             detail="Post-publication maintenance completed successfully.")
-    _progress("portfolio", "completed", "Portfolio records and due outcomes are current.", score_date=score_date)
+    message = "Portfolio records and due outcomes are current."
+    if missed_formations:
+        dates = ", ".join(item.isoformat() for item in missed_formations)
+        message = f"Portfolio records are current; missed formation(s) {dates} were recorded as unavailable."
+    _progress("portfolio", "completed", message, score_date=score_date)
 
 
 def _finish_maintenance(connection, settings, score_date: date) -> None:
@@ -238,15 +246,15 @@ def _finish_maintenance(connection, settings, score_date: date) -> None:
         raise SystemExit(2) from error
 
 
-def _start_or_resume(connection, score_date: date) -> tuple[bool, datetime | None]:
-    """Return whether work is needed plus a fixed retry cutoff, when one exists."""
+def _start_or_resume(connection, score_date: date) -> bool:
+    """Return whether work is needed; an unfinished attempt has no reusable cutoff."""
     existing = _run_row(connection, score_date)
     if existing and existing[0] == "completed":
         _record_operation_event(
             connection, score_date, "duplicate_prevented", stage="initialization",
             detail="A completed publication already exists; ingestion and scoring were not restarted.",
         )
-        return False, existing[1]
+        return False
     with connection.cursor() as cursor:
         cursor.execute(
             """SELECT COUNT(*) FROM quantrade.daily_research_run_events
@@ -259,6 +267,7 @@ def _start_or_resume(connection, score_date: date) -> tuple[bool, datetime | Non
                VALUES (%s, 'running', now())
                ON CONFLICT (score_date) DO UPDATE
                SET status = 'running', started_at = EXCLUDED.started_at, completed_at = NULL,
+                   decision_at = NULL, decision_contract_version = NULL,
                    score_snapshot_count = NULL, eligible_count = NULL, failure_reason = NULL""",
             (score_date,),
         )
@@ -267,7 +276,7 @@ def _start_or_resume(connection, score_date: date) -> tuple[bool, datetime | Non
         attempt_number=attempt_number,
         detail="Canonical daily update attempt started.",
     )
-    return True, existing[1] if existing else None
+    return True
 
 
 def _set_failure(connection, score_date: date, reason: str, *, stage: str) -> None:
@@ -286,11 +295,26 @@ def _set_skipped(connection, score_date: date, reason: str) -> None:
     _record_operation_event(connection, score_date, "skipped", stage="validation", detail=reason)
 
 
-def _set_decision_at(connection, score_date: date, existing: datetime | None) -> datetime:
-    decision_at = existing or datetime.now(TORONTO)
+def _set_live_decision_at(connection, score_date: date, observed_at: datetime | None = None) -> datetime:
+    """Capture the actual post-validation cutoff; never reuse a failed attempt's time."""
+    decision_at = observed_at or datetime.now(TORONTO)
     with connection.cursor() as cursor:
-        cursor.execute("UPDATE quantrade.daily_research_runs SET decision_at = %s WHERE score_date = %s", (decision_at, score_date))
+        cursor.execute(
+            """UPDATE quantrade.daily_research_runs
+               SET decision_at = %s, decision_contract_version = %s
+               WHERE score_date = %s""",
+            (decision_at, LIVE_DECISION_CONTRACT, score_date),
+        )
     return decision_at
+
+
+def _restore_published_decision_at(connection, score_date: date, decision_at: datetime) -> None:
+    """Reattach a ledger row to immutable score evidence without relabeling it."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE quantrade.daily_research_runs SET decision_at = %s WHERE score_date = %s",
+            (decision_at, score_date),
+        )
 
 
 def _set_completed(connection, score_date: date, snapshots: int, eligible: int) -> None:
@@ -426,7 +450,7 @@ def main() -> None:
     ciks = ",".join(_ciks(settings.database_url, score_date))
 
     with _daily_update_lock(settings.database_url) as connection:
-        should_run, retry_cutoff = _start_or_resume(connection, score_date)
+        should_run = _start_or_resume(connection, score_date)
         if not should_run:
             _finish_maintenance(connection, settings, score_date)
             _progress("completion", "completed", "Scores already existed; maintenance is complete. Nothing was duplicated.", score_date=score_date)
@@ -438,7 +462,7 @@ def main() -> None:
             existing_score = _published_score_summary(settings.database_url, score_date, len(symbol_list))
             if existing_score is not None:
                 decision_at, snapshots, eligible = existing_score
-                _set_decision_at(connection, score_date, decision_at)
+                _restore_published_decision_at(connection, score_date, decision_at)
                 score_note = f"score_snapshots={snapshots}; eligible={eligible}"
                 _progress("market_data", "skipped", "Reusing the existing immutable score publication.", score_date=score_date)
                 _progress("sec_filings", "skipped", "Reusing the existing immutable score publication.", score_date=score_date)
@@ -488,7 +512,7 @@ def main() -> None:
                     _progress("completion", "completed", "No publication was required for a non-market date.", score_date=score_date)
                     print(f"skipped score_date={score_date}; no regular NYSE session")
                     return
-                decision_at = _set_decision_at(connection, score_date, retry_cutoff)
+                decision_at = _set_live_decision_at(connection, score_date)
                 _progress("validation", "completed", "Inputs passed the point-in-time publication checks.", score_date=score_date)
 
                 active_stage = "scoring"

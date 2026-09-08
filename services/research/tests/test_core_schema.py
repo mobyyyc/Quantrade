@@ -129,6 +129,14 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("REFERENCES quantrade.daily_research_runs", sql)
         self.assertIn("daily research run events are append-only", sql)
 
+    def test_decision_contracts_and_missed_formations_are_versioned_and_immutable(self) -> None:
+        sql = MIGRATION.with_name("0036_add_decision_time_contracts.sql").read_text()
+        self.assertIn("CREATE TABLE quantrade.decision_time_contracts", sql)
+        self.assertIn("historical_replay_2000_toronto_v1", sql)
+        self.assertIn("live_after_validation_v1", sql)
+        self.assertIn("CREATE TABLE quantrade.missed_paper_portfolio_formations", sql)
+        self.assertIn("missed_paper_portfolio_formations_append_only", sql)
+
     def test_historical_research_foundation_preserves_lineage_and_cohort_limits(self) -> None:
         migration = MIGRATION.with_name("0016_add_historical_research_foundation.sql")
         sql = migration.read_text(encoding="utf-8")
