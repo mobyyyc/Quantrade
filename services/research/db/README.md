@@ -3,6 +3,11 @@
 The PostgreSQL schema is owned by the research service. Migrations are ordered
 and append-only; never edit a migration that may have been applied.
 
+Every pull request and push to `main` creates a disposable `quantrade_ci`
+database and applies the complete ordered migration chain before running the
+research tests and production web build. The verifier refuses database names
+that do not end in `_ci`, preventing accidental use against local research data.
+
 ## Apply locally
 
 After P1.4 provides a local-only `DATABASE_URL` and a PostgreSQL 15+ instance:

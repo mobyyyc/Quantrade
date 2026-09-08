@@ -251,7 +251,7 @@ repeat use and eventual external access.
 - [x] P15.1: add end-to-end tests for search, rankings, stock details, watchlists, daily updates, and official portfolio history.
 - [x] P15.2: profile slow server-rendered pages and database queries; add indexes or bounded caching only where measurement justifies them. See `docs/WEB_PERFORMANCE_PROFILE.md`.
 - [x] P15.3: complete an accessibility audit covering keyboard navigation, focus, contrast, chart alternatives, and screen-reader labels. See `ACCESSIBILITY_REVIEW.md` for fixes, automated coverage, and manual release checks.
-- [ ] P15.4: add database-migration verification and production web builds to continuous integration.
+- [x] P15.4: add a least-privilege GitHub Actions workflow that applies all ordered migrations to a disposable `_ci` PostgreSQL database, runs the full research suite and web lint, and produces a production Next.js build. The migration verifier rejects non-CI database names and fails on missing or malformed migration sequence numbers.
 - [ ] P15.5: audit secrets and configuration, rotate previously exposed provider credentials, and prevent secrets from entering source control or logs.
 - [ ] P15.6: add authentication, rate limiting, audit logging, and user-data isolation before external beta access.
 
