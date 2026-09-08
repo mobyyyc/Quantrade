@@ -26,4 +26,5 @@ build/
 data/raw/
 data/derived/
 data/backups/
+data/logs/
 data/quarantine/

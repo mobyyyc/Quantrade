@@ -40,15 +40,19 @@ class PostgreSqlBackupScriptContractTests(unittest.TestCase):
         verifier = (SCRIPTS / "verify-postgresql-backup-task.ps1").read_text(encoding="utf-8")
         for content in (installer, verifier):
             self.assertIn("backup-postgresql.ps1", content)
-            self.assertIn("windows_postgresql_backup_task_v2", content)
+            self.assertIn("windows_postgresql_backup_task_v3", content)
             self.assertIn("CodexRequired = $false", content)
             self.assertIn("WebAppRequired = $false", content)
         self.assertIn("New-ScheduledTaskTrigger -Daily", installer)
+        self.assertIn('[string]$At = "21:45"', installer)
+        self.assertNotIn('[string]$At = "01:30"', installer)
         self.assertIn("-MultipleInstances IgnoreNew", installer)
         self.assertIn('"-WindowStyle Hidden"', installer)
         self.assertIn("-Hidden", installer)
         self.assertNotIn("-WakeToRun", installer)
         self.assertIn("$task.Settings.WakeToRun", verifier)
+        self.assertIn('windows_postgresql_backup_task_v3', installer)
+        self.assertIn('windows_postgresql_backup_task_v3', verifier)
 
     def test_backup_directory_is_git_ignored(self) -> None:
         gitignore = (REPOSITORY_ROOT / ".gitignore").read_text(encoding="utf-8")

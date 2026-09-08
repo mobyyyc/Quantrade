@@ -111,10 +111,14 @@ Run this installer once from a PowerShell window opened as Administrator.
 The installed task itself runs with limited privileges under the current user.
 
 The task runs Monday through Friday at 10:15 p.m. in the Windows `Eastern
-Standard Time` zone. It starts a missed run when the machine becomes available,
-requires network connectivity, ignores overlapping launches, retries a failed
-process twice at ten-minute intervals, and wakes a sleeping PC when Windows
-permits it.
+Standard Time` zone. It has a guarded logon trigger for a same-evening missed
+start and also uses Windows missed-run recovery. A login before 10:15 p.m., on a
+weekend, or on the morning after a missed run exits silently; it cannot create a
+backdated score. Missing provider observations catch up on a later eligible run.
+The task requires network connectivity, ignores overlapping launches, retries a
+failed process twice at ten-minute intervals, and wakes a sleeping PC when
+Windows permits it. Scheduler output is retained under
+`data/logs/daily-update-scheduler.log`.
 
 The current Windows account must remain signed in because Quantrade's Python
 launcher is installed for that user. PostgreSQL, internet access, and `.env`
@@ -131,4 +135,21 @@ Verify the installed action, principal, schedule, and safety settings with:
 
 ```powershell
 .\scripts\verify-daily-update-task.ps1
+```
+
+The PostgreSQL backup runs daily at 9:45 p.m., before the research update. Its
+missed-run recovery may create a backup silently at the next login, but it never
+wakes the PC. Backup archives and their verification metadata remain under
+`data/backups/postgresql`. Install and verify it from elevated PowerShell with:
+
+```powershell
+.\scripts\install-postgresql-backup-task.ps1
+.\scripts\verify-postgresql-backup-task.ps1
+```
+
+To install or repair both approved schedules together, open PowerShell as
+Administrator in the repository and run:
+
+```powershell
+.\scripts\install-operations-schedule.ps1
 ```

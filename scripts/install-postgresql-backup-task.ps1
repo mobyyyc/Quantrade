@@ -1,7 +1,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string]$TaskName = "Quantrade PostgreSQL Backup",
-    [ValidatePattern('^([01]\d|2[0-3]):[0-5]\d$')][string]$At = "01:30",
+    [ValidatePattern('^([01]\d|2[0-3]):[0-5]\d$')][string]$At = "21:45",
     [string]$BackupDirectory = "data\backups\postgresql",
     [ValidateRange(1, 3650)][int]$RetentionDays = 30,
     [ValidateRange(1, 500)][int]$MinimumBackups = 7
@@ -44,7 +44,7 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Pr
     -Settings $settings -Description $description -Force | Out-Null
 
 [pscustomobject]@{
-    Contract = "windows_postgresql_backup_task_v2"
+    Contract = "windows_postgresql_backup_task_v3"
     TaskName = $TaskName
     Schedule = "Daily $At $expectedTimeZone"
     BackupDirectory = $resolvedBackupDirectory

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$TaskName = "Quantrade PostgreSQL Backup",
-    [string]$At = "01:30"
+    [string]$At = "21:45"
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,7 +28,7 @@ if (-not $trigger.Enabled -or -not $trigger.StartBoundary.Contains("T$At")) { $v
 if ($violations.Count) { throw "Scheduled backup verification failed: $($violations -join '; ')" }
 
 [pscustomobject]@{
-    Contract = "windows_postgresql_backup_task_v2"
+    Contract = "windows_postgresql_backup_task_v3"
     TaskName = $task.TaskName
     State = $task.State
     User = $task.Principal.UserId

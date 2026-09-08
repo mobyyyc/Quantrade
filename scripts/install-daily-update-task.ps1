@@ -19,7 +19,7 @@ if ($actualTimeZone -ne $expectedTimeZone) {
 }
 
 $workspaceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$dailyUpdateScript = (Resolve-Path (Join-Path $workspaceRoot "scripts\run-daily-update.ps1")).Path
+$scheduledUpdateScript = (Resolve-Path (Join-Path $workspaceRoot "scripts\run-daily-update-scheduled.ps1")).Path
 $envFile = (Resolve-Path (Join-Path $workspaceRoot ".env")).Path
 $powershellExecutable = (Get-Command powershell.exe -ErrorAction Stop).Source
 $pythonLauncher = (Get-Command py.exe -ErrorAction Stop).Source
@@ -36,8 +36,9 @@ $actionArguments = @(
     "-NonInteractive",
     "-WindowStyle Hidden",
     "-ExecutionPolicy Bypass",
-    "-File `"$dailyUpdateScript`"",
-    "-EnvFile `"$envFile`""
+    "-File `"$scheduledUpdateScript`"",
+    "-EnvFile `"$envFile`"",
+    "-At $At"
 ) -join " "
 
 $action = New-ScheduledTaskAction `
@@ -45,12 +46,13 @@ $action = New-ScheduledTaskAction `
     -Argument $actionArguments `
     -WorkingDirectory $workspaceRoot `
     -ErrorAction Stop
-$trigger = New-ScheduledTaskTrigger `
+$weeklyTrigger = New-ScheduledTaskTrigger `
     -Weekly `
     -WeeksInterval 1 `
     -DaysOfWeek Monday, Tuesday, Wednesday, Thursday, Friday `
     -At $triggerTime `
     -ErrorAction Stop
+$logonTrigger = New-ScheduledTaskTrigger -AtLogOn -User $currentUser -ErrorAction Stop
 $principal = New-ScheduledTaskPrincipal `
     -UserId $currentUser `
     -LogonType Interactive `
@@ -68,7 +70,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
     -ErrorAction Stop
-$description = "Runs Quantrade's canonical post-close daily update. Requires this Windows user, PostgreSQL, internet access, and configured .env credentials; Codex and the web app are not required."
+$description = "Silently runs Quantrade's canonical post-close daily update at $At on weekdays. A logon trigger catches the same evening window only; it never backdates a prior-day score. Codex and the web app are not required."
 
 if (-not $PSCmdlet.ShouldProcess($TaskName, "Register or replace Windows scheduled task")) {
     return
@@ -76,7 +78,7 @@ if (-not $PSCmdlet.ShouldProcess($TaskName, "Register or replace Windows schedul
 Register-ScheduledTask `
     -TaskName $TaskName `
     -Action $action `
-    -Trigger $trigger `
+    -Trigger @($weeklyTrigger, $logonTrigger) `
     -Principal $principal `
     -Settings $settings `
     -Description $description `
@@ -85,16 +87,18 @@ Register-ScheduledTask `
 
 $registered = Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
 $registeredAction = @($registered.Actions)[0]
-$registeredTrigger = @($registered.Triggers)[0]
-$expectedScriptArgument = "-File `"$dailyUpdateScript`""
+$registeredTriggers = @($registered.Triggers)
+$expectedScriptArgument = "-File `"$scheduledUpdateScript`""
 $registeredUserSid = ([System.Security.Principal.NTAccount] $registered.Principal.UserId).Translate(
     [System.Security.Principal.SecurityIdentifier]
 ).Value
 if (
     $registeredAction.Execute -ne $powershellExecutable `
     -or -not $registeredAction.Arguments.Contains($expectedScriptArgument) `
+    -or -not $registeredAction.Arguments.Contains("-At $At") `
     -or $registeredAction.WorkingDirectory -ne $workspaceRoot `
-    -or $registeredUserSid -ne $currentUserSid
+    -or $registeredUserSid -ne $currentUserSid `
+    -or $registeredTriggers.Count -ne 2
 ) {
     throw "The registered task does not match the canonical Quantrade launch contract."
 }
@@ -106,11 +110,12 @@ if (
     LogonType = $registered.Principal.LogonType
     Schedule = "Monday-Friday $At $actualTimeZone"
     NextRunTime = (Get-ScheduledTaskInfo -TaskName $TaskName).NextRunTime
-    CanonicalScript = $dailyUpdateScript
+    ScheduledWrapper = $scheduledUpdateScript
+    CanonicalScript = (Resolve-Path (Join-Path $workspaceRoot "scripts\run-daily-update.ps1")).Path
     EnvironmentFile = $envFile
     PowerShell = $powershellExecutable
     PythonLauncher = $pythonLauncher
-    Contract = "windows_daily_update_task_v2"
+    Contract = "windows_daily_update_task_v3"
     CodexRequired = $false
     WebAppRequired = $false
 }
