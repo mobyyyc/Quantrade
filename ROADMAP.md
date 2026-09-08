@@ -4,6 +4,12 @@ Each item is intended to fit a focused development session. A negative research 
 
 ## Approved execution order — September 7, 2026
 
+User-approved priority override completed: **P9D.0b — leakage-safe training and
+evaluation repair** ran before P12.7. The amended protocol, tested fold-local
+comparison, and reproducible research-only results are recorded in
+`MODEL_EVALUATION_REPAIR_RESULTS.md`. No live promotion or residual challenger
+was performed. **Next: P12.7**, awaiting approval.
+
 Prioritize operational reliability and valid model comparisons before additional
 model complexity or cosmetic redesign. This sequence supersedes numerical phase
 order; completed work below remains historical, not a guarantee that no follow-up
@@ -168,7 +174,8 @@ Historical results can qualify a candidate for forward shadow collection, but
 cannot independently confirm or promote it.
 
 - [x] P9D.0: diagnose the Phase 9C failures and preregister one anchored two-family residual-ridge challenger, including the exact bootstrap seed, tightened turnover and stability gates, and the boundary that reused development history cannot count as independent confirmation. See `PHASE_9D_FAILURE_REVIEW.md` and `PHASE_9D_STABILITY_PROTOCOL.md`.
-- [ ] P9D.0a: freeze a versioned protocol amendment before further fitting. Train reference models, select parameters, fit preprocessing, and determine samples using only admissible earlier data within each chronological fold. Distinguish a faithful elastic-net recipe refit from alternative reference families; construct training residuals from chronological cross-fitted anchors. Keep exact final-artifact replay diagnostic only, preserve earlier decision records, and do not relax gates or reopen the consumed holdout to rescue a candidate.
+- [x] P9D.0a: freeze the versioned amendment in `MODEL_EVALUATION_REPAIR_PROTOCOL.md` before corrected fitting: fold-local reference fitting and preprocessing, earlier-only parameter selection, exact final-artifact replay as diagnostic only, and chronological cross-fitted residuals required for the later challenger. Preserve earlier records and gates; do not reopen the consumed holdout. Residual implementation remains P9D.2–P9D.3.
+- [x] P9D.0b: repair and run the historical training/evaluation comparison under the amended protocol. The original monthly elastic-net family and existing weekly six-family ridge were compared on 44,230 paired outer rows; two runs reproduced prediction and fit hashes, with 361 tests passing. See `MODEL_EVALUATION_REPAIR_RESULTS.md`. No live deployment or independent-confirmation claim.
 - [ ] P9D.1: implement and audit eligibility that ignores only mathematically exact-zero coefficient inputs. Require byte-identical raw predictions for previously eligible rows; separately measure and version changes to coverage, percentile scores, ranks, and explanations when the eligible universe expands. Verify live/research decision-time consistency under P12.8; any live eligibility rollout requires explicit approval.
 - [ ] P9D.2: materialize the authenticated anchored-residual dataset on the existing Phase 9C folds under the amended protocol, using chronological cross-fitted training anchors and complete lineage without reading the consumed holdout. Reuse validated features and labels; regenerate only affected derived artifacts, not the raw SEC store.
 - [ ] P9D.3: fit the three registered ridge penalties inside nested chronological folds and write deterministic outer predictions without model expansion.

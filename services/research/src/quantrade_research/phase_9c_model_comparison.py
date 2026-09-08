@@ -18,7 +18,7 @@ from bisect import bisect_right
 from collections import defaultdict
 import csv
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 import gzip
 from hashlib import sha256
@@ -229,6 +229,7 @@ def _load_active_raw_panel(panel: Path, wanted: set[tuple[date, str]]) -> dict[t
 
 def _load_static_sectors_and_liquidity(
     database_url: str, *, security_ids: Sequence[str], formations: Sequence[date],
+    conservative_asof: bool = False,
 ) -> tuple[dict[str, str], dict[tuple[date, str], tuple[float | None, float | None, float | None]], str]:
     import psycopg
 
@@ -255,8 +256,10 @@ def _load_static_sectors_and_liquidity(
                  FROM quantrade.daily_price_bars
                 WHERE security_id=ANY(%s::uuid[]) AND session='regular'
                   AND adjustment_basis='unadjusted' AND session_date <= %s
+                  AND (%s = false OR available_at <=
+                       (session_date + time '20:00') AT TIME ZONE 'America/Toronto')
                 ORDER BY security_id,session_date""",
-            (list(security_ids), formations[-1]),
+            (list(security_ids), formations[-1], conservative_asof),
         )
         for bar_id, security_id, session, close, volume in cursor:
             if volume is not None:
@@ -266,8 +269,10 @@ def _load_static_sectors_and_liquidity(
                  FROM quantrade.daily_price_bars
                 WHERE security_id=ANY(%s::uuid[]) AND session='regular'
                   AND adjustment_basis='split_adjusted' AND session_date=ANY(%s::date[])
+                  AND (%s = false OR available_at <=
+                       (session_date + time '20:00') AT TIME ZONE 'America/Toronto')
                 ORDER BY security_id,session_date""",
-            (list(security_ids), list(formations)),
+            (list(security_ids), list(formations), conservative_asof),
         )
         for bar_id, security_id, session, close in cursor:
             key = session, str(security_id)
@@ -290,7 +295,7 @@ def _load_static_sectors_and_liquidity(
         for row in cursor:
             facts[str(row[0])].append(ActiveFact(
                 str(row[1]), str(row[2]), str(row[3]), str(row[4]), str(row[5]), float(row[6]),
-                row[7], row[8], row[9],
+                row[7], row[8], row[9] + (timedelta(minutes=5) if conservative_asof else timedelta()),
             ))
     active_values: dict[tuple[date, str], tuple[float | None, float | None, float | None]] = {}
     lineage: list[str] = []
@@ -315,6 +320,7 @@ def _load_static_sectors_and_liquidity(
         "static_sector_rows": [(str(row[0]), str(row[1]), str(row[2]), str(row[3])) for row in sector_rows],
         "liquidity_bar_ids": sorted(set(lineage)),
         "limitation": "current sectors are static Tier-B groupings, not historical point-in-time sectors",
+        "conservative_asof": conservative_asof,
     })
     return sectors, active_values, source_hash
 
@@ -653,7 +659,13 @@ def _fit_document(fit: LinearFit) -> dict[str, object]:
 
 def run_comparison(
     *, database_url: str, dataset: Path, feature_panel: Path, destination: Path,
+    archival_replay: bool = False,
 ) -> dict[str, object]:
+    if not archival_replay:
+        raise DataQualityError(
+            "Phase 9C fixed-artifact comparison is archival, not a valid out-of-sample benchmark. "
+            "Use scripts/run-model-evaluation-repair.ps1 for corrected chronological comparison."
+        )
     dataset_manifest, folds = _validate_inputs(dataset)
     if _sha256_file(feature_panel) != dataset_manifest.get("source_panel_sha256"):
         raise DataQualityError("Phase 9C feature panel does not match the model-dataset provenance")
@@ -807,6 +819,8 @@ def main() -> None:
     parser.add_argument("--feature-panel", type=Path, default=Path("data/derived/phase_9c_weekly_feature_panel_v1.csv.gz"))
     parser.add_argument("--output", type=Path, default=Path("data/derived/phase_9c_nested_weekly_rank_predictions_v1.csv.gz"))
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
+    parser.add_argument("--archival-replay", action="store_true",
+                        help="Explicitly reproduce the superseded diagnostic; never use for model approval")
     arguments = parser.parse_args()
     values = _dotenv_values(arguments.env_file)
     database_url = values.get("DATABASE_URL")
@@ -815,6 +829,7 @@ def main() -> None:
     report = run_comparison(
         database_url=database_url, dataset=arguments.dataset,
         feature_panel=arguments.feature_panel, destination=arguments.output,
+        archival_replay=arguments.archival_replay,
     )
     print(
         f"comparison={report['comparison_key']}@{report['comparison_version']}; "
