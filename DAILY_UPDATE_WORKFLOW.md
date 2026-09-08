@@ -21,8 +21,43 @@ contract without contacting providers or changing the database. A different
 entry point must not invoke the Python module directly.
 
 Identical invocations are safe to repeat. The database ledger permits one
-canonical completed publication per score date, and a completed date returns
-`already_completed` without creating duplicate scores.
+canonical completed publication per score date. A completed date skips ingestion
+and scoring but retries unfinished post-publication maintenance under the same
+advisory lock. It returns `already_completed` only after maintenance is confirmed.
+
+## Score publication versus maintenance completion
+
+The run ledger's `completed` status means immutable scores were published. A
+separate append-only `completed` event at stage `portfolio` checkpoints successful
+maintenance. Legacy completed runs without this checkpoint receive one safe
+maintenance pass when retried. The latest portfolio checkpoint/warning determines
+whether maintenance is still pending; historical warning events are retained.
+
+- Monthly publication examines only the immediately preceding observed regular
+  SPY session. It must belong to an earlier month, and its next observed session
+  must equal the execution date. Ordinary days cannot enter month-end publication.
+- Existing portfolios are a no-op under a transaction-scoped per-formation lock.
+- Portfolio publication, portfolio outcomes, and forward outcomes can progress
+  independently. Readiness is recorded only if forward-outcome materialization
+  succeeded. Partial work remains safe to repeat through existing idempotency.
+- If any maintenance step or checkpoint fails, the process exits **2** and emits
+  `partial_completed` plus a structured completion warning. Scores remain intact.
+  Scheduler whole-run retries can now recover maintenance instead of skipping it.
+- The web button displays **Scores ready · Maintenance pending**, with a retry
+  instruction and a still-enabled button. Retrying does not recalculate scores.
+  Operations history counts unresolved warnings after the latest success checkpoint.
+- Exit **0** means completion, a fully maintained duplicate, or a non-market skip;
+  ordinary pre-publication failures continue to exit nonzero.
+
+This does not backfill missed official month-end baskets or reconcile absent
+market-calendar observations. Missed-run and decision-time policy is P12.8.
+Restart an already-running web server after code changes so it uses the new route.
+
+P12.7 verification (September 7, 2026): 371 research tests, 12 browser tests,
+lint, and production build passed. Read-only validation of the candidate query
+for September 4 returned no due portfolios in approximately 0.06 seconds. The
+operations-history SQL also ran successfully. Browser stream tests use fixtures;
+no live daily update, new score publication, or historical basket repair was run.
 
 ## Progress contract
 

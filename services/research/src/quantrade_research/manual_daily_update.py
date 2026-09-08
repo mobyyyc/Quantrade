@@ -172,18 +172,70 @@ def _record_operation_event(
         )
 
 
-def _try_record_operation_event_by_url(
-    database_url: str, score_date: date, event_type: str, *, stage: str | None = None,
-    detail: str | None = None,
-) -> None:
-    import psycopg
-    try:
-        with psycopg.connect(database_url) as connection:
-            _record_operation_event(connection, score_date, event_type, stage=stage, detail=detail)
-    except Exception:
-        # A telemetry write must not turn a completed score publication into a
-        # failed user-visible update. The original warning is still emitted.
+def _maintenance_completed(connection, score_date: date) -> bool:
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """SELECT event_type FROM quantrade.daily_research_run_events
+               WHERE score_date = %s AND stage = 'portfolio'
+                 AND event_type IN ('completed', 'post_publication_warning')
+               ORDER BY daily_research_run_event_id DESC LIMIT 1""", (score_date,),
+        )
+        row = cursor.fetchone()
+    return row is not None and row[0] == "completed"
+
+
+def _post_publication_maintenance(connection, settings, score_date: date) -> None:
+    """Run under the daily lock; never alter already-published score evidence.
+
+    A portfolio completion event is a durable retry checkpoint. Legacy completed
+    publications without that checkpoint get one safe maintenance pass. Partial
+    failure exits with code 2, so scheduler retries and the web stream can report
+    scores-ready/maintenance-pending rather than an unqualified success.
+    """
+    if _maintenance_completed(connection, score_date):
+        _progress("portfolio", "skipped", "Maintenance already completed; nothing was duplicated.", score_date=score_date)
         return
+    _progress("portfolio", "started", "Updating due outcomes and monthly portfolio records.", score_date=score_date)
+    failures: list[str] = []
+    operations = (
+        ("monthly portfolios", publish_due_paper_portfolios, {"execution_date": score_date}),
+        ("portfolio outcomes", materialize_due_paper_portfolio_outcomes, {"as_of_date": score_date}),
+        ("forward outcomes", materialize_due_forward_score_outcomes, {"as_of_date": score_date}),
+    )
+    forward_ready = False
+    for name, operation, kwargs in operations:
+        try:
+            operation(settings=settings, **kwargs)
+            if name == "forward outcomes":
+                forward_ready = True
+        except Exception as error:
+            failures.append(f"{name}: {error}")
+    if forward_ready:
+        try:
+            materialize_forward_readiness_snapshot(settings=settings, as_of_date=score_date)
+        except Exception as error:
+            failures.append(f"forward readiness: {error}")
+    if failures:
+        detail = "; ".join(failures)
+        _record_operation_event(connection, score_date, "post_publication_warning", stage="portfolio", detail=detail)
+        _progress("portfolio", "warning", "Scores are ready. Retry the update to finish maintenance without recalculating scores.", score_date=score_date)
+        _progress("completion", "warning", "Partial completion: scores published; maintenance needs a retry.", score_date=score_date)
+        print(f"partial_completed score_date={score_date}; post_publication_error={detail}", flush=True)
+        raise SystemExit(2)
+    _record_operation_event(connection, score_date, "completed", stage="portfolio",
+                            detail="Post-publication maintenance completed successfully.")
+    _progress("portfolio", "completed", "Portfolio records and due outcomes are current.", score_date=score_date)
+
+
+def _finish_maintenance(connection, settings, score_date: date) -> None:
+    try:
+        _post_publication_maintenance(connection, settings, score_date)
+    except Exception as error:
+        # A failed checkpoint/read must not misreport immutable scores as absent.
+        # No success checkpoint means the next attempt will retry safely.
+        _progress("completion", "warning", "Scores are ready, but maintenance could not be confirmed. Retry the update.", score_date=score_date)
+        print(f"partial_completed score_date={score_date}; post_publication_error={error}", flush=True)
+        raise SystemExit(2) from error
 
 
 def _start_or_resume(connection, score_date: date) -> tuple[bool, datetime | None]:
@@ -192,7 +244,7 @@ def _start_or_resume(connection, score_date: date) -> tuple[bool, datetime | Non
     if existing and existing[0] == "completed":
         _record_operation_event(
             connection, score_date, "duplicate_prevented", stage="initialization",
-            detail="A completed publication already exists; no duplicate work was started.",
+            detail="A completed publication already exists; ingestion and scoring were not restarted.",
         )
         return False, existing[1]
     with connection.cursor() as cursor:
@@ -376,8 +428,9 @@ def main() -> None:
     with _daily_update_lock(settings.database_url) as connection:
         should_run, retry_cutoff = _start_or_resume(connection, score_date)
         if not should_run:
-            _progress("completion", "completed", "Today’s publication already exists; nothing was duplicated.", score_date=score_date)
-            print(f"already_completed score_date={score_date}; no duplicate publication was created")
+            _finish_maintenance(connection, settings, score_date)
+            _progress("completion", "completed", "Scores already existed; maintenance is complete. Nothing was duplicated.", score_date=score_date)
+            print(f"already_completed score_date={score_date}; maintenance_completed=true; no duplicate publication was created")
             return
         _progress("initialization", "completed", f"Locked the run for {len(symbol_list)} companies.", score_date=score_date)
         active_stage = "market_data"
@@ -453,29 +506,9 @@ def main() -> None:
             _progress("completion", "failed", "The daily update did not complete.", score_date=score_date)
             raise
 
-    _progress("portfolio", "started", "Updating due outcomes and monthly portfolio records.", score_date=score_date)
-    try:
-        forward_outcomes = materialize_due_forward_score_outcomes(settings=settings, as_of_date=score_date)
-        readiness_snapshot_created = materialize_forward_readiness_snapshot(settings=settings, as_of_date=score_date)
-        outcomes = materialize_due_paper_portfolio_outcomes(settings=settings, as_of_date=score_date)
-        published_portfolios = publish_due_paper_portfolios(settings=settings, execution_date=score_date)
-    except Exception as error:
-        _try_record_operation_event_by_url(
-            settings.database_url, score_date, "post_publication_warning", stage="portfolio",
-            detail=str(error),
-        )
-        _progress("portfolio", "warning", "Scores are ready, but post-publication portfolio maintenance needs attention.", score_date=score_date)
-        _progress("completion", "warning", "Daily scores completed with a post-publication warning.", score_date=score_date)
-        print(f"completed score_date={score_date}; {score_note}; post_publication_error={error}")
-        return
-
-    published_note = ",".join(item.isoformat() for item in published_portfolios) or "none_due"
-    outcome_note = ",".join(f"{item.horizon_sessions}d:{item.status}" for item in outcomes) or "none_due"
-    forward_note = ",".join(f"{item.horizon_sessions}d:{item.status}" for item in forward_outcomes) or "none_due"
-    readiness_note = "created" if readiness_snapshot_created else "already_recorded"
-    _progress("portfolio", "completed", "Portfolio records and due outcomes are current.", score_date=score_date)
-    _progress("completion", "completed", "The canonical daily publication is ready.", score_date=score_date)
-    print(f"completed score_date={score_date}; {score_note}; forward_outcomes={forward_note}; readiness_snapshot={readiness_note}; paper_portfolios={published_note}; paper_outcomes={outcome_note}")
+        _finish_maintenance(connection, settings, score_date)
+        _progress("completion", "completed", "Scores and post-publication maintenance are complete.", score_date=score_date)
+        print(f"completed score_date={score_date}; {score_note}; maintenance_completed=true")
 
 
 if __name__ == "__main__":

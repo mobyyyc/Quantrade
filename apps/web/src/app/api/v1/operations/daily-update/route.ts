@@ -88,14 +88,16 @@ export async function POST() {
         childSettled = true;
         const finalProgress = parseDailyUpdateProgress(stdoutBuffer);
         if (finalProgress) send({ type: "progress", progress: finalProgress });
-        if (code !== 0) {
+        const partial = (code === 2 && output.includes("partial_completed score_date="))
+          || (code === 0 && output.includes("post_publication_error="));
+        if (code !== 0 && !partial) {
           console.error("[daily-update] research process failed", { code, output: output.slice(-4_000) });
           send({ type: "error", error: userFacingError(output) });
           close();
           return;
         }
         if (output.includes("already_completed")) {
-          send({ type: "complete", message: "Today’s canonical score publication already exists. No duplicate update was run." });
+          send({ type: "complete", message: "Today’s scores already exist and maintenance is complete. No scores were recalculated." });
           close();
           return;
         }
@@ -104,8 +106,8 @@ export async function POST() {
           close();
           return;
         }
-        const completionMessage = output.includes("post_publication_error=")
-          ? "Daily scores are ready, but portfolio maintenance needs attention. Check the research-service logs before the next run."
+        const completionMessage = partial || output.includes("post_publication_error=")
+          ? "Scores are ready, but maintenance is pending. Run the update again to retry maintenance without recalculating scores."
           : "Daily update completed. The canonical score publication is ready to view.";
         try {
           const latest = await getLatestDatedScores();
@@ -114,10 +116,11 @@ export async function POST() {
           send({
             type: "complete",
             message: completionMessage,
+            outcome: partial ? "partial" : "complete",
             result: latest ? { scoreDate: latest.scoreDate, eligibleCount, totalCount } : undefined,
           });
         } catch {
-          send({ type: "complete", message: completionMessage });
+          send({ type: "complete", message: completionMessage, outcome: partial ? "partial" : "complete" });
         }
         close();
       });

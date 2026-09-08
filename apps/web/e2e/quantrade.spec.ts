@@ -57,6 +57,33 @@ test("watchlist persists saved companies and displays live score and price conte
   await expect(page.getByText("84/100")).toBeVisible();
 });
 
+test("daily update partial completion remains retryable without claiming full success", async ({ page }) => {
+  let attempts = 0;
+  await page.route("**/api/v1/operations/daily-update", async (route) => {
+    attempts += 1;
+    const partial = attempts === 1;
+    const events = [
+      { type: "progress", progress: { contract: "daily_update_progress_v1", stage: "completion",
+        status: partial ? "warning" : "completed", message: partial ? "Maintenance pending." : "Maintenance complete." } },
+      { type: "complete", outcome: partial ? "partial" : "complete",
+        message: partial ? "Scores are ready. Retry maintenance without recalculating scores." : "Maintenance completed. No scores were recalculated.",
+        result: { scoreDate: "2026-08-25", eligibleCount: 2, totalCount: 2 } },
+    ];
+    await route.fulfill({ status: 200, contentType: "application/x-ndjson",
+      body: events.map((event) => JSON.stringify(event)).join("\n") + "\n" });
+  });
+  await page.goto("/");
+  const button = page.getByRole("button", { name: "Run daily update" });
+  await button.click();
+  await expect(page.getByText("SCORES READY · MAINTENANCE PENDING", { exact: true })).toBeVisible();
+  await expect(page.getByText("DAILY UPDATE COMPLETE", { exact: true })).toHaveCount(0);
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(page.getByText("DAILY UPDATE COMPLETE", { exact: true })).toBeVisible();
+  await expect(page.getByText("Maintenance completed. No scores were recalculated.", { exact: true })).toBeVisible();
+  expect(attempts).toBe(2);
+});
+
 test("daily update control renders streamed progress and completion safely", async ({ page }) => {
   await page.route("**/api/v1/operations/daily-update", async (route) => {
     expect(route.request().method()).toBe("POST");

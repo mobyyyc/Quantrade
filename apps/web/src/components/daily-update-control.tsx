@@ -22,7 +22,7 @@ const STAGE_LABELS: Record<DailyUpdateProgressStage, string> = {
 
 export function DailyUpdateControl() {
   const router = useRouter();
-  const [status, setStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "running" | "success" | "partial" | "error">("idle");
   const [message, setMessage] = useState("");
   const [summary, setSummary] = useState<DailyUpdateSummary | null>(null);
   async function runUpdate() {
@@ -53,7 +53,7 @@ export function DailyUpdateControl() {
             throw new Error(event.error);
           } else {
             completed = true;
-            setStatus("success");
+            setStatus(event.outcome === "partial" ? "partial" : "success");
             setMessage(event.message);
             setSummary(event.result ?? null);
           }
@@ -71,6 +71,6 @@ export function DailyUpdateControl() {
   const coverage = summary?.totalCount ? Math.round((summary.eligibleCount / summary.totalCount) * 100) : 0;
   return <section className="daily-update" aria-labelledby="daily-update-title" aria-busy={status === "running"}>
     <div className="daily-update-control"><div><p className="eyebrow">PRIVATE OPERATIONS</p><h2 id="daily-update-title">Refresh today’s research</h2><p>After market close, validate current prices, calculate eligible scores, then publish the dated result.</p></div><div className="daily-update-action"><button type="button" className="primary-link" onClick={runUpdate} disabled={status === "running"}>{status === "running" ? "Updating…" : "Run daily update"}</button><p className={`daily-update-message ${status}`} role={status === "idle" ? undefined : "status"} aria-live="polite" aria-atomic="true" aria-hidden={status === "idle"}>{message || "Daily update status"}</p></div></div>
-    {summary && <div className="daily-update-summary" role="status"><div><p className="eyebrow">DAILY UPDATE COMPLETE</p><h3>Research for {formatResearchDate(summary.scoreDate)} is ready.</h3><p>The new dated result is available across Today, Rankings, and your Watchlist.</p></div><dl><div><dt>Eligible</dt><dd>{summary.eligibleCount}</dd></div><div><dt>Withheld</dt><dd>{withheldCount}</dd></div><div><dt>Coverage</dt><dd>{coverage}%</dd></div></dl><Link href={`/rankings?date=${summary.scoreDate}`} className="text-link">Review rankings</Link></div>}
+    {summary && <div className="daily-update-summary" role="status"><div><p className="eyebrow">{status === "partial" ? "SCORES READY · MAINTENANCE PENDING" : "DAILY UPDATE COMPLETE"}</p><h3>Research for {formatResearchDate(summary.scoreDate)} is ready.</h3><p>{status === "partial" ? "Published scores are available. Retry the update to finish portfolio and outcome maintenance." : "The dated result is available across Today, Rankings, and your Watchlist."}</p></div><dl><div><dt>Eligible</dt><dd>{summary.eligibleCount}</dd></div><div><dt>Withheld</dt><dd>{withheldCount}</dd></div><div><dt>Coverage</dt><dd>{coverage}%</dd></div></dl><Link href={`/rankings?date=${summary.scoreDate}`} className="text-link">Review rankings</Link></div>}
   </section>;
 }

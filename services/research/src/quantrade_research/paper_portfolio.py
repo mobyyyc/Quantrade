@@ -26,7 +26,7 @@ def _settings(env_file: Path) -> Settings:
 
 def is_monthly_formation(formation_date: date, next_session_date: date) -> bool:
     """Return whether the next market session begins a new calendar month."""
-    return (formation_date.year, formation_date.month) != (
+    return next_session_date > formation_date and (formation_date.year, formation_date.month) != (
         next_session_date.year,
         next_session_date.month,
     )
@@ -40,9 +40,10 @@ def publish_paper_portfolio(*, settings: Settings, score_date: date, starting_na
         raise DataQualityError("paper portfolio starting NAV must be positive")
     import psycopg
     with psycopg.connect(settings.database_url) as connection, connection.cursor() as cursor:
+        cursor.execute("SELECT pg_advisory_xact_lock(%s, %s)", (71362027, score_date.toordinal()))
         cursor.execute("SELECT 1 FROM quantrade.paper_portfolio_runs WHERE score_date = %s", (score_date,))
         if cursor.fetchone() is not None:
-            raise DataQualityError(f"paper portfolio already exists for {score_date}")
+            return 0
         cursor.execute(
             "SELECT model_version FROM quantrade.model_deployments ORDER BY deployed_at DESC LIMIT 1"
         )
@@ -134,6 +135,11 @@ def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) ->
                  FROM quantrade.model_deployments
                  ORDER BY deployed_at DESC
                  LIMIT 1
+               ), prior_session AS (
+                 SELECT MAX(session_date) AS session_date
+                 FROM quantrade.benchmark_daily_price_bars
+                 WHERE benchmark_ticker = 'SPY' AND session = 'regular'
+                   AND adjustment_basis = 'unadjusted' AND session_date < %s
                )
                SELECT s.score_date
                FROM quantrade.score_snapshots s
@@ -142,28 +148,21 @@ def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) ->
                  ON run.score_date = s.score_date
                 AND run.decision_at = s.decision_at
                 AND run.status = 'completed'
-               WHERE s.score_date < %s
+               WHERE s.score_date = (
+                   SELECT session_date FROM prior_session
+                   WHERE date_trunc('month', session_date) < date_trunc('month', %s::date)
+                 )
                  AND s.model_version = active.model_version
                  AND s.eligible
-                 AND s.score_date = (
-                   SELECT MAX(bar.session_date)
-                   FROM quantrade.benchmark_daily_price_bars bar
-                   WHERE bar.benchmark_ticker = 'SPY'
-                     AND bar.session = 'regular'
-                     AND bar.adjustment_basis = 'unadjusted'
-                     AND bar.session_date < %s
-                     AND date_trunc('month', bar.session_date) = date_trunc('month', s.score_date)
-                 )
                  AND NOT EXISTS (
                    SELECT 1
                    FROM quantrade.paper_portfolio_runs p
                    WHERE p.score_date = s.score_date
-                     AND p.formation_protocol = %s
                  )
                GROUP BY s.score_date
                HAVING COUNT(*) >= 20
                ORDER BY s.score_date ASC""",
-            (execution_date, execution_date, MONTHLY_FORMATION_PROTOCOL),
+            (execution_date, execution_date),
         )
         candidates = [row[0] for row in cursor.fetchall()]
         due_dates: list[date] = []
@@ -181,12 +180,12 @@ def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) ->
             )
             next_open_row = cursor.fetchone()
             next_open = next_open_row[0] if next_open_row is not None else None
-            if next_open == execution_date:
+            if next_open == execution_date and is_monthly_formation(score_date, next_open):
                 due_dates.append(score_date)
     published: list[date] = []
     for score_date in due_dates:
-        publish_paper_portfolio(settings=settings, score_date=score_date)
-        published.append(score_date)
+        if publish_paper_portfolio(settings=settings, score_date=score_date):
+            published.append(score_date)
     return tuple(published)
 
 

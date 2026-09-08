@@ -10,7 +10,7 @@ comparison, and reproducible research-only results are recorded in
 `MODEL_EVALUATION_REPAIR_RESULTS.md`. No live promotion or residual challenger
 was performed. **P9D.0c** is also complete: the direct elastic-net comparison did
 not support superiority, so the live model was retained. See
-`ELASTIC_NET_SWAP_REVIEW.md`. **Next: P12.7**, awaiting approval.
+`ELASTIC_NET_SWAP_REVIEW.md`. P12.7 is now complete. **Next: P12.8**, awaiting approval.
 
 Prioritize operational reliability and valid model comparisons before additional
 model complexity or cosmetic redesign. This sequence supersedes numerical phase
@@ -214,7 +214,7 @@ be required for daily operations.
 - [x] P12.4: add bounded retries for temporary provider failures while preserving idempotency and duplicate prevention.
 - [x] P12.5: implement automated PostgreSQL backups, retention rules, and a tested restore procedure.
 - [x] P12.6: add a concise operations-history view for successful, skipped, failed, retried, and duplicate-prevented runs.
-- [ ] P12.7: correct monthly portfolio candidate selection and recoverable post-publication maintenance. Ordinary trading days must not attempt invalid month-end formation; retry maintenance independently of already-completed scores, preserve idempotency, and distinguish fully completed runs from scores published with maintenance warnings. Add regression tests for ordinary days, month-ends, repeated runs, and partial failures.
+- [x] P12.7: correct monthly portfolio candidate selection and recoverable post-publication maintenance. Candidates are restricted to the prior observed session crossing a month boundary; maintenance retries under the daily lock without recalculating published scores, with durable completion checkpoints and a distinct partial-completion exit/stream state. Existing portfolios are idempotent under a formation lock. Verified with 371 research tests, 12 browser tests, lint/build, and read-only production-data SQL checks. See `DAILY_UPDATE_WORKFLOW.md`; no historical baskets or scores were rewritten.
 - [ ] P12.8: define and test honest missed-run recovery and a versioned decision-time contract. Reconcile the research 8:00 p.m. cutoff with actual live observation/decision timestamps around 10:15 p.m.; explicitly approve the chosen convention before rollout. Backfill missing market observations without backdating knowledge, scores, or official holdings. Report unavailable missed formations rather than fabricating a basket using later information; preserve existing timestamps and lineage.
 - [ ] P12.9: audit and align daily-update and backup schedules with the user's PC availability, including the remaining 1:30 a.m. backup trigger, missed-start/logon behavior, and hidden launchers. Confirm the replacement timing with the user and verify bounded catch-up, logs, and no visible PowerShell windows without requiring Codex usage.
 

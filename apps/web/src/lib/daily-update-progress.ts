@@ -25,7 +25,7 @@ export type DailyUpdateSummary = {
 
 export type DailyUpdateStreamEvent =
   | { type: "progress"; progress: DailyUpdateProgress }
-  | { type: "complete"; message: string; result?: DailyUpdateSummary }
+  | { type: "complete"; message: string; outcome?: "complete" | "partial"; result?: DailyUpdateSummary }
   | { type: "error"; error: string };
 
 const STAGES = new Set<DailyUpdateProgressStage>([

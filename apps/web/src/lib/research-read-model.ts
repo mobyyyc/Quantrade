@@ -562,7 +562,13 @@ export async function getDailyOperationsHistory(limit = 8): Promise<DailyOperati
             COUNT(event.*) FILTER (WHERE event.event_type = 'attempt_started')::int AS attempt_count,
             COUNT(event.*) FILTER (WHERE event.event_type = 'provider_retry')::int AS provider_retry_count,
             COUNT(event.*) FILTER (WHERE event.event_type = 'duplicate_prevented')::int AS duplicate_prevented_count,
-            COUNT(event.*) FILTER (WHERE event.event_type = 'post_publication_warning')::int AS warning_count,
+            COUNT(event.*) FILTER (WHERE event.event_type = 'post_publication_warning'
+              AND event.daily_research_run_event_id > COALESCE((
+                SELECT MAX(resolved.daily_research_run_event_id)
+                FROM quantrade.daily_research_run_events resolved
+                WHERE resolved.score_date = run.score_date
+                  AND resolved.stage = 'portfolio' AND resolved.event_type = 'completed'
+              ), 0))::int AS warning_count,
             COALESCE(MAX(event.occurred_at), run.completed_at, run.started_at) AS last_event_at
      FROM quantrade.daily_research_runs AS run
      LEFT JOIN quantrade.daily_research_run_events AS event
