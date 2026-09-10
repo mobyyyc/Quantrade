@@ -54,18 +54,45 @@ export function readWatchlist(): WatchlistEntry[] {
       seen.add(entry.securityId);
       return [entry];
     });
-    if (!current && entries.length) writeWatchlist(entries);
     return entries;
   } catch {
     return [];
   }
 }
 
-export function writeWatchlist(entries: WatchlistEntry[]) {
-  const normalized = entries.flatMap((entry) => {
+function normalizedEntries(entries: WatchlistEntry[]) {
+  return entries.flatMap((entry) => {
     const value = normalizeEntry(entry);
     return value ? [value] : [];
   });
-  window.localStorage.setItem(storageKey, JSON.stringify(normalized));
+}
+
+export async function loadWatchlist(): Promise<WatchlistEntry[]> {
+  const response = await fetch("/api/v1/watchlist", { cache: "no-store" });
+  if (!response.ok) throw new Error("Watchlist request failed");
+  const body = await response.json() as { entries?: unknown };
+  const serverEntries = Array.isArray(body.entries) ? body.entries.flatMap((entry) => {
+    const normalized = normalizeEntry(entry);
+    return normalized ? [normalized] : [];
+  }) : [];
+  const localEntries = readWatchlist();
+  if (!serverEntries.length && localEntries.length) {
+    await writeWatchlist(localEntries);
+    return localEntries;
+  }
+  window.localStorage.removeItem(storageKey);
+  window.localStorage.removeItem(legacyStorageKey);
+  return serverEntries;
+}
+
+export async function writeWatchlist(entries: WatchlistEntry[]) {
+  const normalized = normalizedEntries(entries);
+  const response = await fetch("/api/v1/watchlist", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ entries: normalized }),
+  });
+  if (!response.ok) throw new Error("Watchlist update failed");
+  window.localStorage.removeItem(storageKey);
   window.localStorage.removeItem(legacyStorageKey);
 }

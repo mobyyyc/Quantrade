@@ -253,7 +253,7 @@ repeat use and eventual external access.
 - [x] P15.3: complete an accessibility audit covering keyboard navigation, focus, contrast, chart alternatives, and screen-reader labels. See `ACCESSIBILITY_REVIEW.md` for fixes, automated coverage, and manual release checks.
 - [x] P15.4: add a least-privilege GitHub Actions workflow that applies all ordered migrations to a disposable `_ci` PostgreSQL database, runs the full research suite and web lint, and produces a production Next.js build. The migration verifier rejects non-CI database names and fails on missing or malformed migration sequence numbers.
 - [x] P15.5: audit secrets and configuration, rotate previously exposed provider credentials, and prevent secrets from entering source control or logs. Repository/history scanning found no real credentials in Git; local `.env` permissions are protected; PostgreSQL and Alpaca credentials were replaced and verified. The owner accepted assistant-chat exposure of the replacement Alpaca pair for private beta only, so another local-only rotation remains mandatory before staging or external access.
-- [ ] P15.6: add authentication, rate limiting, audit logging, and user-data isolation before external beta access.
+- [x] P15.6: add authentication, rate limiting, audit logging, and user-data isolation before external beta access. The local-first owner flow now uses scrypt password hashes, revocable opaque database sessions, fail-closed page/API guards, same-origin mutation checks, PostgreSQL-backed limits, append-only sanitized audit events, and per-user server-side watchlists. See `WEB_SECURITY_BOUNDARY.md`; managed identity and MFA remain staging requirements in Phase 16.
 
 ## Phase 16: deployment and public-beta architecture
 

@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { authenticateTestOwner } from "./auth";
 
 const appleId = "11111111-1111-4111-8111-111111111111";
 const microsoftId = "22222222-2222-4222-8222-222222222222";
+
+test.beforeEach(async ({ page }) => authenticateTestOwner(page));
 
 test("global search finds a company and opens its research detail", async ({ page }) => {
   await page.goto("/");
@@ -41,6 +44,7 @@ test("watchlist persists saved companies and displays live score and price conte
 
   await page.goto(`/stocks/${microsoftId}`);
   await page.getByRole("button", { name: "Save to watchlist" }).click();
+  await expect(page.getByRole("button", { name: "Saved" })).toHaveAttribute("aria-pressed", "true");
 
   await page.goto("/");
   const preview = page.locator("section.watchlist-preview");
@@ -114,4 +118,13 @@ test("official portfolio shows immutable holdings and completed history", async 
   await expect(page.getByRole("link", { name: /MSFT, formation rank 1, score 81 out of 100/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Official 20-session results" })).toBeVisible();
   await expect(page.getByRole("listitem", { name: /basket return \+8\.00%.*SPY return \+3\.00%.*difference \+5\.00 pp/i })).toBeVisible();
+});
+
+test("unauthenticated pages redirect and APIs fail closed", async ({ page }) => {
+  await page.context().clearCookies();
+  const apiResponse = await page.request.get("/api/v1/prices?securityIds=11111111-1111-4111-8111-111111111111");
+  expect(apiResponse.status()).toBe(401);
+  await page.goto("/rankings");
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Frankings$/);
+  await expect(page.getByRole("heading", { name: "Welcome back." })).toBeVisible();
 });

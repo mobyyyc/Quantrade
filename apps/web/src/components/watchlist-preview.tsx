@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { formatMarketSessionDate, formatPriceChange, formatScore, formatUsdPrice } from "@/lib/format";
 import type { DatedScore, LatestPriceSummary } from "@/lib/research-read-model";
-import { readWatchlist, type WatchlistEntry } from "@/components/watchlist-storage";
+import { loadWatchlist, type WatchlistEntry } from "@/components/watchlist-storage";
 
 export type WatchlistPreviewScore = Pick<DatedScore, "securityId" | "score" | "rank" | "eligible">;
 
@@ -19,11 +19,11 @@ export function WatchlistPreview({ scoreDate }: { scoreDate?: string }) {
   const scoresBySecurity = useMemo(() => new Map(scores.map((score) => [score.securityId, score])), [scores]);
   const pricesBySecurity = useMemo(() => new Map(prices.map((price) => [price.securityId, price])), [prices]);
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setWatchlist(readWatchlist());
-      setHydrated(true);
-    }, 0);
-    return () => window.clearTimeout(timer);
+    let active = true;
+    void loadWatchlist().then((entries) => {
+      if (active) setWatchlist(entries);
+    }).finally(() => { if (active) setHydrated(true); });
+    return () => { active = false; };
   }, []);
   useEffect(() => {
     if (!hydrated || !watchlist.length) return;

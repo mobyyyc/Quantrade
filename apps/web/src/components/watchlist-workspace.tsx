@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { formatPriceChange, formatResearchDate, formatScore, formatUsdPrice } from "@/lib/format";
 import type { DatedScore, LatestPriceSummary } from "@/lib/research-read-model";
-import { maximumWatchlistTags, readWatchlist, writeWatchlist, type WatchlistEntry } from "@/components/watchlist-storage";
+import { maximumWatchlistTags, loadWatchlist, writeWatchlist, type WatchlistEntry } from "@/components/watchlist-storage";
 
 function formatScoreDelta(value: number) {
   const absolute = Math.abs(value).toFixed(1).replace(/\.0$/, "");
@@ -69,11 +69,11 @@ export function WatchlistWorkspace({
   }), [scoresBySecurity, sortBy, watchlist]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setWatchlist(readWatchlist());
-      setHydrated(true);
-    }, 0);
-    return () => window.clearTimeout(timer);
+    let active = true;
+    void loadWatchlist().then((entries) => {
+      if (active) setWatchlist(entries);
+    }).finally(() => { if (active) setHydrated(true); });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export function WatchlistWorkspace({
   const remove = (company: WatchlistEntry) => {
     const next = watchlist.filter((entry) => entry.securityId !== company.securityId);
     setWatchlist(next);
-    writeWatchlist(next);
+    void writeWatchlist(next);
     setRemoved(company);
     if (editingSecurityId === company.securityId) setEditingSecurityId(null);
   };
@@ -122,7 +122,7 @@ export function WatchlistWorkspace({
     if (!removed) return;
     const next = [...watchlist, removed];
     setWatchlist(next);
-    writeWatchlist(next);
+    void writeWatchlist(next);
     setRemoved(null);
   };
   const beginEditing = (company: WatchlistEntry) => {
@@ -153,7 +153,7 @@ export function WatchlistWorkspace({
       ...(tags.length ? { tags } : { tags: undefined }),
     } : entry);
     setWatchlist(next);
-    writeWatchlist(next);
+    void writeWatchlist(next);
     setEditingSecurityId(null);
     setEditorError(null);
   };

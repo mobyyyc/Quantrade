@@ -213,7 +213,7 @@ export class ResearchReadModelError extends Error {
 
 let pool: Pool | undefined;
 
-function databasePool(): Pool {
+export function databasePool(): Pool {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new ResearchReadModelError("Research data is not configured.", 503);

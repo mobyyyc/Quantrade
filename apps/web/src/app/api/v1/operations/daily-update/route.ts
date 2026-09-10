@@ -5,6 +5,10 @@ import {
   type DailyUpdateStreamEvent,
 } from "@/lib/daily-update-progress";
 import { getLatestDatedScores } from "@/lib/research-read-model";
+import {
+  AuthError, auditEvent, authErrorResponse, authorizeApiRequest,
+  requestSubject, requireSameOrigin,
+} from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,12 +35,22 @@ function userFacingError(output: string): string {
   return "The daily update did not complete. Check the local research service logs for details.";
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  let user;
+  try {
+    requireSameOrigin(request);
+    user = await authorizeApiRequest(request, "daily_update", 6, 60 * 60);
+    if (user.role !== "owner") throw new AuthError("Owner access is required.", 403);
+    await auditEvent({ userId: user.userId, eventType: "daily_update", outcome: "allowed", route: "/api/v1/operations/daily-update", subject: requestSubject(request), metadata: { stage: "launch" } });
+  } catch (error) {
+    return authErrorResponse(error);
+  }
   let launch: ReturnType<typeof dailyUpdateLaunchSpec>;
   try {
     launch = dailyUpdateLaunchSpec();
   } catch (error) {
     console.error("[daily-update] launch configuration failed", { error });
+    await auditEvent({ userId: user.userId, eventType: "daily_update", outcome: "failed", route: "/api/v1/operations/daily-update", subject: requestSubject(request), metadata: { stage: "configuration" } });
     return Response.json(
       { error: "The local research process could not be configured. Check the web terminal for details." },
       { status: 500 },
@@ -80,6 +94,7 @@ export async function POST() {
       child.on("error", (error) => {
         childSettled = true;
         console.error("[daily-update] failed to start research process", { error });
+        void auditEvent({ userId: user.userId, eventType: "daily_update", outcome: "failed", route: "/api/v1/operations/daily-update", subject: requestSubject(request), metadata: { stage: "spawn" } });
         send({ type: "error", error: "The local research process could not be started. Check the web terminal for details." });
         close();
       });
@@ -92,6 +107,7 @@ export async function POST() {
           || (code === 0 && output.includes("post_publication_error="));
         if (code !== 0 && !partial) {
           console.error("[daily-update] research process failed", { code, output: output.slice(-4_000) });
+          await auditEvent({ userId: user.userId, eventType: "daily_update", outcome: "failed", route: "/api/v1/operations/daily-update", subject: requestSubject(request), metadata: { stage: "research", exitCode: code ?? -1 } });
           send({ type: "error", error: userFacingError(output) });
           close();
           return;
@@ -109,6 +125,7 @@ export async function POST() {
         const completionMessage = partial || output.includes("post_publication_error=")
           ? "Scores are ready, but maintenance is pending. Run the update again to retry maintenance without recalculating scores."
           : "Daily update completed. The canonical score publication is ready to view.";
+        await auditEvent({ userId: user.userId, eventType: "daily_update", outcome: "allowed", route: "/api/v1/operations/daily-update", subject: requestSubject(request), metadata: { stage: partial ? "partial" : "completed" } });
         try {
           const latest = await getLatestDatedScores();
           const eligibleCount = latest?.scores.filter((score) => score.eligible).length ?? 0;

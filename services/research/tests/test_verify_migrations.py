@@ -10,8 +10,8 @@ class MigrationVerificationTests(unittest.TestCase):
         directory = Path(__file__).resolve().parents[1] / "db" / "migrations"
         migrations = ordered_migrations(directory)
         self.assertEqual(migrations[0].name, "0001_core_schema.sql")
-        self.assertEqual(migrations[-1].name, "0036_add_decision_time_contracts.sql")
-        self.assertEqual(len(migrations), 36)
+        self.assertEqual(migrations[-1].name, "0037_add_web_security_boundary.sql")
+        self.assertEqual(len(migrations), 37)
 
     def test_gap_in_sequence_fails_before_database_access(self) -> None:
         with TemporaryDirectory() as temporary:

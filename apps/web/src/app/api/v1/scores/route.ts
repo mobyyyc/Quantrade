@@ -1,4 +1,5 @@
 import { listDatedScores, ResearchReadModelError } from "@/lib/research-read-model";
+import { AuthError, authErrorResponse, authorizeApiRequest } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ function validDate(value: string | null): value is string {
 }
 
 export async function GET(request: Request) {
+  try { await authorizeApiRequest(request); } catch (error) { return authErrorResponse(error); }
   const date = new URL(request.url).searchParams.get("date");
   if (!validDate(date)) {
     return Response.json({ error: "A date query parameter in YYYY-MM-DD format is required." }, { status: 400 });
@@ -23,6 +25,7 @@ export async function GET(request: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error);
     const status = error instanceof ResearchReadModelError ? error.status : 500;
     return Response.json({ error: "Unable to load dated scores." }, { status });
   }

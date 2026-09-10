@@ -1,7 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { authenticateTestOwner } from "./auth";
 
 const appleId = "11111111-1111-4111-8111-111111111111";
+
+test.beforeEach(async ({ page }) => authenticateTestOwner(page));
 
 for (const width of [1280, 390, 320]) {
   test(`core routes pass automated accessibility checks at ${width}px`, async ({ page }) => {

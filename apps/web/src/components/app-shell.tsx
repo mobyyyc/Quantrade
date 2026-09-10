@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { GlobalSearch } from "@/components/global-search";
 import { MobileSidebarNav } from "@/components/mobile-sidebar-nav";
+import { AccountControl } from "@/components/account-control";
 
 const navigation = [
   { href: "/", label: "Today" },
@@ -35,7 +36,7 @@ export function AppShell({ children, current }: { children: ReactNode; current: 
             </Link>
           ))}
         </nav>
-        <GlobalSearch />
+        <div className="topbar-actions"><GlobalSearch /><AccountControl /></div>
       </header>
       <main id="main-content" className="app-main" tabIndex={-1}>{children}</main>
     </div>
