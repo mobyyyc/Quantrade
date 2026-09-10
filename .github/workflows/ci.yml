@@ -43,6 +43,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -64,6 +66,9 @@ jobs:
 
       - name: Install research service
         run: python -m pip install --disable-pip-version-check -e services/research
+
+      - name: Scan tracked files and Git history for secrets
+        run: python -m quantrade_research.secret_audit --history
 
       - name: Verify clean database migrations
         run: python -m quantrade_research.verify_migrations
