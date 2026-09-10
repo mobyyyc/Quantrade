@@ -9,6 +9,7 @@ from typing import Iterable
 
 from .active_model import ActiveModelArtifact
 from .features import FeatureRegistry
+from .model_eligibility import evaluate_model_inputs
 from .quality import DataQualityError
 from .ranking import SectorPercentileRank
 
@@ -69,7 +70,8 @@ def _rank_feature_key(model_column: str) -> str:
 
 def build_model_scores(*, ranks: Iterable[SectorPercentileRank], formation_date: date,
                        universe_security_ids: Iterable[str], registry: FeatureRegistry,
-                       model: ActiveModelArtifact) -> tuple[ModelScore, ...]:
+                       model: ActiveModelArtifact,
+                       ignore_exact_zero_coefficients: bool = False) -> tuple[ModelScore, ...]:
     _validate_model(model, registry)
     universe = tuple(sorted(set(universe_security_ids)))
     if not universe:
@@ -78,24 +80,29 @@ def build_model_scores(*, ranks: Iterable[SectorPercentileRank], formation_date:
     raw: dict[str, float] = {}
     unavailable: dict[str, str] = {}
     for security_id in universe:
-        values: list[float] = []
-        missing: list[str] = []
+        values: dict[str, float | None] = {}
+        unavailable_reasons: dict[str, str | None] = {}
         for feature in model.feature_columns:
             rank_key = _rank_feature_key(feature)
             rank = index.get((security_id, rank_key))
             if rank is None:
                 raise DataQualityError(f"missing explicit model rank: {security_id}:{rank_key}")
-            if rank.percentile is None:
-                missing.append(f"{rank_key}@{rank.feature_version}:{rank.unavailable_reason}")
-            else:
-                values.append(float(rank.percentile))
-        if missing:
+            values[feature] = None if rank.percentile is None else float(rank.percentile)
+            unavailable_reasons[feature] = rank.unavailable_reason
+        evaluation = evaluate_model_inputs(
+            model, values,
+            ignore_exact_zero_coefficients=ignore_exact_zero_coefficients,
+        )
+        if not evaluation.eligible:
+            missing = (
+                f"{_rank_feature_key(feature)}@{index[(security_id, _rank_feature_key(feature))].feature_version}:"
+                f"{unavailable_reasons[feature]}"
+                for feature in evaluation.missing_required_columns
+            )
             unavailable[security_id] = "required_feature_rank_unavailable=" + ",".join(missing)
             continue
-        raw[security_id] = model.target_mean + sum(
-            coefficient * ((value - mean) / scale)
-            for value, mean, scale, coefficient in zip(values, model.feature_means, model.feature_scales, model.coefficients)
-        )
+        assert evaluation.prediction is not None
+        raw[security_id] = evaluation.prediction
     ordered = sorted(raw, key=lambda security_id: (raw[security_id], security_id))
     denomin = max(1, len(ordered) - 1)
     normalized = {security_id: Decimal(index) / Decimal(denomin) for index, security_id in enumerate(ordered)}
