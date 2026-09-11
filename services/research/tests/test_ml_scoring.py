@@ -31,7 +31,7 @@ class ModelScoringTests(unittest.TestCase):
 
         scores = build_model_scores(
             ranks=ranks, formation_date=FORMATION, universe_security_ids=("a", "b"),
-            registry=registry, model=model,
+            registry=registry, model=model, ignore_exact_zero_coefficients=False,
         )
         by_security = {score.security_id: score for score in scores}
 
@@ -70,6 +70,7 @@ class ModelScoringTests(unittest.TestCase):
         legacy = build_model_scores(
             ranks=ranks, formation_date=FORMATION,
             universe_security_ids=("complete", "expanded"), registry=registry, model=model,
+            ignore_exact_zero_coefficients=False,
         )
         corrected = build_model_scores(
             ranks=ranks, formation_date=FORMATION,

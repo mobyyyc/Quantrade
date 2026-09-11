@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 
 from .score_run import TORONTO, _settings, run_score_generation
+from .model_eligibility import ALL_SERIALIZED_INPUTS_V1
 
 
 DEFAULT_COHORT = "sp500_current_survivors_v1"
@@ -127,6 +128,8 @@ def replay_historical_sessions(*, settings, start_date: date, end_date: date, co
             snapshots, eligible = run_score_generation(
                 settings=settings, score_date=score_date, universe_code="sp500", benchmark_ticker="SPY",
                 code_revision=code_revision, decision_at=decision_at, research_cohort_code=cohort_code,
+                eligibility_contract_version=ALL_SERIALIZED_INPUTS_V1,
+                historical_replay=True,
             )
             _complete_run(settings.database_url, score_date, decision_at, snapshots, eligible)
         except Exception as error:

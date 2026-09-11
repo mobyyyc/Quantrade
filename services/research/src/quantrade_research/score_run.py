@@ -33,6 +33,11 @@ from .momentum import (
     calculate_relative_strength_6m,
 )
 from .ml_scoring import ModelFeatureContribution, build_model_feature_contributions, build_model_scores
+from .model_eligibility import (
+    ALL_SERIALIZED_INPUTS_V1,
+    EXACT_ZERO_COEFFICIENTS_V1,
+    ignores_exact_zero_coefficients,
+)
 from .quality import DataQualityError
 from .ranking import SectorClassification, build_sector_aware_percentile_ranks
 from .risk_liquidity import calculate_median_dollar_volume_20d, calculate_trailing_volatility_60d
@@ -40,6 +45,25 @@ from .run_manifest import RunManifest, SourceInput
 from .sec_form_scope import RESEARCH_RELEVANT_FORMS
 from .scoring import PostgresScoreSnapshotRepository, TORONTO, generate_end_of_day_scores
 from .score_predictions import persist_score_predictions
+
+
+LEGACY_HISTORICAL_SCORE_PROTOCOL = "0.1"
+SCORE_PROTOCOL_BY_ELIGIBILITY_CONTRACT = {
+    ALL_SERIALIZED_INPUTS_V1: "score_snapshot_all_inputs_v1",
+    EXACT_ZERO_COEFFICIENTS_V1: "score_snapshot_exact_zero_v1",
+}
+
+
+def score_protocol_for_eligibility(
+    eligibility_contract: str, *, historical_replay: bool,
+) -> str:
+    """Bind eligibility semantics to an unambiguous snapshot protocol."""
+    ignores_exact_zero_coefficients(eligibility_contract)
+    if historical_replay:
+        if eligibility_contract != ALL_SERIALIZED_INPUTS_V1:
+            raise DataQualityError("historical replay must retain all-input eligibility")
+        return LEGACY_HISTORICAL_SCORE_PROTOCOL
+    return SCORE_PROTOCOL_BY_ELIGIBILITY_CONTRACT[eligibility_contract]
 
 
 def _dotenv_values(path: Path) -> dict[str, str]:
@@ -293,11 +317,22 @@ def _persist_explanations(database_url: str, snapshots, contributions: Iterable[
 def run_score_generation(*, settings: Settings, score_date: date, universe_code: str, benchmark_ticker: str,
                          code_revision: str, manual: bool = False,
                          decision_at: datetime | None = None,
-                         research_cohort_code: str | None = None) -> tuple[int, int]:
+                         research_cohort_code: str | None = None,
+                         eligibility_contract_version: str | None = None,
+                         historical_replay: bool = False) -> tuple[int, int]:
     """Calculate, rank, persist, and explain one active end-of-day model run."""
     settings.require_runtime_storage()
     assert settings.database_url is not None and settings.raw_artifacts_uri is not None
+    if historical_replay != (research_cohort_code is not None):
+        raise DataQualityError(
+            "historical replay and research cohort must be selected together"
+        )
     decision_at = decision_at or (datetime.now(TORONTO) if manual else _decision_at(score_date))
+    eligibility_contract = eligibility_contract_version or settings.score_eligibility_contract
+    ignore_exact_zero_coefficients = ignores_exact_zero_coefficients(eligibility_contract)
+    protocol_version = score_protocol_for_eligibility(
+        eligibility_contract, historical_replay=historical_replay,
+    )
     registry = baseline_feature_registry()
     import psycopg
     with psycopg.connect(settings.database_url) as connection:
@@ -331,12 +366,14 @@ def run_score_generation(*, settings: Settings, score_date: date, universe_code:
     scores = build_model_scores(
         ranks=ranks, formation_date=score_date, universe_security_ids=security_ids,
         registry=registry, model=model,
+        ignore_exact_zero_coefficients=ignore_exact_zero_coefficients,
     )
     repository = PostgresScoreSnapshotRepository(settings.database_url)
     try:
         snapshots = generate_end_of_day_scores(scores, repository, score_date=score_date, decision_at=decision_at,
                                                published_at=decision_at, data_cutoff_at=decision_at,
-                                               data_capability_tier="B", manual=manual)
+                                               data_capability_tier="B", protocol_version=protocol_version,
+                                               manual=manual)
     finally:
         repository.close()
     prediction_count = persist_score_predictions(
@@ -348,7 +385,7 @@ def run_score_generation(*, settings: Settings, score_date: date, universe_code:
     )
     explanation_count = _persist_explanations(settings.database_url, snapshots, contributions)
     cohort_note = f"; research_cohort={research_cohort_code}; survivorship_biased=true; static_sector_grouping=true" if research_cohort_code else ""
-    manifest = RunManifest.create(settings=settings, run_kind="score", code_revision=code_revision, data_capability_tier="B", decision_at=decision_at, status="completed", source_inputs=source_inputs, note=f"model={model.model_version}; universe={universe_code}; securities={len(security_ids)}; eligible={sum(score.eligible for score in scores)}; predictions_inserted={prediction_count}; explanations_inserted={explanation_count}; benchmark={benchmark_ticker}{cohort_note}")
+    manifest = RunManifest.create(settings=settings, run_kind="score", code_revision=code_revision, data_capability_tier="B", decision_at=decision_at, status="completed", source_inputs=source_inputs, note=f"model={model.model_version}; eligibility_contract={eligibility_contract}; score_protocol={protocol_version}; universe={universe_code}; securities={len(security_ids)}; eligible={sum(score.eligible for score in scores)}; predictions_inserted={prediction_count}; explanations_inserted={explanation_count}; benchmark={benchmark_ticker}{cohort_note}")
     manifest.write(_file_path_from_uri(settings.raw_artifacts_uri) / "manifests" / f"{manifest.run_id}.json")
     return len(snapshots), sum(score.eligible for score in scores)
 

@@ -8,6 +8,11 @@ import json
 import os
 from typing import Literal, Mapping
 
+from .model_eligibility import (
+    EXACT_ZERO_COEFFICIENTS_V1,
+    SUPPORTED_ELIGIBILITY_CONTRACTS,
+)
+
 
 Environment = Literal["development", "test", "production"]
 
@@ -31,6 +36,7 @@ class Settings:
     alpaca_key_id: str | None = field(repr=False)
     alpaca_secret_key: str | None = field(repr=False)
     fred_api_key: str | None = field(repr=False)
+    score_eligibility_contract: str
 
     @classmethod
     def from_environment(cls, values: Mapping[str, str] | None = None) -> "Settings":
@@ -46,6 +52,16 @@ class Settings:
                 "APCA_API_KEY_ID and APCA_API_SECRET_KEY must be set together"
             )
 
+        score_eligibility_contract = (
+            _optional_value(source, "SCORE_ELIGIBILITY_CONTRACT")
+            or EXACT_ZERO_COEFFICIENTS_V1
+        )
+        if score_eligibility_contract not in SUPPORTED_ELIGIBILITY_CONTRACTS:
+            supported = ", ".join(sorted(SUPPORTED_ELIGIBILITY_CONTRACTS))
+            raise ConfigurationError(
+                f"SCORE_ELIGIBILITY_CONTRACT must be one of: {supported}"
+            )
+
         settings = cls(
             environment=environment,
             database_url=_optional_value(source, "DATABASE_URL"),
@@ -55,6 +71,7 @@ class Settings:
             alpaca_key_id=alpaca_key_id,
             alpaca_secret_key=alpaca_secret_key,
             fred_api_key=_optional_value(source, "FRED_API_KEY"),
+            score_eligibility_contract=score_eligibility_contract,
         )
         if settings.environment == "production":
             settings.require_runtime_storage()
@@ -84,6 +101,7 @@ class Settings:
             "marketDataProvider": self.market_data_provider,
             "alpacaCredentialsConfigured": self.alpaca_key_id is not None,
             "fredCredentialsConfigured": self.fred_api_key is not None,
+            "scoreEligibilityContract": self.score_eligibility_contract,
         }
 
     def configuration_fingerprint(self) -> str:

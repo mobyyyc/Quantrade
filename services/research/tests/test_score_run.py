@@ -5,7 +5,17 @@ import unittest
 from quantrade_research.feature_diagnostics import FeatureOutcome
 from quantrade_research.features import FeatureValue, baseline_feature_registry
 from quantrade_research.quality import DataQualityError
-from quantrade_research.score_run import _load_facts, _outcome
+from quantrade_research.model_eligibility import (
+    ALL_SERIALIZED_INPUTS_V1,
+    EXACT_ZERO_COEFFICIENTS_V1,
+)
+from quantrade_research.score_run import (
+    LEGACY_HISTORICAL_SCORE_PROTOCOL,
+    SCORE_PROTOCOL_BY_ELIGIBILITY_CONTRACT,
+    _load_facts,
+    _outcome,
+    score_protocol_for_eligibility,
+)
 from quantrade_research.sec_form_scope import RESEARCH_RELEVANT_FORMS
 
 
@@ -37,6 +47,23 @@ class RecordingConnection:
 
 
 class ScoreRunOutcomeTests(unittest.TestCase):
+    def test_live_and_rollback_contracts_have_distinct_snapshot_versions(self) -> None:
+        self.assertEqual(LEGACY_HISTORICAL_SCORE_PROTOCOL, "0.1")
+        self.assertNotEqual(
+            SCORE_PROTOCOL_BY_ELIGIBILITY_CONTRACT[EXACT_ZERO_COEFFICIENTS_V1],
+            SCORE_PROTOCOL_BY_ELIGIBILITY_CONTRACT[ALL_SERIALIZED_INPUTS_V1],
+        )
+        self.assertEqual(
+            score_protocol_for_eligibility(
+                ALL_SERIALIZED_INPUTS_V1, historical_replay=True,
+            ),
+            LEGACY_HISTORICAL_SCORE_PROTOCOL,
+        )
+        with self.assertRaisesRegex(DataQualityError, "historical replay"):
+            score_protocol_for_eligibility(
+                EXACT_ZERO_COEFFICIENTS_V1, historical_replay=True,
+            )
+
     def test_daily_score_facts_are_restricted_to_research_forms(self) -> None:
         connection = RecordingConnection()
 

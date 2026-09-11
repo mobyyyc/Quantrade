@@ -3,7 +3,14 @@ import struct
 import unittest
 
 from quantrade_research.active_model import ActiveModelArtifact
-from quantrade_research.model_eligibility import evaluate_model_inputs, required_model_columns
+from quantrade_research.model_eligibility import (
+    ALL_SERIALIZED_INPUTS_V1,
+    EXACT_ZERO_COEFFICIENTS_V1,
+    evaluate_model_inputs,
+    ignores_exact_zero_coefficients,
+    required_model_columns,
+)
+from quantrade_research.quality import DataQualityError
 from quantrade_research.phase_9d_eligibility_audit import audit_rank_rows
 
 
@@ -14,6 +21,12 @@ MODEL = ActiveModelArtifact(
 
 
 class ModelEligibilityTests(unittest.TestCase):
+    def test_named_contracts_are_exact_and_fail_closed(self) -> None:
+        self.assertFalse(ignores_exact_zero_coefficients(ALL_SERIALIZED_INPUTS_V1))
+        self.assertTrue(ignores_exact_zero_coefficients(EXACT_ZERO_COEFFICIENTS_V1))
+        with self.assertRaisesRegex(DataQualityError, "unsupported score eligibility contract"):
+            ignores_exact_zero_coefficients("zeroish")
+
     def test_only_exact_serialized_zero_is_ignored(self) -> None:
         self.assertEqual(
             required_model_columns(MODEL, ignore_exact_zero_coefficients=True),

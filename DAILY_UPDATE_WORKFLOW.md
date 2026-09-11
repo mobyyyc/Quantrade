@@ -56,6 +56,21 @@ immutable scores gets a fresh cutoff when retried; an existing immutable score s
 keeps its original timestamp. Historical replay remains separately identified as
 `historical_replay_2000_toronto_v1` with a fixed 8:00 p.m. Toronto cutoff.
 
+Future live publications use the versioned `exact_zero_coefficients_v1`
+eligibility contract and `score_snapshot_exact_zero_v1` snapshot protocol.
+Only serialized coefficients exactly equal to `0.0` may have a missing input;
+there is no tolerance or approximate-zero rule. Historical replay explicitly
+retains the legacy all-serialized-input policy and `0.1` snapshot protocol, so
+the rollout cannot rewrite historical scores. A same-date completed publication
+is still reused and is never recalculated under the new rule.
+
+For a future-only emergency rollback, set
+`SCORE_ELIGIBILITY_CONTRACT=all_serialized_inputs_v1` in `.env` before launching
+the next update and restart any already-running web server. Rollback publications
+use the distinct `score_snapshot_all_inputs_v1` protocol. Remove the override or
+restore `exact_zero_coefficients_v1` to re-enable the approved contract. Neither
+setting mutates an existing score snapshot.
+
 Official monthly portfolios are still created only for their exact next-session
 execution date. Once that window has elapsed, the formation is stored in
 `missed_paper_portfolio_formations` as unavailable; later data cannot be used to

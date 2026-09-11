@@ -9,10 +9,34 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC))
 
 from quantrade_research.config import ConfigurationError, Settings
+from quantrade_research.model_eligibility import (
+    ALL_SERIALIZED_INPUTS_V1,
+    EXACT_ZERO_COEFFICIENTS_V1,
+)
 from quantrade_research.run_manifest import RunManifest, SourceInput
 
 
 class SettingsTests(unittest.TestCase):
+    def test_live_score_eligibility_defaults_to_exact_zero_contract(self) -> None:
+        settings = Settings.from_environment({})
+
+        self.assertEqual(settings.score_eligibility_contract, EXACT_ZERO_COEFFICIENTS_V1)
+        self.assertEqual(
+            settings.redacted_summary()["scoreEligibilityContract"],
+            EXACT_ZERO_COEFFICIENTS_V1,
+        )
+
+    def test_live_score_eligibility_supports_explicit_legacy_rollback(self) -> None:
+        settings = Settings.from_environment({
+            "SCORE_ELIGIBILITY_CONTRACT": ALL_SERIALIZED_INPUTS_V1,
+        })
+
+        self.assertEqual(settings.score_eligibility_contract, ALL_SERIALIZED_INPUTS_V1)
+
+    def test_unknown_score_eligibility_contract_fails_closed(self) -> None:
+        with self.assertRaisesRegex(ConfigurationError, "SCORE_ELIGIBILITY_CONTRACT"):
+            Settings.from_environment({"SCORE_ELIGIBILITY_CONTRACT": "approximately_zero"})
+
     def test_market_provider_defaults_to_alpaca_and_is_not_secret(self) -> None:
         self.assertEqual(Settings.from_environment({}).market_data_provider, "alpaca")
         settings = Settings.from_environment({"MARKET_DATA_PROVIDER": "ALTERNATE"})

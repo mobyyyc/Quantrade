@@ -71,7 +71,7 @@ def _rank_feature_key(model_column: str) -> str:
 def build_model_scores(*, ranks: Iterable[SectorPercentileRank], formation_date: date,
                        universe_security_ids: Iterable[str], registry: FeatureRegistry,
                        model: ActiveModelArtifact,
-                       ignore_exact_zero_coefficients: bool = False) -> tuple[ModelScore, ...]:
+                       ignore_exact_zero_coefficients: bool) -> tuple[ModelScore, ...]:
     _validate_model(model, registry)
     universe = tuple(sorted(set(universe_security_ids)))
     if not universe:

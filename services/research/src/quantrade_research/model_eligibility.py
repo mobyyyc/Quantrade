@@ -9,6 +9,21 @@ from .active_model import ActiveModelArtifact
 from .quality import DataQualityError
 
 
+ALL_SERIALIZED_INPUTS_V1 = "all_serialized_inputs_v1"
+EXACT_ZERO_COEFFICIENTS_V1 = "exact_zero_coefficients_v1"
+SUPPORTED_ELIGIBILITY_CONTRACTS = frozenset({
+    ALL_SERIALIZED_INPUTS_V1,
+    EXACT_ZERO_COEFFICIENTS_V1,
+})
+
+
+def ignores_exact_zero_coefficients(contract_version: str) -> bool:
+    """Resolve a named eligibility contract without approximate-zero behavior."""
+    if contract_version not in SUPPORTED_ELIGIBILITY_CONTRACTS:
+        raise DataQualityError(f"unsupported score eligibility contract: {contract_version}")
+    return contract_version == EXACT_ZERO_COEFFICIENTS_V1
+
+
 @dataclass(frozen=True, slots=True)
 class ModelInputEvaluation:
     prediction: float | None
