@@ -14,7 +14,8 @@ not support superiority, so the live model was retained. See
 P9D.1 exact-zero eligibility audit also passed without changing live scoring,
 P9D.2 produced the authenticated cross-fitted residual dataset, and P9D.3 fit
 the bounded ridge challenger with deterministic chronological outer predictions.
-**Next: P9D.4**, awaiting approval.
+P9D.4 applied every frozen gate and issued `no-freeze`; Phase 10 therefore stays
+queued and the live model remains unchanged. **Next: P13.7**, awaiting approval.
 
 Prioritize operational reliability and valid model comparisons before additional
 model complexity or cosmetic redesign. This sequence supersedes numerical phase
@@ -186,7 +187,7 @@ cannot independently confirm or promote it.
 - [x] P9D.1: implement and audit eligibility that ignores only mathematically exact-zero coefficient inputs. The authenticated 91,500-row weekly replay raised research-anchor coverage from 90.28% to 97.70% (95.6% minimum formation), admitted 6,783 rows solely because exact-zero inputs were absent, and preserved byte-identical raw predictions for all 82,609 previously eligible rows. Display-score, rank, and explanation-universe changes are versioned separately; P12.8 decision-time contracts are explicit and share one eligibility implementation. Live scoring remains in legacy all-input mode pending separate approval. See `PHASE_9D_ELIGIBILITY_AUDIT.md`.
 - [x] P9D.2: materialize the authenticated anchored-residual dataset on the existing Phase 9C folds under the amended protocol, using chronological cross-fitted training anchors and complete lineage without reading the consumed holdout. The final artifact has 54,544 rows across 121 weekly formations from January 2023 through May 2025, preserves all four outer blocks, passes accounting coverage and zero-overlap gates, and reproduced identical dataset, anchor, and report hashes in two complete builds. Existing validated features, labels, and lineage were reused; no provider download, raw SEC rebuild, database write, or live-model change occurred. See `PHASE_9D_RESIDUAL_DATASET.md`.
 - [x] P9D.3: fit the three registered ridge penalties inside nested chronological folds and write deterministic outer predictions without model expansion. All 44,828 outer predictions and four fold-local fits reproduced byte-for-byte across two runs; tuning selected penalties 1, 100, 100, and 100. No outer performance metric, consumed holdout, or live-model change was permitted. See `PHASE_9D_RESIDUAL_TRAINING.md`.
-- [ ] P9D.4: run identical-construction portfolio attribution and every frozen readiness gate; issue either `freeze_for_forward_shadow` or `no-freeze`.
+- [x] P9D.4: run identical-construction portfolio attribution and every frozen readiness gate; issue either `freeze_for_forward_shadow` or `no-freeze`. The immutable decision is `no-freeze`: integrity, coverage, positive spread, and rank stability passed, while the minimum IC improvement, outer-block robustness, bootstrap confidence, paired net portfolio improvement, absolute turnover, and investment/issuance coefficient-direction gates failed. The complete report reproduced byte-for-byte; the consumed holdout and live model remained untouched. See `PHASE_9D_READINESS_DECISION.md`.
 
 ## Phase 10: shadow confirmation and promotion
 
@@ -195,6 +196,8 @@ a qualifying challenger frozen for forward shadow. Rejected candidates do not
 enter shadow scoring. The next genuinely untouched confirmation period is
 forward data collected after the frozen candidate, not the consumed historical
 holdout.
+
+Phase 9D ended in `no-freeze`, so P10.1–P10.3 are not currently eligible to run.
 
 - [ ] P10.1: score the active model and frozen challenger side by side without changing user-visible rankings.
 - [ ] P10.2: materialize new 20-session forward outcomes and compare both models under identical rules.
