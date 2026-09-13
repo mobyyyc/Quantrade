@@ -41,7 +41,7 @@ One easy, valuable model-correctness change comes first: Phase 9D.1 proved that 
 Goal: one accurate, versioned scoring contract across batch jobs, APIs, explanations, and monitoring.
 
 - [x] **Q1.1 — Roll out exact-zero eligibility.** Future live scores use the exact-zero contract and a distinct snapshot protocol; historical replay remains legacy, completed dates are not rewritten, rollback is future-only, and the September 10 dry run raised eligibility from 462 to 495 while recording all five remaining exclusions. See `CURRENT_MODEL_ELIGIBILITY_ROLLOUT.md`.
-- [ ] **Q1.2 — Align score evidence and metadata.** Make APIs, stock/research pages, and model cards distinguish registered, active, zero-weight, unavailable, and displayed inputs; verify score, rank, contribution, and model-version lineage end to end.
+- [x] **Q1.2 — Align score evidence and metadata.** Immutable artifact-backed input contracts now distinguish registered, active, zero-weight, unavailable, required-at-publication, and displayed inputs across APIs and UI; dated score responses carry score, rank, explanations, model version, protocol, feature versions, definition hashes, and the matching model card together. See `CURRENT_MODEL_ELIGIBILITY_ROLLOUT.md`.
 - [ ] **Q1.3 — Add model-health monitoring.** Track coverage, exclusions, missingness, drift, rank churn, and forward-outcome readiness; define warning thresholds and hash checks; do not auto-retrain or auto-promote.
 
 **Exit:** old eligible predictions are unchanged and every score/exclusion is explained by the same contract.
@@ -183,4 +183,4 @@ Goal: remove Tier-B limitations and mature governance before any broad public-pe
 
 ## Next task
 
-**Q1.2 — Align score evidence and metadata**, awaiting explicit approval.
+**Q1.3 — Add model-health monitoring**, awaiting explicit approval.

@@ -9,9 +9,12 @@ import json
 import os
 from pathlib import Path
 
+from .active_model import ActiveModelArtifact
 from .clean_monthly_development_validation import EXPERIMENT_KEY, EXPERIMENT_VERSION
 from .clean_monthly_final_training import MODEL_VERSION
 from .clean_monthly_model_dataset import DATASET_KEY, DATASET_VERSION
+from .features import baseline_feature_registry
+from .model_input_contract import record_feature_definitions, record_model_input_contracts
 from .quality import DataQualityError
 from .score_run import _dotenv_values
 
@@ -82,6 +85,15 @@ def record_clean_model(
                 validation_uri, sha256(validation_bytes).hexdigest(), created_at,
             ),
         )
+        model = ActiveModelArtifact(
+            str(artifact["model_version"]), str(artifact["protocol_version"]),
+            str(artifact["feature_registry_hash"]), tuple(map(str, artifact["feature_columns"])),
+            tuple(map(float, artifact["feature_means"])), tuple(map(float, artifact["feature_scales"])),
+            float(artifact["target_mean"]), tuple(map(float, artifact["coefficients"])),
+        )
+        registry = baseline_feature_registry()
+        record_feature_definitions(cursor, registry)
+        record_model_input_contracts(cursor, model=model, registry=registry)
         connection.commit()
 
 

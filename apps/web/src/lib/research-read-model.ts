@@ -34,6 +34,18 @@ export type ModelCard = {
   methodology: string;
   limitations: string[];
   evaluationUri?: string;
+  inputs: ModelInputProfile[];
+};
+
+export type ModelInputProfile = {
+  inputOrdinal: number;
+  modelColumn: string;
+  featureKey: string;
+  featureVersion: string;
+  definitionHash: string;
+  displayName: string;
+  coefficient: string;
+  active: boolean;
 };
 
 export type SecuritySearchResult = {
@@ -387,6 +399,7 @@ export async function getModelCard(modelVersion: string): Promise<ModelCard | nu
         "Approval does not guarantee that future stocks or baskets will outperform SPY.",
       ]
     : storedLimitations;
+  const inputs = await getModelInputProfile(modelVersion);
   return {
     modelVersion: String(row.model_version),
     status,
@@ -397,6 +410,7 @@ export async function getModelCard(modelVersion: string): Promise<ModelCard | nu
     purpose: String(row.purpose),
     methodology: String(row.methodology),
     limitations,
+    inputs,
     ...(row.evaluation_uri ? { evaluationUri: String(row.evaluation_uri) } : {}),
   };
 }
@@ -427,11 +441,12 @@ export async function getActiveModelCard(): Promise<ModelCard | null> {
         "Approval does not guarantee that future stocks or baskets will outperform SPY.",
       ]
     : storedLimitations;
+  const inputs = await getModelInputProfile(String(row.model_version));
   return {
     modelVersion: String(row.model_version), status,
     protocolVersion: String(row.protocol_version), featureRegistryHash: String(row.feature_registry_hash),
     dataCapabilityTier: row.data_capability_tier as ModelCard["dataCapabilityTier"], createdAt: new Date(String(row.created_at)).toISOString(),
-    purpose: String(row.purpose), methodology: String(row.methodology), limitations,
+    purpose: String(row.purpose), methodology: String(row.methodology), limitations, inputs,
     ...(row.evaluation_uri ? { evaluationUri: String(row.evaluation_uri) } : {}),
   };
 }
@@ -510,6 +525,27 @@ export async function getTodayFilingSummary(scoreDate: string): Promise<TodayFil
     filingCount: Number(result.rows[0]?.filing_count ?? 0),
     ...(result.rows[0]?.since_score_date ? { sinceScoreDate: String(result.rows[0].since_score_date) } : {}),
   };
+}
+
+export async function getModelInputProfile(modelVersion: string): Promise<ModelInputProfile[]> {
+  const result = await databasePool().query(
+    `SELECT input_ordinal, model_column, feature_key, feature_version,
+            definition_hash, display_name, coefficient, is_active
+     FROM quantrade.model_input_contracts
+     WHERE model_version = $1
+     ORDER BY input_ordinal`,
+    [modelVersion],
+  );
+  return result.rows.map((row) => ({
+    inputOrdinal: Number(row.input_ordinal),
+    modelColumn: String(row.model_column),
+    featureKey: String(row.feature_key),
+    featureVersion: String(row.feature_version),
+    definitionHash: String(row.definition_hash),
+    displayName: String(row.display_name),
+    coefficient: String(row.coefficient),
+    active: Boolean(row.is_active),
+  }));
 }
 
 export async function getDailyOperationsStatus(): Promise<DailyOperationsStatus> {
@@ -1004,7 +1040,7 @@ export async function getScoreExplanations(
       AND run.decision_at = s.decision_at
       AND run.status = 'completed'
      LEFT JOIN quantrade.feature_definitions d
-       ON d.feature_key = e.feature_key
+       ON d.feature_key = regexp_replace(e.feature_key, '_percentile$', '')
       AND d.feature_version = e.feature_version
       AND d.definition_hash = e.definition_hash
      WHERE e.score_snapshot_id = $1

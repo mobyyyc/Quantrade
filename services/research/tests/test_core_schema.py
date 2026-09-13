@@ -71,6 +71,13 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("UNIQUE (score_snapshot_id, feature_key, feature_version)", sql)
         self.assertIn("prevent_score_explanation_mutation", sql)
 
+    def test_model_input_contracts_are_versioned_and_immutable(self) -> None:
+        migration = MIGRATION.with_name("0038_add_model_input_contracts.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.model_input_contracts", sql)
+        self.assertIn("CHECK (is_active = (coefficient <> 0.0))", sql)
+        self.assertIn("BEFORE UPDATE OR DELETE ON quantrade.model_input_contracts", sql)
+
     def test_benchmark_bars_are_separate_from_common_stock_securities(self) -> None:
         migration = MIGRATION.with_name("0011_add_benchmark_price_bars.sql")
         sql = migration.read_text(encoding="utf-8")

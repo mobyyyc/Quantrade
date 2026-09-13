@@ -157,7 +157,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1.15rem; }
 .section-heading h2 { margin: 0; }
 .score-input-heading { align-items: end; }
-.score-input-summary { display: flex; gap: 1.15rem; margin: 0; }
+.score-input-summary { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 1.15rem; margin: 0; }
 .score-input-summary div { display: grid; justify-items: end; gap: .1rem; min-width: 5.6rem; padding-left: 1.15rem; border-left: 1px solid var(--line-soft); }
 .score-input-summary dt, .score-input-summary small { color: var(--subtle); font-size: .66rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
 .score-input-summary dd { margin: 0; color: var(--foreground); font-size: 1.2rem; font-weight: 760; letter-spacing: -.04em; }
@@ -468,12 +468,25 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .evidence-list p { margin: 0; }
 .evidence-intro { max-width: 44rem; margin: 0 0 1.5rem; color: var(--muted); line-height: 1.55; }
 .evidence-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.4rem; }
+.evidence-group-wide { grid-column: 1 / -1; }
 .evidence-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
 .evidence-group-heading h3 { margin: 0; color: var(--foreground); font-size: .94rem; letter-spacing: -.02em; }
 .evidence-group-heading span { color: var(--subtle); font-size: .72rem; text-align: right; }
 .evidence-group .evidence-list { border-radius: 1.1rem; }
 .evidence-group .evidence-list li { grid-template-columns: 1fr; gap: .4rem; padding: 1rem 1.05rem; }
 .evidence-empty { min-height: 5.2rem; margin: 0; padding: 1rem 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); color: var(--muted); font-size: .88rem; line-height: 1.55; }
+.model-input-disclosure { margin-top: 1.4rem; border-top: 1px solid var(--line-soft); }
+.model-input-disclosure summary { width: fit-content; padding: 1rem 0; color: var(--muted); font-size: .82rem; font-weight: 650; cursor: pointer; transition: color 150ms var(--ease); }
+.model-input-disclosure summary:hover { color: var(--foreground); }
+.model-input-disclosure summary:focus-visible { border-radius: .25rem; outline: 2px solid rgba(255, 255, 255, .6); outline-offset: 3px; }
+.model-input-disclosure ul, .input-availability ul { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-soft); }
+.model-input-disclosure li, .input-availability li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; align-items: center; min-height: 3.8rem; padding: .75rem 0; border-bottom: 1px solid var(--line-soft); }
+.model-input-disclosure li > div, .input-availability li > div { display: grid; gap: .16rem; min-width: 0; }
+.model-input-disclosure li strong, .input-availability li strong { color: var(--foreground); font-size: .86rem; font-weight: 680; }
+.model-input-disclosure li span, .input-availability li span { color: var(--muted); font-size: .75rem; line-height: 1.45; }
+.model-input-disclosure li > span { text-align: right; }
+.input-availability { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 2.5rem; }
+.input-availability li > div:last-child { justify-items: end; max-width: 22rem; text-align: right; }
 .split-note, .methodology { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 2rem; }
 .methodology p { color: var(--muted); line-height: 1.6; }
 .methodology > div { min-width: 0; overflow-wrap: anywhere; }
@@ -716,7 +729,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .stock-overview-item { min-height: 0; padding: 1rem 0; border-right: 0; border-bottom: 1px solid var(--line-soft); }
   .stock-overview-item:first-child, .stock-overview-item:last-child { padding-right: 0; padding-left: 0; }
   .stock-overview-item:last-child { border-bottom: 0; }
-  .evidence-list li, .split-note, .methodology, .coverage-health, .evidence-groups { grid-template-columns: 1fr; gap: .5rem; }
+  .evidence-list li, .split-note, .methodology, .coverage-health, .evidence-groups, .input-availability { grid-template-columns: 1fr; gap: .5rem; }
+  .model-input-disclosure li, .input-availability li { grid-template-columns: 1fr; gap: .35rem; }
+  .model-input-disclosure li > span, .input-availability li > div:last-child { justify-items: start; text-align: left; }
   .evidence-groups { gap: 1.75rem; }
   .methodology dl { grid-template-columns: 1fr; }
   .portfolio-checkpoints li { grid-template-columns: 1fr auto; }

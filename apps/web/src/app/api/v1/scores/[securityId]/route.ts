@@ -1,4 +1,4 @@
-import { getDatedScore, ResearchReadModelError } from "@/lib/research-read-model";
+import { getDatedScore, getModelCard, getScoreExplanations, ResearchReadModelError } from "@/lib/research-read-model";
 import { AuthError, authErrorResponse, authorizeApiRequest } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -20,9 +20,12 @@ export async function GET(
   const { securityId } = await params;
   try {
     const score = await getDatedScore(securityId, date);
-    return score
-      ? Response.json({ score }, { headers: { "Cache-Control": "no-store" } })
-      : Response.json({ error: "Dated score not found." }, { status: 404 });
+    if (!score) return Response.json({ error: "Dated score not found." }, { status: 404 });
+    const [explanations, modelCard] = await Promise.all([
+      getScoreExplanations(score.scoreSnapshotId),
+      getModelCard(score.modelVersion),
+    ]);
+    return Response.json({ score, explanations, modelCard }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof AuthError) return authErrorResponse(error);
     const status = error instanceof ResearchReadModelError ? error.status : 500;

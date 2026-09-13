@@ -67,3 +67,31 @@ SCORE_ELIGIBILITY_CONTRACT=all_serialized_inputs_v1
 This produces future snapshots under the distinct
 `score_snapshot_all_inputs_v1` protocol. It does not delete or update existing
 scores. Restore `exact_zero_coefficients_v1` to return to the approved rule.
+
+## Input metadata contract
+
+Migration `0038_add_model_input_contracts.sql` adds an immutable, ordered input
+contract for each registered artifact. Every row records the model column,
+feature definition and version, definition hash, exact serialized coefficient,
+and whether that coefficient is non-zero. Model registration now writes this
+contract in the same transaction as the model card and artifact.
+
+The web read model and model-card API expose the contract without inferring it
+from score explanations. The stock and research pages therefore use these terms
+consistently:
+
+- **Registered:** every ordered input serialized in the model artifact.
+- **Active:** a registered input with a mathematically non-zero coefficient; it
+  can affect the raw prediction, displayed score, and rank.
+- **Zero weight:** a registered input with an exact-zero coefficient; retained
+  for lineage but unable to affect the score.
+- **Required then:** inputs required by the protocol stored on that dated score.
+  Legacy snapshots required all registered inputs; future
+  `score_snapshot_exact_zero_v1` snapshots require active inputs only.
+- **Displayed:** active explanation rows persisted for the dated score. A
+  withheld row identifies an unavailable active input and its quality-gate
+  reason instead of fabricating a value.
+
+The dated score API returns the score, its persisted explanations, and the
+matching model card together so score, rank, contribution, protocol, feature
+version, model version, and definition hashes remain inspectable end to end.

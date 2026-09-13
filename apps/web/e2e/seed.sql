@@ -53,6 +53,13 @@ INSERT INTO quantrade.model_cards
 VALUES
   ('tier_b_monthly_elastic_net_sec_clean_v3', 'research_only', 'monthly_last_session_next_open_v1', repeat('d', 64), 'B', '2026-08-01T00:00:00Z', 'E2E research model', 'Regularized cross-sectional ranking.', '["Tier B fixture"]', 'memory://e2e/evaluation');
 
+INSERT INTO quantrade.model_artifacts
+  (model_card_id, model_version, artifact_uri, artifact_sha256, source_experiment_uri, source_experiment_sha256, created_at)
+SELECT model_card_id, model_version, 'memory://e2e/model', repeat('4', 64),
+       'memory://e2e/experiment', repeat('5', 64), '2026-08-01T00:30:00Z'
+FROM quantrade.model_cards
+WHERE model_version = 'tier_b_monthly_elastic_net_sec_clean_v3';
+
 INSERT INTO quantrade.model_approval_decisions
   (model_version, approval_scope, approved, evidence, gate_results, decision_uri, decision_sha256, decided_at, decided_by)
 VALUES
@@ -87,7 +94,15 @@ INSERT INTO quantrade.feature_definitions
   (feature_key, feature_version, family, direction, display_name, description, formula, required_inputs, as_of_rule, definition_hash)
 VALUES
   ('momentum_12_1', 'v3', 'momentum', 'higher_is_better', '12–1 month momentum', 'Prior-year price strength.', 'fixture', '["prices"]', 'point in time', repeat('1', 64)),
-  ('trailing_volatility_60d', 'v3', 'risk', 'lower_is_better', '60-day volatility', 'Recent price variability.', 'fixture', '["prices"]', 'point in time', repeat('2', 64));
+  ('trailing_volatility_60d', 'v3', 'risk', 'lower_is_better', '60-day volatility', 'Recent price variability.', 'fixture', '["prices"]', 'point in time', repeat('2', 64)),
+  ('relative_strength_6m', 'v3', 'momentum', 'higher_is_better', 'Six-month relative strength', 'Price strength relative to SPY.', 'fixture', '["prices", "benchmark"]', 'point in time', repeat('3', 64));
+
+INSERT INTO quantrade.model_input_contracts
+  (model_version, input_ordinal, model_column, feature_key, feature_version, definition_hash, display_name, coefficient, is_active)
+VALUES
+  ('tier_b_monthly_elastic_net_sec_clean_v3', 1, 'momentum_12_1_percentile', 'momentum_12_1', 'v3', repeat('1', 64), '12–1 month momentum', 0.60, true),
+  ('tier_b_monthly_elastic_net_sec_clean_v3', 2, 'trailing_volatility_60d_percentile', 'trailing_volatility_60d', 'v3', repeat('2', 64), '60-day volatility', 0.40, true),
+  ('tier_b_monthly_elastic_net_sec_clean_v3', 3, 'relative_strength_6m_percentile', 'relative_strength_6m', 'v3', repeat('3', 64), 'Six-month relative strength', 0.0, false);
 
 INSERT INTO quantrade.score_explanations
   (score_snapshot_id, feature_key, feature_version, definition_hash, sector_code, percentile, feature_weight, contribution)

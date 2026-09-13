@@ -22,7 +22,22 @@ test("global search finds a company and opens its research detail", async ({ pag
   await expect(page.getByRole("heading", { name: /AAPL.*Apple Inc\./ })).toBeVisible();
   await expect(page.getByLabel("Research and price context").getByText("84/100")).toBeVisible();
   await expect(page.getByRole("heading", { name: "What influenced it" })).toBeVisible();
-  await expect(page.getByText("12–1 month momentum")).toBeVisible();
+  await expect(page.getByLabel("Supports the score").getByText("12–1 month momentum")).toBeVisible();
+  const inputSummary = page.getByLabel("Model input summary");
+  await expect(inputSummary.locator("dd").nth(0)).toContainText("2");
+  await expect(inputSummary.locator("dd").nth(1)).toContainText("3");
+  await expect(inputSummary.locator("dd").nth(2)).toContainText("2");
+  await expect(inputSummary.locator("dd").nth(3)).toContainText("3");
+  await page.getByText("View all 3 registered model inputs").click();
+  await expect(page.getByText("Zero weight · does not affect score")).toBeVisible();
+
+  const scoreResponse = await page.request.get(`/api/v1/scores/${appleId}?date=2026-08-25`);
+  expect(scoreResponse.ok()).toBeTruthy();
+  const scorePayload = await scoreResponse.json();
+  expect(scorePayload.score.rank).toBe(1);
+  expect(scorePayload.explanations).toHaveLength(2);
+  expect(scorePayload.modelCard.modelVersion).toBe("tier_b_monthly_elastic_net_sec_clean_v3");
+  expect(scorePayload.modelCard.inputs.map((input: { active: boolean }) => input.active)).toEqual([true, true, false]);
 });
 
 test("rankings expose dated scores and link to stock evidence", async ({ page }) => {
