@@ -18,7 +18,8 @@ class MaintenanceTests(unittest.TestCase):
         return [stack.enter_context(patch.object(daily, name)) for name in (
             "publish_due_paper_portfolios", "record_missed_paper_portfolio_formations",
             "materialize_due_paper_portfolio_outcomes",
-            "materialize_due_forward_score_outcomes", "materialize_forward_readiness_snapshot")]
+            "materialize_due_forward_score_outcomes", "materialize_forward_readiness_snapshot",
+            "materialize_model_health_snapshot")]
 
     def test_failed_step_does_not_block_independent_steps_and_retry_completes(self):
         with ExitStack() as stack, redirect_stdout(StringIO()) as output:
@@ -55,6 +56,7 @@ class MaintenanceTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 daily._finish_maintenance(self.connection, self.settings, self.day)
             operations[4].assert_not_called()
+            operations[5].assert_not_called()
 
     def test_checkpoint_failure_is_partial_not_unqualified_success(self):
         with patch.object(daily, "_maintenance_completed", side_effect=RuntimeError("database down")), redirect_stdout(StringIO()) as output:

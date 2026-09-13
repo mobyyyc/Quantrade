@@ -78,6 +78,15 @@ class CoreSchemaMigrationTests(unittest.TestCase):
         self.assertIn("CHECK (is_active = (coefficient <> 0.0))", sql)
         self.assertIn("BEFORE UPDATE OR DELETE ON quantrade.model_input_contracts", sql)
 
+    def test_model_health_snapshots_and_metrics_are_immutable(self) -> None:
+        migration = MIGRATION.with_name("0039_add_model_health_monitoring.sql")
+        sql = migration.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE quantrade.model_health_snapshots", sql)
+        self.assertIn("CREATE TABLE quantrade.model_health_feature_metrics", sql)
+        self.assertIn("CREATE TABLE quantrade.model_health_exclusion_metrics", sql)
+        self.assertIn("CREATE TABLE quantrade.model_health_alerts", sql)
+        self.assertEqual(sql.count("EXECUTE FUNCTION quantrade.prevent_model_health_mutation()"), 4)
+
     def test_benchmark_bars_are_separate_from_common_stock_securities(self) -> None:
         migration = MIGRATION.with_name("0011_add_benchmark_price_bars.sql")
         sql = migration.read_text(encoding="utf-8")

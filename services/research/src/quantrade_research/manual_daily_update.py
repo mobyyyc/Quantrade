@@ -17,6 +17,7 @@ from typing import Callable, Iterator
 
 from .forward_outcomes import materialize_due_forward_score_outcomes
 from .forward_readiness_snapshot import materialize_forward_readiness_snapshot
+from .model_health import materialize_model_health_snapshot
 from .paper_portfolio import LIVE_DECISION_CONTRACT, publish_due_paper_portfolios, record_missed_paper_portfolio_formations
 from .portfolio_outcomes import materialize_due_paper_portfolio_outcomes
 from .score_run import TORONTO, _dotenv_values, _settings
@@ -214,11 +215,19 @@ def _post_publication_maintenance(connection, settings, score_date: date) -> Non
                 forward_ready = True
         except Exception as error:
             failures.append(f"{name}: {error}")
+    readiness_ready = False
     if forward_ready:
         try:
             materialize_forward_readiness_snapshot(settings=settings, as_of_date=score_date)
+            readiness_ready = True
         except Exception as error:
             failures.append(f"forward readiness: {error}")
+    if readiness_ready:
+        try:
+            assert settings.database_url is not None
+            materialize_model_health_snapshot(database_url=settings.database_url, score_date=score_date)
+        except Exception as error:
+            failures.append(f"model health: {error}")
     if failures:
         detail = "; ".join(failures)
         _record_operation_event(connection, score_date, "post_publication_warning", stage="portfolio", detail=detail)

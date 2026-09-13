@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 from quantrade_research.ingest_filings import _ciks
 from quantrade_research.manual_daily_update import (
-    RetryPolicy, _is_transient_provider_failure, _progress, _run, _sec_network_environment,
+    RetryPolicy, _is_transient_provider_failure, _post_publication_maintenance, _progress, _run, _sec_network_environment,
     _set_live_decision_at,
 )
 
@@ -137,3 +137,45 @@ class DailyUpdateParsingTests(unittest.TestCase):
         self.assertNotIn("ALL_PROXY", result)
         self.assertEqual(result["DATABASE_URL"], environment["DATABASE_URL"])
         self.assertEqual(result["SEC_USER_AGENT"], environment["SEC_USER_AGENT"])
+
+    @patch("quantrade_research.manual_daily_update._record_operation_event")
+    @patch("quantrade_research.manual_daily_update._progress")
+    @patch("quantrade_research.manual_daily_update.materialize_model_health_snapshot")
+    @patch("quantrade_research.manual_daily_update.materialize_forward_readiness_snapshot")
+    @patch("quantrade_research.manual_daily_update.materialize_due_forward_score_outcomes")
+    @patch("quantrade_research.manual_daily_update.materialize_due_paper_portfolio_outcomes")
+    @patch("quantrade_research.manual_daily_update.record_missed_paper_portfolio_formations", return_value=())
+    @patch("quantrade_research.manual_daily_update.publish_due_paper_portfolios")
+    @patch("quantrade_research.manual_daily_update._maintenance_completed", return_value=False)
+    def test_model_health_waits_for_same_date_forward_readiness(
+        self, _completed, _portfolios, _missed, _portfolio_outcomes, _forward_outcomes,
+        readiness, health, _progress_mock, _event,
+    ) -> None:
+        settings = MagicMock(database_url="postgresql://example")
+        readiness.side_effect = RuntimeError("readiness unavailable")
+
+        with patch("builtins.print"), self.assertRaises(SystemExit) as result:
+            _post_publication_maintenance(MagicMock(), settings, date(2026, 9, 11))
+
+        self.assertEqual(result.exception.code, 2)
+        health.assert_not_called()
+
+    @patch("quantrade_research.manual_daily_update._record_operation_event")
+    @patch("quantrade_research.manual_daily_update._progress")
+    @patch("quantrade_research.manual_daily_update.materialize_model_health_snapshot")
+    @patch("quantrade_research.manual_daily_update.materialize_forward_readiness_snapshot")
+    @patch("quantrade_research.manual_daily_update.materialize_due_forward_score_outcomes")
+    @patch("quantrade_research.manual_daily_update.materialize_due_paper_portfolio_outcomes")
+    @patch("quantrade_research.manual_daily_update.record_missed_paper_portfolio_formations", return_value=())
+    @patch("quantrade_research.manual_daily_update.publish_due_paper_portfolios")
+    @patch("quantrade_research.manual_daily_update._maintenance_completed", return_value=False)
+    def test_model_health_runs_after_forward_readiness(
+        self, _completed, _portfolios, _missed, _portfolio_outcomes, _forward_outcomes,
+        readiness, health, _progress_mock, _event,
+    ) -> None:
+        settings = MagicMock(database_url="postgresql://example")
+
+        _post_publication_maintenance(MagicMock(), settings, date(2026, 9, 11))
+
+        readiness.assert_called_once_with(settings=settings, as_of_date=date(2026, 9, 11))
+        health.assert_called_once_with(database_url="postgresql://example", score_date=date(2026, 9, 11))

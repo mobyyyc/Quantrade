@@ -52,6 +52,24 @@ test("rankings expose dated scores and link to stock evidence", async ({ page })
   await expect(page.getByRole("link", { name: /Rankings/ }).first()).toBeVisible();
 });
 
+test("research exposes immutable model health and integrity lineage", async ({ page }) => {
+  await page.goto("/research");
+  await expect(page.getByRole("heading", { name: "Healthy for Aug 25, 2026." })).toBeVisible();
+  await expect(page.getByText("Artifact hash Verified")).toBeVisible();
+  await expect(page.getByText("Registry hash Verified")).toBeVisible();
+  await expect(page.getByText("Explanation lineage Verified")).toBeVisible();
+  await expect(page.getByText("Forward readiness Recorded")).toBeVisible();
+  await page.getByText("View active-feature health").click();
+  await expect(page.getByText("PSI 0.040")).toBeVisible();
+
+  const response = await page.request.get("/api/v1/model-health");
+  expect(response.ok()).toBeTruthy();
+  const payload = await response.json();
+  expect(payload.health.status).toBe("healthy");
+  expect(payload.health.features).toHaveLength(2);
+  expect(payload.health.logicalSha256).toHaveLength(64);
+});
+
 test("watchlist persists saved companies and displays live score and price context", async ({ page }) => {
   await page.goto(`/stocks/${appleId}`);
   await page.getByRole("button", { name: "Save to watchlist" }).click();
@@ -139,6 +157,8 @@ test("unauthenticated pages redirect and APIs fail closed", async ({ page }) => 
   await page.context().clearCookies();
   const apiResponse = await page.request.get("/api/v1/prices?securityIds=11111111-1111-4111-8111-111111111111");
   expect(apiResponse.status()).toBe(401);
+  const healthResponse = await page.request.get("/api/v1/model-health");
+  expect(healthResponse.status()).toBe(401);
   await page.goto("/rankings");
   await expect(page).toHaveURL(/\/sign-in\?next=%2Frankings$/);
   await expect(page.getByRole("heading", { name: "Welcome back." })).toBeVisible();

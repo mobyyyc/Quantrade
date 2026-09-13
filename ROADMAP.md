@@ -42,7 +42,7 @@ Goal: one accurate, versioned scoring contract across batch jobs, APIs, explanat
 
 - [x] **Q1.1 — Roll out exact-zero eligibility.** Future live scores use the exact-zero contract and a distinct snapshot protocol; historical replay remains legacy, completed dates are not rewritten, rollback is future-only, and the September 10 dry run raised eligibility from 462 to 495 while recording all five remaining exclusions. See `CURRENT_MODEL_ELIGIBILITY_ROLLOUT.md`.
 - [x] **Q1.2 — Align score evidence and metadata.** Immutable artifact-backed input contracts now distinguish registered, active, zero-weight, unavailable, required-at-publication, and displayed inputs across APIs and UI; dated score responses carry score, rank, explanations, model version, protocol, feature versions, definition hashes, and the matching model card together. See `CURRENT_MODEL_ELIGIBILITY_ROLLOUT.md`.
-- [ ] **Q1.3 — Add model-health monitoring.** Track coverage, exclusions, missingness, drift, rank churn, and forward-outcome readiness; define warning thresholds and hash checks; do not auto-retrain or auto-promote.
+- [x] **Q1.3 — Add model-health monitoring.** Immutable post-publication snapshots now track coverage, grouped exclusions, active-feature missingness and PSI drift, rank churn, same-date forward-outcome readiness, and artifact/registry/explanation integrity. Deterministic hashes and database mutation guards fail closed; alerts remain diagnostic and cannot retrain or promote a model. See `MODEL_HEALTH_MONITORING.md`.
 
 **Exit:** old eligible predictions are unchanged and every score/exclusion is explained by the same contract.
 
@@ -183,4 +183,4 @@ Goal: remove Tier-B limitations and mature governance before any broad public-pe
 
 ## Next task
 
-**Q1.3 — Add model-health monitoring**, awaiting explicit approval.
+**Q2.1 — Finish operational states**, awaiting explicit approval.

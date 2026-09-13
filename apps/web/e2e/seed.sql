@@ -110,6 +110,37 @@ VALUES
   ('41111111-1111-4111-8111-111111111111', 'momentum_12_1', 'v3', repeat('1', 64), 'Information Technology', 0.92, 0.60, 0.25),
   ('41111111-1111-4111-8111-111111111111', 'trailing_volatility_60d', 'v3', repeat('2', 64), 'Information Technology', 0.35, 0.40, -0.08);
 
+INSERT INTO quantrade.forward_outcome_readiness_snapshots
+  (forward_outcome_readiness_snapshot_id, as_of_date, created_at)
+VALUES
+  ('71111111-1111-4111-8111-111111111111', '2026-08-25', '2026-08-26T00:10:00Z');
+
+INSERT INTO quantrade.forward_outcome_readiness_metrics
+  (forward_outcome_readiness_snapshot_id, horizon_sessions, completed_labels,
+   withheld_labels, pending_labels, completed_score_dates, latest_outcome_date)
+VALUES
+  ('71111111-1111-4111-8111-111111111111', 5, 2, 0, 2, 1, '2026-08-25'),
+  ('71111111-1111-4111-8111-111111111111', 20, 2, 0, 2, 1, '2026-08-25'),
+  ('71111111-1111-4111-8111-111111111111', 60, 2, 0, 2, 1, '2026-08-25');
+
+INSERT INTO quantrade.model_health_snapshots
+  (model_health_snapshot_id, score_date, decision_at, model_version, protocol_version,
+   cohort_size, eligible_count, excluded_count, coverage_ratio, previous_score_date,
+   top_20_churn_ratio, mean_normalized_rank_change, forward_outcome_readiness_snapshot_id, artifact_hash_matches,
+   registry_hash_matches, explanation_lineage_matches, health_status, logical_sha256)
+VALUES
+  ('61111111-1111-4111-8111-111111111111', '2026-08-25', '2026-08-26T00:00:00Z',
+   'tier_b_monthly_elastic_net_sec_clean_v3', 'monthly_last_session_next_open_v1',
+   2, 2, 0, 1.0, '2026-08-22', 0.5, 0.04, '71111111-1111-4111-8111-111111111111', true, true, true, 'healthy', repeat('6', 64));
+
+INSERT INTO quantrade.model_health_feature_metrics
+  (model_health_snapshot_id, feature_key, feature_version, definition_hash,
+   available_count, unavailable_count, missing_ratio, mean_percentile,
+   reference_mean_percentile, population_stability_index, reference_observation_count, status)
+VALUES
+  ('61111111-1111-4111-8111-111111111111', 'momentum_12_1', 'v3', repeat('1', 64), 2, 0, 0, 0.60, 0.58, 0.04, 400, 'healthy'),
+  ('61111111-1111-4111-8111-111111111111', 'trailing_volatility_60d', 'v3', repeat('2', 64), 2, 0, 0, 0.45, 0.47, 0.03, 400, 'healthy');
+
 INSERT INTO quantrade.paper_portfolio_runs
   (paper_portfolio_run_id, score_date, execution_date, starting_nav, ending_cash, benchmark_ticker, model_version, formation_protocol)
 VALUES

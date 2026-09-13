@@ -48,6 +48,49 @@ export type ModelInputProfile = {
   active: boolean;
 };
 
+export type ModelHealthFeature = {
+  featureKey: string;
+  featureVersion: string;
+  displayName: string;
+  availableCount: number;
+  unavailableCount: number;
+  missingRatio: string;
+  populationStabilityIndex?: string;
+  referenceObservationCount: number;
+  status: "healthy" | "warning" | "critical" | "insufficient_reference";
+};
+
+export type ModelHealthAlert = {
+  code: string;
+  severity: "warning" | "critical";
+  metricKey: string;
+  observedValue: string;
+  thresholdValue: string;
+  detail: string;
+};
+
+export type ModelHealthSnapshot = {
+  scoreDate: string;
+  modelVersion: string;
+  protocolVersion: string;
+  cohortSize: number;
+  eligibleCount: number;
+  excludedCount: number;
+  coverageRatio: string;
+  previousScoreDate?: string;
+  top20ChurnRatio?: string;
+  meanNormalizedRankChange?: string;
+  artifactHashMatches: boolean;
+  registryHashMatches: boolean;
+  explanationLineageMatches: boolean;
+  forwardReadinessRecorded: boolean;
+  status: "healthy" | "warning" | "critical";
+  logicalSha256: string;
+  features: ModelHealthFeature[];
+  exclusions: Array<{ reasonCode: string; count: number }>;
+  alerts: ModelHealthAlert[];
+};
+
 export type SecuritySearchResult = {
   securityId: string;
   issuerName: string;
@@ -546,6 +589,78 @@ export async function getModelInputProfile(modelVersion: string): Promise<ModelI
     coefficient: String(row.coefficient),
     active: Boolean(row.is_active),
   }));
+}
+
+export async function getLatestModelHealth(): Promise<ModelHealthSnapshot | null> {
+  const snapshotResult = await databasePool().query(
+    `SELECT model_health_snapshot_id, score_date::text, model_version, protocol_version,
+            cohort_size, eligible_count, excluded_count, coverage_ratio,
+            previous_score_date::text, top_20_churn_ratio, mean_normalized_rank_change,
+            artifact_hash_matches, registry_hash_matches, explanation_lineage_matches,
+            forward_outcome_readiness_snapshot_id IS NOT NULL AS forward_readiness_recorded,
+            health_status, logical_sha256
+     FROM quantrade.model_health_snapshots
+     ORDER BY score_date DESC LIMIT 1`,
+  );
+  if (!snapshotResult.rowCount) return null;
+  const row = snapshotResult.rows[0] as Record<string, unknown>;
+  const snapshotId = String(row.model_health_snapshot_id);
+  const [featureResult, exclusionResult, alertResult] = await Promise.all([
+    databasePool().query(
+      `SELECT metric.feature_key, metric.feature_version,
+              COALESCE(definition.display_name, metric.feature_key) AS display_name,
+              metric.available_count, metric.unavailable_count, metric.missing_ratio,
+              metric.population_stability_index, metric.reference_observation_count, metric.status
+       FROM quantrade.model_health_feature_metrics metric
+       LEFT JOIN quantrade.feature_definitions definition
+         ON definition.feature_key=metric.feature_key
+        AND definition.feature_version=metric.feature_version
+        AND definition.definition_hash=metric.definition_hash
+       WHERE metric.model_health_snapshot_id=$1
+       ORDER BY metric.feature_key`,
+      [snapshotId],
+    ),
+    databasePool().query(
+      `SELECT reason_code, excluded_count FROM quantrade.model_health_exclusion_metrics
+       WHERE model_health_snapshot_id=$1 ORDER BY excluded_count DESC, reason_code`,
+      [snapshotId],
+    ),
+    databasePool().query(
+      `SELECT alert_code, severity, metric_key, observed_value, threshold_value, detail
+       FROM quantrade.model_health_alerts WHERE model_health_snapshot_id=$1
+       ORDER BY CASE severity WHEN 'critical' THEN 0 ELSE 1 END, alert_code, metric_key`,
+      [snapshotId],
+    ),
+  ]);
+  return {
+    scoreDate: String(row.score_date), modelVersion: String(row.model_version),
+    protocolVersion: String(row.protocol_version), cohortSize: Number(row.cohort_size),
+    eligibleCount: Number(row.eligible_count), excludedCount: Number(row.excluded_count),
+    coverageRatio: String(row.coverage_ratio),
+    ...(row.previous_score_date ? { previousScoreDate: String(row.previous_score_date) } : {}),
+    ...(row.top_20_churn_ratio === null ? {} : { top20ChurnRatio: String(row.top_20_churn_ratio) }),
+    ...(row.mean_normalized_rank_change === null ? {} : { meanNormalizedRankChange: String(row.mean_normalized_rank_change) }),
+    artifactHashMatches: Boolean(row.artifact_hash_matches),
+    registryHashMatches: Boolean(row.registry_hash_matches),
+    explanationLineageMatches: Boolean(row.explanation_lineage_matches),
+    forwardReadinessRecorded: Boolean(row.forward_readiness_recorded),
+    status: row.health_status as ModelHealthSnapshot["status"],
+    logicalSha256: String(row.logical_sha256),
+    features: featureResult.rows.map((feature) => ({
+      featureKey: String(feature.feature_key), featureVersion: String(feature.feature_version),
+      displayName: String(feature.display_name), availableCount: Number(feature.available_count),
+      unavailableCount: Number(feature.unavailable_count), missingRatio: String(feature.missing_ratio),
+      ...(feature.population_stability_index === null ? {} : { populationStabilityIndex: String(feature.population_stability_index) }),
+      referenceObservationCount: Number(feature.reference_observation_count),
+      status: feature.status as ModelHealthFeature["status"],
+    })),
+    exclusions: exclusionResult.rows.map((item) => ({ reasonCode: String(item.reason_code), count: Number(item.excluded_count) })),
+    alerts: alertResult.rows.map((alert) => ({
+      code: String(alert.alert_code), severity: alert.severity as ModelHealthAlert["severity"],
+      metricKey: String(alert.metric_key), observedValue: String(alert.observed_value),
+      thresholdValue: String(alert.threshold_value), detail: String(alert.detail),
+    })),
+  };
 }
 
 export async function getDailyOperationsStatus(): Promise<DailyOperationsStatus> {
