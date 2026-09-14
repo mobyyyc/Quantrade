@@ -4,6 +4,10 @@ import type { PaperPortfolio, PreviousPaperPortfolioResult } from "@/lib/researc
 
 const BASKET_SIZE = 20;
 
+function formatWeight(value: string) {
+  return `${(Number(value) * 100).toFixed(2).replace(/\.00$/, "")}%`;
+}
+
 function returnDirection(value: string | number | undefined): "positive-change" | "negative-change" | undefined {
   if (value === undefined) return undefined;
   const prediction = Number(value);
@@ -78,7 +82,7 @@ export function ResearchBasket({
           <h2 id={titleId}>Awaiting the next formation.</h2>
         </div>
         <div>
-          <p>No official model portfolio is active yet. It will be fixed from the final eligible score publication of a completed calendar month and recorded at the next regular-session open. Daily ranking changes do not rebalance it.</p>
+          <p>No official model portfolio is active yet. It will be fixed from the final eligible score publication of a completed calendar month, then use the next regular-session open after that session&apos;s data is validated. Daily ranking changes do not rebalance it.</p>
           <PreviousBasketResult />
         </div>
       </section>
@@ -92,14 +96,14 @@ export function ResearchBasket({
       <div className="research-basket-heading">
         <div>
           <p className="eyebrow">MONTHLY MODEL PORTFOLIO</p>
-          <h2 id={titleId}>Current 20-session research basket</h2>
+          <h2 id={titleId}>Current monthly research basket</h2>
         </div>
         <PreviousBasketResult result={portfolio.previousResult} />
       </div>
       <div className="research-basket-context">
         <p>
           Formed from the model&apos;s top {BASKET_SIZE} eligible names on {formatResearchDate(portfolio.scoreDate)}, equally weighted at {weight}% each,
-          then recorded at the next regular-session open on {formatResearchDate(portfolio.executionDate)}.
+          with its fill prices taken from the next regular-session open on {formatResearchDate(portfolio.executionDate)} after that session&apos;s data was validated.
         </p>
         <p>Research only, not personalized investment advice.</p>
       </div>
@@ -108,7 +112,7 @@ export function ResearchBasket({
           <li key={position.securityId}>
             <Link
               href={`/stocks/${position.securityId}?date=${portfolio.scoreDate}&from=${from}`}
-              aria-label={`${position.ticker}, formation rank ${position.rank}, score ${formatScore(position.score)} out of 100, ${weight}% model weight`}
+              aria-label={`${position.ticker}, formation rank ${position.rank}, score ${formatScore(position.score)} out of 100, ${formatWeight(position.weight)} recorded formation weight`}
             >
               <span className="research-basket-position">{position.rank}</span>
               <span className="research-basket-company">
@@ -116,7 +120,7 @@ export function ResearchBasket({
                 <span>{formatIssuerName(position.issuerName)}</span>
               </span>
               <span className="research-basket-score">{formatScore(position.score)}<small>/100</small></span>
-              <span className="research-basket-weight">{weight}%</span>
+              <span className="research-basket-weight">{formatWeight(position.weight)}</span>
             </Link>
           </li>
         ))}

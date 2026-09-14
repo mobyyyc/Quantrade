@@ -18,6 +18,20 @@ MONTHLY_FORMATION_PROTOCOL = "monthly_last_session_next_open_v1"
 LIVE_DECISION_CONTRACT = "live_after_validation_v1"
 
 
+def formation_model(rows: list[tuple[object, object]]) -> tuple[str, int]:
+    """Bind a portfolio to the one model that produced its dated score run."""
+    if len(rows) != 1:
+        raise DataQualityError(
+            "paper portfolio requires exactly one model version in the completed formation run"
+        )
+    model_version, eligible_count = str(rows[0][0]), int(rows[0][1])
+    if eligible_count < 20:
+        raise DataQualityError(
+            f"paper portfolio requires 20 eligible scores; found {eligible_count}"
+        )
+    return model_version, eligible_count
+
+
 def _settings(env_file: Path) -> Settings:
     import os
     values = dict(os.environ)
@@ -54,12 +68,18 @@ def publish_paper_portfolio(
         if cursor.fetchone() is not None:
             return 0
         cursor.execute(
-            "SELECT model_version FROM quantrade.model_deployments ORDER BY deployed_at DESC LIMIT 1"
+            """SELECT snapshot.model_version,
+                      COUNT(*) FILTER (WHERE snapshot.eligible) AS eligible_count
+               FROM quantrade.score_snapshots snapshot
+               JOIN quantrade.daily_research_runs run
+                 ON run.score_date = snapshot.score_date
+                AND run.decision_at = snapshot.decision_at
+                AND run.status = 'completed'
+               WHERE snapshot.score_date = %s
+               GROUP BY snapshot.model_version""",
+            (score_date,),
         )
-        model_row = cursor.fetchone()
-        if model_row is None:
-            raise DataQualityError("paper portfolio requires an active model deployment")
-        model_version = str(model_row[0])
+        model_version, _ = formation_model(cursor.fetchall())
         cursor.execute(
             """SELECT snapshot.security_id::text FROM quantrade.score_snapshots snapshot
                JOIN quantrade.daily_research_runs run
@@ -144,12 +164,7 @@ def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) ->
     import psycopg
     with psycopg.connect(settings.database_url) as connection, connection.cursor() as cursor:
         cursor.execute(
-            """WITH active_model AS (
-                 SELECT model_version
-                 FROM quantrade.model_deployments
-                 ORDER BY deployed_at DESC
-                 LIMIT 1
-               ), prior_session AS (
+            """WITH prior_session AS (
                  SELECT MAX(session_date) AS session_date
                  FROM quantrade.benchmark_daily_price_bars
                  WHERE benchmark_ticker = 'SPY' AND session = 'regular'
@@ -157,7 +172,6 @@ def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) ->
                )
                SELECT s.score_date
                FROM quantrade.score_snapshots s
-               CROSS JOIN active_model active
                JOIN quantrade.daily_research_runs run
                  ON run.score_date = s.score_date
                 AND run.decision_at = s.decision_at
@@ -166,7 +180,6 @@ def publish_due_paper_portfolios(*, settings: Settings, execution_date: date) ->
                    SELECT session_date FROM prior_session
                    WHERE date_trunc('month', session_date) < date_trunc('month', %s::date)
                  )
-                 AND s.model_version = active.model_version
                  AND s.eligible
                  AND NOT EXISTS (
                    SELECT 1

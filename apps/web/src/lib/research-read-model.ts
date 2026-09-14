@@ -162,17 +162,20 @@ export type PaperPortfolio = {
   outcomes: PaperPortfolioOutcome[];
 };
 
-export type CompletedPaperPortfolioHistoryEntry = {
+export type PaperPortfolioHistoryEntry = {
   scoreDate: string;
   executionDate: string;
-  outcomeDate: string;
-  modelVersion: string;
+  status: "completed" | "pending" | "withheld" | "missed";
+  outcomeDate?: string;
+  modelVersion?: string;
   benchmarkTicker: string;
   positionCount: number;
-  portfolioReturn: string;
-  benchmarkReturn: string;
-  benchmarkRelativeReturn: string;
+  portfolioReturn?: string;
+  benchmarkReturn?: string;
+  benchmarkRelativeReturn?: string;
+  estimatedNetBenchmarkRelativeReturn?: string;
   oneWayTurnover: string;
+  unavailableReason?: string;
 };
 
 // Mirrors the pre-registered one-way cost case used by the deployed portfolio evaluation.
@@ -980,9 +983,9 @@ export async function getLatestPaperPortfolio(throughScoreDate?: string): Promis
   };
 }
 
-export async function getCompletedPaperPortfolioHistory(
+export async function getPaperPortfolioHistory(
   limit = 24,
-): Promise<CompletedPaperPortfolioHistoryEntry[]> {
+): Promise<PaperPortfolioHistoryEntry[]> {
   const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 120);
   const result = await databasePool().query(
     `WITH official AS (
@@ -1006,6 +1009,7 @@ export async function getCompletedPaperPortfolioHistory(
        GROUP BY trade.paper_portfolio_run_id, trade.security_id, run.starting_nav
      )
      SELECT official.score_date::text, official.execution_date::text,
+            CASE WHEN outcome.status IS NULL THEN 'pending' ELSE outcome.status END AS status,
             outcome.outcome_date::text, official.model_version,
             official.benchmark_ticker,
             (SELECT COUNT(*) FROM weights current_weight
@@ -1029,28 +1033,49 @@ export async function getCompletedPaperPortfolioHistory(
                   WHERE paper_portfolio_run_id = official.previous_run_id
                 ) previous_weight USING (security_id)
               ), 0)
-            END AS one_way_turnover
+            END AS one_way_turnover,
+            outcome.unavailable_reason
      FROM official
-     JOIN quantrade.paper_portfolio_outcomes outcome
+     LEFT JOIN quantrade.paper_portfolio_outcomes outcome
        ON outcome.paper_portfolio_run_id = official.paper_portfolio_run_id
       AND outcome.horizon_sessions = 20
-      AND outcome.status = 'completed'
-     ORDER BY official.score_date DESC
+     UNION ALL
+     SELECT missed.formation_date::text, missed.expected_execution_date::text,
+            'missed' AS status, NULL::text AS outcome_date, NULL::text AS model_version,
+            'SPY' AS benchmark_ticker, 0 AS position_count,
+            NULL::numeric AS portfolio_return, NULL::numeric AS benchmark_return,
+            NULL::numeric AS benchmark_relative_return, 0::numeric AS one_way_turnover,
+            missed.reason_code AS unavailable_reason
+     FROM quantrade.missed_paper_portfolio_formations missed
+     ORDER BY score_date DESC
      LIMIT $1`,
     [boundedLimit],
   );
-  return result.rows.map((row) => ({
-    scoreDate: String(row.score_date),
-    executionDate: String(row.execution_date),
-    outcomeDate: String(row.outcome_date),
-    modelVersion: String(row.model_version),
-    benchmarkTicker: String(row.benchmark_ticker),
-    positionCount: Number(row.position_count),
-    portfolioReturn: String(row.portfolio_return),
-    benchmarkReturn: String(row.benchmark_return),
-    benchmarkRelativeReturn: String(row.benchmark_relative_return),
-    oneWayTurnover: String(row.one_way_turnover),
-  }));
+  return result.rows.map((row) => {
+    const turnover = Number(row.one_way_turnover);
+    const relativeReturn = row.benchmark_relative_return == null
+      ? undefined
+      : Number(row.benchmark_relative_return);
+    return {
+      scoreDate: String(row.score_date),
+      executionDate: String(row.execution_date),
+      status: row.status as PaperPortfolioHistoryEntry["status"],
+      ...(row.outcome_date ? { outcomeDate: String(row.outcome_date) } : {}),
+      ...(row.model_version ? { modelVersion: String(row.model_version) } : {}),
+      benchmarkTicker: String(row.benchmark_ticker),
+      positionCount: Number(row.position_count),
+      ...(row.portfolio_return == null ? {} : { portfolioReturn: String(row.portfolio_return) }),
+      ...(row.benchmark_return == null ? {} : { benchmarkReturn: String(row.benchmark_return) }),
+      ...(row.benchmark_relative_return == null ? {} : { benchmarkRelativeReturn: String(row.benchmark_relative_return) }),
+      ...(relativeReturn === undefined ? {} : {
+        estimatedNetBenchmarkRelativeReturn: String(
+          relativeReturn - turnover * PAPER_PORTFOLIO_ONE_WAY_COST_BPS / 10_000,
+        ),
+      }),
+      oneWayTurnover: String(row.one_way_turnover),
+      ...(row.unavailable_reason ? { unavailableReason: String(row.unavailable_reason) } : {}),
+    };
+  });
 }
 
 export async function searchSecurities(query: string): Promise<SecuritySearchResult[]> {

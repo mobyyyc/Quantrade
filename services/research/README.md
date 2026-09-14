@@ -346,12 +346,15 @@ same-close execution, missing opens, duplicate positions, short positions, or
 target weights that do not total one. It first closes the prior basket, then
 opens the target basket; P4.5 adds costs and liquidity constraints.
 
-The post-close manual update creates a paper portfolio only when the prior
-eligible score run's first regular-session open is present in the newly
-ingested market data. It never creates missed portfolios retroactively. This
-preserves the forward, no-lookahead record needed for evaluation.
+The post-close manual update fixes the portfolio selection from the prior
+month's final completed score run, even if the deployed model changes before
+the next session. It materializes that selection only when the first later
+regular-session open is present in validated market data. The fill ledger is
+therefore written after that session's data arrives, using the already-fixed
+selection and the recorded open—not by claiming an order was physically sent
+at the open. It never creates missed portfolios retroactively.
 
-Each paper portfolio is then observed only at its 5th, 20th, and 60th regular
+Each paper portfolio is then observed at its 5th, 20th, and 60th regular
 SPY session, counting the next-open execution session as day one. The wealth
 ledger starts from the raw execution open, explicitly applies ordinary splits
 and USD cash dividends, and marks the position at the checkpoint close. The
@@ -361,6 +364,17 @@ complex actions, omitted actions, or ticker-identity collisions produce an
 immutable withheld checkpoint. Completed checkpoints store the accounting
 rule, source cutoff, action count, and deterministic portfolio/SPY ledger
 hashes.
+
+Run the read-only portfolio contract audit before release acceptance:
+
+```bash
+python -m quantrade_research.portfolio_truthfulness_audit --env-file .env
+```
+
+The audit verifies month-end formation, first-next-session execution, one
+dated model, exact top-20 holdings, NAV reconciliation, checkpoint dates,
+return arithmetic, wealth-ledger provenance, and missed-formation conflicts.
+Legacy preview rows are counted but excluded from every official read model.
 
 ## Forward outcome labels
 

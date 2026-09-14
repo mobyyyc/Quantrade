@@ -171,7 +171,7 @@ test("research history preserves every operational state", async ({ page }) => {
   await page.goto("/research");
   const history = page.locator("ol.operations-history-list");
   for (const label of ["Complete", "Retrying provider", "Needs attention", "Scores ready, maintenance pending", "No market session", "Duplicate prevented", "In progress"]) {
-    await expect(history.getByText(label, { exact: true })).toBeVisible();
+    await expect(history.getByText(label, { exact: true }).first()).toBeVisible();
   }
   await expect(page.getByText("provider detail must remain private", { exact: false })).toHaveCount(0);
   await expect(page.getByText("SEC filing retrieval or validation did not complete. The update stopped safely before publication; no duplicate scores were created.", { exact: true })).toBeVisible();
@@ -185,8 +185,9 @@ test("official portfolio shows immutable holdings and completed history", async 
   await expect(page.getByRole("heading", { name: "Recorded formation weights" })).toBeVisible();
   await expect(page.getByRole("link", { name: /AAPL, formation rank 2, score 78 out of 100/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /MSFT, formation rank 1, score 81 out of 100/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Official 20-session results" })).toBeVisible();
-  await expect(page.getByRole("listitem", { name: /basket return \+8\.00%.*SPY return \+3\.00%.*difference \+5\.00 pp/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Monthly formation record" })).toBeVisible();
+  await expect(page.getByRole("listitem", { name: /gross basket return \+8\.00%.*gross SPY return \+3\.00%.*estimated net difference \+4\.75 pp/i })).toBeVisible();
+  await expect(page.getByRole("listitem", { name: /Jun 30, 2026 formation, Basket not formed.*Month-end score unavailable/i })).toBeVisible();
 });
 
 test("unauthenticated pages redirect and APIs fail closed", async ({ page }) => {

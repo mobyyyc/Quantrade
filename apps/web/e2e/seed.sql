@@ -13,11 +13,25 @@ VALUES
   ('11111111-1111-4111-8111-111111111111', 'Apple Inc.', 'common_stock', 'US', '2020-01-01', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'e2e fixture', '2026-08-25T21:00:00Z'),
   ('22222222-2222-4222-8222-222222222222', 'Microsoft Corporation', 'common_stock', 'US', '2020-01-01', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'e2e fixture', '2026-08-25T21:00:00Z');
 
+INSERT INTO quantrade.securities
+  (security_id, issuer_name, asset_class, country_code, valid_from, raw_artifact_id, source_reference, ingested_at)
+SELECT ('90000000-0000-4000-8000-' || lpad(number::text, 12, '0'))::uuid,
+       'Portfolio Fixture ' || number, 'common_stock', 'US', '2020-01-01',
+       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'e2e fixture', '2026-08-25T21:00:00Z'
+FROM generate_series(3, 20) AS number;
+
 INSERT INTO quantrade.listings
   (security_id, ticker, exchange_mic, currency, valid_from, raw_artifact_id, source_reference, ingested_at)
 VALUES
   ('11111111-1111-4111-8111-111111111111', 'AAPL', 'XNAS', 'USD', '2020-01-01', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'e2e fixture', '2026-08-25T21:00:00Z'),
   ('22222222-2222-4222-8222-222222222222', 'MSFT', 'XNAS', 'USD', '2020-01-01', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'e2e fixture', '2026-08-25T21:00:00Z');
+
+INSERT INTO quantrade.listings
+  (security_id, ticker, exchange_mic, currency, valid_from, raw_artifact_id, source_reference, ingested_at)
+SELECT ('90000000-0000-4000-8000-' || lpad(number::text, 12, '0'))::uuid,
+       'PX' || chr(64 + number), 'XNAS', 'USD', '2020-01-01',
+       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'e2e fixture', '2026-08-25T21:00:00Z'
+FROM generate_series(3, 20) AS number;
 
 INSERT INTO quantrade.daily_price_bars
   (security_id, session_date, session, currency, open_price, high_price, low_price, close_price, volume, adjustment_basis, observed_at, published_at, available_at, ingested_at, raw_artifact_id, source_reference, availability_rule_id)
@@ -40,6 +54,19 @@ VALUES
   ('SPY', '2026-08-22', 'regular', 'USD', 650, 653, 649, 652, 60000000, 'split_adjusted', '2026-08-22T20:00:00Z', '2026-08-22T22:00:00Z', '2026-08-25T22:30:00Z', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'e2e fixture', (SELECT availability_rule_id FROM quantrade.availability_rules WHERE rule_key='alpaca_retrieval' AND rule_version='v1-benchmark')),
   ('SPY', '2026-08-25', 'regular', 'USD', 653, 655, 651, 654, 61000000, 'split_adjusted', '2026-08-25T20:00:00Z', '2026-08-25T22:00:00Z', '2026-08-25T22:30:00Z', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'e2e fixture', (SELECT availability_rule_id FROM quantrade.availability_rules WHERE rule_key='alpaca_retrieval' AND rule_version='v1-benchmark')),
   ('SPY', '2026-08-26', 'regular', 'USD', 654, 656, 652, 655, 60500000, 'split_adjusted', '2026-08-26T20:00:00Z', '2026-08-26T22:00:00Z', '2026-08-26T22:30:00Z', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'e2e fixture', (SELECT availability_rule_id FROM quantrade.availability_rules WHERE rule_key='alpaca_retrieval' AND rule_version='v1-benchmark'));
+
+INSERT INTO quantrade.benchmark_daily_price_bars
+  (benchmark_ticker, session_date, session, currency, open_price, high_price, low_price, close_price, volume, adjustment_basis, observed_at, available_at, ingested_at, raw_artifact_id, source_reference, availability_rule_id)
+SELECT 'SPY', session_date::date, 'regular', 'USD',
+       640 + ordinal, 642 + ordinal, 639 + ordinal, 641 + ordinal, 60000000,
+       'unadjusted', session_date + time '16:00', session_date + time '18:00',
+       '2026-08-28T22:30:00Z', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'e2e fixture',
+       (SELECT availability_rule_id FROM quantrade.availability_rules WHERE rule_key='alpaca_retrieval' AND rule_version='v1-benchmark')
+FROM (
+  SELECT session_date, row_number() OVER (ORDER BY session_date) AS ordinal
+  FROM generate_series('2026-07-31'::timestamp, '2026-08-28'::timestamp, interval '1 day') AS session_date
+  WHERE EXTRACT(ISODOW FROM session_date) BETWEEN 1 AND 5
+) sessions;
 
 INSERT INTO quantrade.filings
   (filing_id, security_id, accession_number, form, filed_at, accepted_at, period_end, published_at, available_at, ingested_at, raw_artifact_id, source_reference)
@@ -76,6 +103,7 @@ VALUES
 INSERT INTO quantrade.daily_research_runs
   (score_date, status, decision_at, started_at, completed_at, score_snapshot_count, eligible_count, failure_reason)
 VALUES
+  ('2026-07-31', 'completed', '2026-08-01T00:00:00Z', '2026-08-01T00:00:00Z', '2026-08-01T00:05:00Z', 20, 20, NULL),
   ('2026-08-19', 'running', NULL, '2026-08-20T00:00:00Z', NULL, NULL, NULL, NULL),
   ('2026-08-20', 'completed', '2026-08-21T00:00:00Z', '2026-08-21T00:00:00Z', '2026-08-21T00:05:00Z', 2, 2, NULL),
   ('2026-08-21', 'skipped', NULL, '2026-08-22T00:00:00Z', '2026-08-22T00:01:00Z', NULL, NULL, 'No regular SPY session was returned for this date.'),
@@ -109,6 +137,21 @@ VALUES
   ('32222222-2222-4222-8222-222222222222', '22222222-2222-4222-8222-222222222222', '2026-08-22', '2026-08-23T00:00:00Z', '2026-08-23T00:05:00Z', 81, 1, true, 'positive', 'tier_b_monthly_elastic_net_sec_clean_v3', 'v3', 'monthly_last_session_next_open_v1', '2026-08-23T00:00:00Z', 'B'),
   ('41111111-1111-4111-8111-111111111111', '11111111-1111-4111-8111-111111111111', '2026-08-25', '2026-08-26T00:00:00Z', '2026-08-26T00:05:00Z', 84, 1, true, 'positive', 'tier_b_monthly_elastic_net_sec_clean_v3', 'v3', 'monthly_last_session_next_open_v1', '2026-08-26T00:00:00Z', 'B'),
   ('42222222-2222-4222-8222-222222222222', '22222222-2222-4222-8222-222222222222', '2026-08-25', '2026-08-26T00:00:00Z', '2026-08-26T00:05:00Z', 80, 2, true, 'positive', 'tier_b_monthly_elastic_net_sec_clean_v3', 'v3', 'monthly_last_session_next_open_v1', '2026-08-26T00:00:00Z', 'B');
+
+INSERT INTO quantrade.score_snapshots
+  (score_snapshot_id, security_id, score_date, decision_at, published_at, score, rank, eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at, data_capability_tier)
+VALUES
+  ('81000000-0000-4000-8000-000000000001', '22222222-2222-4222-8222-222222222222', '2026-07-31', '2026-08-01T00:00:00Z', '2026-08-01T00:05:00Z', 81, 1, true, 'positive', 'tier_b_monthly_elastic_net_sec_clean_v3', 'v3', 'monthly_last_session_next_open_v1', '2026-08-01T00:00:00Z', 'B'),
+  ('81000000-0000-4000-8000-000000000002', '11111111-1111-4111-8111-111111111111', '2026-07-31', '2026-08-01T00:00:00Z', '2026-08-01T00:05:00Z', 78, 2, true, 'positive', 'tier_b_monthly_elastic_net_sec_clean_v3', 'v3', 'monthly_last_session_next_open_v1', '2026-08-01T00:00:00Z', 'B');
+
+INSERT INTO quantrade.score_snapshots
+  (score_snapshot_id, security_id, score_date, decision_at, published_at, score, rank, eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at, data_capability_tier)
+SELECT ('81000000-0000-4000-8000-' || lpad(number::text, 12, '0'))::uuid,
+       ('90000000-0000-4000-8000-' || lpad(number::text, 12, '0'))::uuid,
+       '2026-07-31', '2026-08-01T00:00:00Z', '2026-08-01T00:05:00Z',
+       80 - number, number, true, 'positive', 'tier_b_monthly_elastic_net_sec_clean_v3',
+       'v3', 'monthly_last_session_next_open_v1', '2026-08-01T00:00:00Z', 'B'
+FROM generate_series(3, 20) AS number;
 
 INSERT INTO quantrade.score_predictions
   (score_snapshot_id, benchmark_ticker, horizon_sessions, predicted_benchmark_relative_return)
@@ -170,22 +213,41 @@ VALUES
 INSERT INTO quantrade.paper_portfolio_runs
   (paper_portfolio_run_id, score_date, execution_date, starting_nav, ending_cash, benchmark_ticker, model_version, formation_protocol)
 VALUES
-  ('51111111-1111-4111-8111-111111111111', '2026-08-22', '2026-08-25', 100000, 0, 'SPY', 'tier_b_monthly_elastic_net_sec_clean_v3', 'monthly_last_session_next_open_v1');
+  ('51111111-1111-4111-8111-111111111111', '2026-07-31', '2026-08-03', 100000, 0, 'SPY', 'tier_b_monthly_elastic_net_sec_clean_v3', 'monthly_last_session_next_open_v1');
 
 INSERT INTO quantrade.paper_portfolio_positions (paper_portfolio_run_id, security_id, quantity)
 VALUES
-  ('51111111-1111-4111-8111-111111111111', '11111111-1111-4111-8111-111111111111', 219.298245614035),
-  ('51111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', 98.814229249012);
+  ('51111111-1111-4111-8111-111111111111', '11111111-1111-4111-8111-111111111111', 25),
+  ('51111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', 10);
+
+INSERT INTO quantrade.paper_portfolio_positions (paper_portfolio_run_id, security_id, quantity)
+SELECT '51111111-1111-4111-8111-111111111111',
+       ('90000000-0000-4000-8000-' || lpad(number::text, 12, '0'))::uuid, 50
+FROM generate_series(3, 20) AS number;
 
 INSERT INTO quantrade.paper_portfolio_trades
   (paper_portfolio_run_id, security_id, side, quantity, execution_price, notional)
 VALUES
-  ('51111111-1111-4111-8111-111111111111', '11111111-1111-4111-8111-111111111111', 'buy', 219.298245614035, 228, 50000),
-  ('51111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', 'buy', 98.814229249012, 506, 50000);
+  ('51111111-1111-4111-8111-111111111111', '11111111-1111-4111-8111-111111111111', 'buy', 25, 200, 5000),
+  ('51111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', 'buy', 10, 500, 5000);
+
+INSERT INTO quantrade.paper_portfolio_trades
+  (paper_portfolio_run_id, security_id, side, quantity, execution_price, notional)
+SELECT '51111111-1111-4111-8111-111111111111',
+       ('90000000-0000-4000-8000-' || lpad(number::text, 12, '0'))::uuid,
+       'buy', 50, 100, 5000
+FROM generate_series(3, 20) AS number;
 
 INSERT INTO quantrade.paper_portfolio_outcomes
-  (paper_portfolio_run_id, horizon_sessions, status, outcome_date, portfolio_return, benchmark_return, benchmark_relative_return)
+  (paper_portfolio_run_id, horizon_sessions, status, outcome_date, portfolio_return, benchmark_return, benchmark_relative_return,
+   accounting_rule, portfolio_ledger_sha256, benchmark_ledger_sha256, corporate_action_count, data_cutoff_at)
 VALUES
-  ('51111111-1111-4111-8111-111111111111', 20, 'completed', '2026-09-22', 0.08, 0.03, 0.05);
+  ('51111111-1111-4111-8111-111111111111', 20, 'completed', '2026-08-28', 0.08, 0.03, 0.05,
+   'entry_open_checkpoint_close_cash_dividend_split_wealth_v1', repeat('8', 64), repeat('9', 64), 0, '2026-08-28T22:00:00Z');
+
+INSERT INTO quantrade.missed_paper_portfolio_formations
+  (formation_date, expected_execution_date, reason_code, decision_contract_version)
+VALUES
+  ('2026-06-30', '2026-07-01', 'month_end_score_unavailable', 'live_after_validation_v1');
 
 COMMIT;

@@ -3,8 +3,10 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from quantrade_research.paper_portfolio import (
-    is_execution_window_open, is_monthly_formation, record_missed_paper_portfolio_formations,
+    formation_model, is_execution_window_open, is_monthly_formation,
+    record_missed_paper_portfolio_formations,
 )
+from quantrade_research.quality import DataQualityError
 
 
 class PaperPortfolioScheduleTests(unittest.TestCase):
@@ -20,6 +22,13 @@ class PaperPortfolioScheduleTests(unittest.TestCase):
     def test_execution_window_cannot_be_backfilled(self) -> None:
         self.assertTrue(is_execution_window_open(date(2026, 9, 1), date(2026, 9, 1)))
         self.assertFalse(is_execution_window_open(date(2026, 9, 1), date(2026, 9, 2)))
+
+    def test_portfolio_uses_the_model_from_the_dated_formation(self) -> None:
+        self.assertEqual(formation_model([("formation-model-v1", 495)]), ("formation-model-v1", 495))
+        with self.assertRaisesRegex(DataQualityError, "exactly one model version"):
+            formation_model([("old-model", 490), ("new-model", 495)])
+        with self.assertRaisesRegex(DataQualityError, "20 eligible"):
+            formation_model([("formation-model-v1", 19)])
 
     def test_missed_formations_are_recorded_only_after_the_execution_window(self) -> None:
         settings = MagicMock(database_url="unused")

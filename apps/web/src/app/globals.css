@@ -148,6 +148,7 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
 .portfolio-history-list li > span.positive { color: var(--positive); }
 .portfolio-history-list li > span.negative { color: var(--negative); }
 .portfolio-history-list li > span.portfolio-history-turnover { color: var(--foreground); }
+.portfolio-history-list li > span.portfolio-history-state { color: var(--muted); font-weight: 560; }
 .portfolio-history-note, .portfolio-history-empty { max-width: 48rem; margin: .9rem 0 0; color: var(--subtle); font-size: .76rem; line-height: 1.55; }
 .portfolio-contract { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 3rem; }
 .portfolio-contract dl { margin: 0; border-top: 1px solid var(--line-soft); }
@@ -733,9 +734,9 @@ h2 { margin-bottom: .75rem; color: var(--foreground); font-size: 1.3rem; letter-
   .portfolio-history-list li { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem 1rem; padding: .85rem 0; }
   .portfolio-history-formation { grid-column: 1 / -1; padding-bottom: .55rem; border-bottom: 1px solid var(--line-soft); }
   .portfolio-history-list li > span:not(:first-child) { display: grid; grid-template-columns: 1fr auto; text-align: right; }
-  .portfolio-history-list li > span:nth-child(2)::before { content: "Basket"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
-  .portfolio-history-list li > span:nth-child(3)::before { content: "SPY"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
-  .portfolio-history-list li > span:nth-child(4)::before { content: "Difference"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+  .portfolio-history-list li > span:nth-child(2)::before { content: "Gross basket"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+  .portfolio-history-list li > span:nth-child(3)::before { content: "Gross SPY"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
+  .portfolio-history-list li > span:nth-child(4)::before { content: "Est. net vs SPY"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
   .portfolio-history-list li > span:nth-child(5)::before { content: "Turnover"; color: var(--subtle); font-size: .68rem; font-weight: 730; letter-spacing: .08em; text-transform: uppercase; }
   .portfolio-holding-value strong { font-size: .86rem; }
   .portfolio-holding-value small { font-size: .6rem; }

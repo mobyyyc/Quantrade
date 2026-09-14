@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { formatIssuerName, formatPercentagePoints, formatRelativeReturn, formatResearchDate, formatScore } from "@/lib/format";
-import { getCompletedPaperPortfolioHistory, getLatestPaperPortfolio, PAPER_PORTFOLIO_ONE_WAY_COST_BPS, ResearchReadModelError } from "@/lib/research-read-model";
+import { getLatestPaperPortfolio, getPaperPortfolioHistory, PAPER_PORTFOLIO_ONE_WAY_COST_BPS, ResearchReadModelError, type PaperPortfolioHistoryEntry } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 
@@ -21,14 +21,21 @@ function nextRebalanceRule(executionDate: string) {
   return `First open after the final ${month} session`;
 }
 
+function gapReason(entry: PaperPortfolioHistoryEntry) {
+  if (entry.status === "pending") return "20-session close not reached";
+  if (entry.unavailableReason === "month_end_score_unavailable") return "Month-end score unavailable";
+  if (entry.unavailableReason === "execution_window_missed") return "Next-open window missed";
+  return entry.unavailableReason ?? "Did not pass the recorded data-quality checks";
+}
+
 export default async function PortfolioPage() {
   let portfolio: Awaited<ReturnType<typeof getLatestPaperPortfolio>> = null;
-  let history: Awaited<ReturnType<typeof getCompletedPaperPortfolioHistory>> = [];
+  let history: Awaited<ReturnType<typeof getPaperPortfolioHistory>> = [];
   let unavailable = false;
   try {
     [portfolio, history] = await Promise.all([
       getLatestPaperPortfolio(),
-      getCompletedPaperPortfolioHistory(),
+      getPaperPortfolioHistory(),
     ]);
   } catch (error) {
     if (!(error instanceof ResearchReadModelError)) throw error;
@@ -53,7 +60,7 @@ export default async function PortfolioPage() {
           <div className="portfolio-home-copy">
             <p className="eyebrow">CURRENT STATUS</p>
             <h2 id="portfolio-status-title">Official basket active.</h2>
-            <p>These holdings were recorded at the next regular-session open. Daily score and rank changes do not rewrite them.</p>
+            <p>The selection was fixed from the final monthly ranking before the next session. Its fill prices were recorded from that session&apos;s regular open after the market data passed validation. Daily score and rank changes do not rewrite it.</p>
             <Link href="/research#track-record" className="text-link">Review the research method</Link>
           </div>
           <dl className="portfolio-home-facts">
@@ -66,7 +73,7 @@ export default async function PortfolioPage() {
       ) : (
         <section className="empty-state small">
           <h2>Awaiting the first official basket.</h2>
-          <p>The portfolio will appear after a completed calendar month is formed from its final eligible ranking and recorded at the next regular-session open.</p>
+          <p>The portfolio will appear after a completed calendar month fixes its final eligible ranking and the next session&apos;s regular-open data passes validation.</p>
           <Link href="/research#track-record" className="primary-link">Read the methodology</Link>
         </section>
       )}
@@ -105,13 +112,13 @@ export default async function PortfolioPage() {
       <section className="content-section portfolio-history" aria-labelledby="portfolio-history-title">
         <div className="portfolio-history-heading">
           <div>
-            <p className="eyebrow">COMPLETED HISTORY</p>
-            <h2 id="portfolio-history-title">Official 20-session results</h2>
+            <p className="eyebrow">FORMATION HISTORY</p>
+            <h2 id="portfolio-history-title">Monthly formation record</h2>
           </div>
           <div className="portfolio-cost-note">
             <span>Cost assumption</span>
             <strong>{PAPER_PORTFOLIO_ONE_WAY_COST_BPS} bps × one-way turnover</strong>
-            <small>Shown returns are gross; commissions, slippage, and taxes are not deducted.</small>
+            <small>Basket and SPY returns are gross. Estimated net difference subtracts this trading-cost case; commissions and taxes are not modeled.</small>
           </div>
         </div>
 
@@ -120,29 +127,44 @@ export default async function PortfolioPage() {
         ) : history.length ? (
           <>
             <div className="portfolio-history-columns" aria-hidden="true">
-              <span>Formation</span><span>Basket</span><span>SPY</span><span>Difference</span><span>Turnover</span>
+              <span>Formation</span><span>Gross basket</span><span>Gross SPY</span><span>Est. net vs SPY</span><span>Turnover</span>
             </div>
             <ol className="portfolio-history-list">
-              {history.map((entry) => (
-                <li
-                  key={`${entry.scoreDate}-${entry.modelVersion}`}
-                  aria-label={`${formatResearchDate(entry.scoreDate)} formation, executed ${formatResearchDate(entry.executionDate)}, basket return ${formatRelativeReturn(entry.portfolioReturn)}, ${entry.benchmarkTicker} return ${formatRelativeReturn(entry.benchmarkReturn)}, difference ${formatPercentagePoints(entry.benchmarkRelativeReturn)}, one-way turnover ${formatWeight(entry.oneWayTurnover)}`}
+              {history.map((entry) => {
+                const completed = entry.status === "completed"
+                  && entry.portfolioReturn !== undefined
+                  && entry.benchmarkReturn !== undefined
+                  && entry.estimatedNetBenchmarkRelativeReturn !== undefined;
+                const stateLabel = entry.status === "pending" ? "Measurement pending"
+                  : entry.status === "withheld" ? "Result withheld"
+                  : entry.status === "missed" ? "Basket not formed"
+                  : "Completed";
+                return <li
+                  key={`${entry.scoreDate}-${entry.modelVersion ?? entry.status}`}
+                  aria-label={completed
+                    ? `${formatResearchDate(entry.scoreDate)} formation, executed ${formatResearchDate(entry.executionDate)}, gross basket return ${formatRelativeReturn(entry.portfolioReturn!)}, gross ${entry.benchmarkTicker} return ${formatRelativeReturn(entry.benchmarkReturn!)}, estimated net difference ${formatPercentagePoints(entry.estimatedNetBenchmarkRelativeReturn!)}, one-way turnover ${formatWeight(entry.oneWayTurnover)}`
+                    : `${formatResearchDate(entry.scoreDate)} formation, ${stateLabel}. ${gapReason(entry)}`}
                 >
                   <span className="portfolio-history-formation">
                     <strong>{formatResearchDate(entry.scoreDate)}</strong>
-                    <small>{entry.positionCount} names · closed {formatResearchDate(entry.outcomeDate)}</small>
+                    <small>{completed ? `${entry.positionCount} names · closed ${formatResearchDate(entry.outcomeDate!)}` : `${gapReason(entry)} · expected open ${formatResearchDate(entry.executionDate)}`}</small>
                   </span>
-                  <span className={returnTone(entry.portfolioReturn)}>{formatRelativeReturn(entry.portfolioReturn)}</span>
-                  <span className={returnTone(entry.benchmarkReturn)}>{formatRelativeReturn(entry.benchmarkReturn)}</span>
-                  <span className={returnTone(entry.benchmarkRelativeReturn)}>{formatPercentagePoints(entry.benchmarkRelativeReturn)}</span>
-                  <span className="portfolio-history-turnover">{formatWeight(entry.oneWayTurnover)}</span>
-                </li>
-              ))}
+                  {completed ? <>
+                    <span className={returnTone(entry.portfolioReturn!)}>{formatRelativeReturn(entry.portfolioReturn!)}</span>
+                    <span className={returnTone(entry.benchmarkReturn!)}>{formatRelativeReturn(entry.benchmarkReturn!)}</span>
+                    <span className={returnTone(entry.estimatedNetBenchmarkRelativeReturn!)}>{formatPercentagePoints(entry.estimatedNetBenchmarkRelativeReturn!)}</span>
+                    <span className="portfolio-history-turnover">{formatWeight(entry.oneWayTurnover)}</span>
+                  </> : <>
+                    <span className="portfolio-history-state">{stateLabel}</span>
+                    <span aria-hidden="true">—</span><span aria-hidden="true">—</span><span aria-hidden="true">—</span>
+                  </>}
+                </li>;
+              })}
             </ol>
-            <p className="portfolio-history-note">Turnover compares immutable target weights with the preceding official basket; the first basket measures deployment from cash.</p>
+            <p className="portfolio-history-note">Turnover compares immutable target weights with the preceding official basket; the first basket measures deployment from cash. Missing formations remain visible and are never reconstructed later.</p>
           </>
         ) : (
-          <p className="portfolio-history-empty">No official basket has completed its 20-session measurement window yet. The first result will appear here without reconstructing it from later data.</p>
+          <p className="portfolio-history-empty">No official monthly formation has been recorded yet.</p>
         )}
       </section>
 
@@ -153,7 +175,7 @@ export default async function PortfolioPage() {
         </div>
         <dl>
           <div><dt>Monthly, not daily</dt><dd>The final eligible ranking of a completed month determines the next basket.</dd></div>
-          <div><dt>Recorded, not reconstructed</dt><dd>Each portfolio is stored as a dated object so later rankings cannot alter its history.</dd></div>
+          <div><dt>Recorded, not reconstructed</dt><dd>Each selection and next-open fill ledger is stored as a dated object. Later rankings cannot alter its holdings, and a missed formation is not backfilled.</dd></div>
           <div><dt>Research, not instruction</dt><dd>The basket is a model-tracking tool, not personalized investment advice or a return guarantee.</dd></div>
         </dl>
       </section>
