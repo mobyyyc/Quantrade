@@ -1,7 +1,9 @@
 # Portfolio Truthfulness Audit
 
-**Audit date:** 2026-09-13  
-**Roadmap task:** Q2.2  
+**Audit date:** 2026-09-13
+
+**Roadmap task:** Q2.2
+
 **Scope:** private V1 monthly model portfolio
 
 ## Contract
