@@ -40,7 +40,7 @@ test("skip link and chart support keyboard access with a complete table alternat
   await page.keyboard.press("Enter");
   const table = page.getByRole("table", { name: "AAPL daily closing prices in USD" });
   await expect(table.getByRole("cell", { name: "$225.00" })).toBeVisible();
-  await expect(table.getByRole("cell", { name: "$228.00" })).toBeVisible();
+  await expect(table.getByRole("cell", { name: "$228.00" }).first()).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.locator(".price-panel").screenshot({ path: testInfo.outputPath("price-history-accessible.png") });
 });

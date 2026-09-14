@@ -52,7 +52,7 @@ Goal: one accurate, versioned scoring contract across batch jobs, APIs, explanat
 
 Goal: freeze a polished and truthful private V1 before changing its hosting model.
 
-- [ ] **Q2.1 — Finish operational states.** Clearly represent running, retrying, complete, partial, skipped, duplicate-prevented, stale, and failed updates with useful freshness dates and safe error messages.
+- [x] **Q2.1 — Finish operational states.** The web now derives running, provider-retrying, complete, partial, skipped, duplicate-prevented, and failed states from the durable run ledger and append-only events. Publication freshness separately identifies aligned, stale, misaligned, and unavailable evidence with score, market, SPY, SEC, and event dates. Streamed button outcomes use the same vocabulary, raw failures stay private, and the displayed schedule matches the installed 10:15 p.m. Toronto task. See `DAILY_UPDATE_WORKFLOW.md`.
 - [ ] **Q2.2 — Audit portfolio truthfulness.** Reconcile formation, next-open execution, holdings, realized basket/SPY results, costs, missing months, and preview data; rankings must not imply mid-month rebalancing.
 - [ ] **Q2.3 — Complete the real-state UX matrix.** Test all main pages with real empty, partial, stale, failed, month-end, and long-list states; fix measured accessibility, responsive, layout, and interaction issues under the existing design system.
 - [ ] **Q2.4 — Run V1 acceptance.** Run migrations, research tests, lint/build, browser tests, accessibility checks, update dry runs, backup verification, restore rehearsal, and secret/artifact scanning; record limitations.
@@ -183,4 +183,4 @@ Goal: remove Tier-B limitations and mature governance before any broad public-pe
 
 ## Next task
 
-**Q2.1 — Finish operational states**, awaiting explicit approval.
+**Q2.2 — Audit portfolio truthfulness**, awaiting explicit approval.

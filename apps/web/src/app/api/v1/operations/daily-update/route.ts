@@ -9,31 +9,10 @@ import {
   AuthError, auditEvent, authErrorResponse, authorizeApiRequest,
   requestSubject, requireSameOrigin,
 } from "@/lib/auth";
+import { safeDailyUpdateError } from "@/lib/daily-update-state";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function userFacingError(output: string): string {
-  if (output.includes("available after the regular market closes")) {
-    return "The daily update is available after the regular market closes at 4:00 p.m. Toronto time.";
-  }
-  if (output.includes("No current S&P 500 universe")) {
-    return "Today’s S&P 500 universe is not ready yet. Try again after the daily data refresh.";
-  }
-  if (output.includes("already running")) {
-    return "A daily update is already running. Keep this page open and try again when it finishes.";
-  }
-  if (output.includes("has not been published yet")) {
-    return "SEC has not published today’s daily filing index yet. Please retry after 10:00 p.m. Toronto time; no scores were published.";
-  }
-  if (output.includes("after 3 attempts")) {
-    return "A data provider remained unavailable after three safe attempts. No scores were published; try the update again later.";
-  }
-  if (output.includes("SEC filing ingestion failed")) {
-    return "SEC filing retrieval or validation did not complete. The update stopped safely before publication; no duplicate scores were created.";
-  }
-  return "The daily update did not complete. Check the local research service logs for details.";
-}
 
 export async function POST(request: Request) {
   let user;
@@ -108,17 +87,22 @@ export async function POST(request: Request) {
         if (code !== 0 && !partial) {
           console.error("[daily-update] research process failed", { code, output: output.slice(-4_000) });
           await auditEvent({ userId: user.userId, eventType: "daily_update", outcome: "failed", route: "/api/v1/operations/daily-update", subject: requestSubject(request), metadata: { stage: "research", exitCode: code ?? -1 } });
-          send({ type: "error", error: userFacingError(output) });
+          send({ type: "error", error: safeDailyUpdateError(output) });
           close();
           return;
         }
         if (output.includes("already_completed")) {
-          send({ type: "complete", message: "Today’s scores already exist and maintenance is complete. No scores were recalculated." });
+          let result;
+          try {
+            const latest = await getLatestDatedScores();
+            result = latest ? { scoreDate: latest.scoreDate, eligibleCount: latest.scores.filter((score) => score.eligible).length, totalCount: latest.scores.length } : undefined;
+          } catch { result = undefined; }
+          send({ type: "complete", outcome: "duplicate_prevented", message: "Today’s scores already exist and maintenance is complete. Nothing was recalculated or duplicated.", result });
           close();
           return;
         }
         if (output.includes("skipped score_date=")) {
-          send({ type: "complete", message: "No regular market session was available, so no dated publication was created." });
+          send({ type: "complete", outcome: "skipped", message: "No regular market session was available, so no dated publication was created." });
           close();
           return;
         }

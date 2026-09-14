@@ -23,9 +23,11 @@ export type DailyUpdateSummary = {
   totalCount: number;
 };
 
+export type DailyUpdateOutcome = "complete" | "partial" | "skipped" | "duplicate_prevented";
+
 export type DailyUpdateStreamEvent =
   | { type: "progress"; progress: DailyUpdateProgress }
-  | { type: "complete"; message: string; outcome?: "complete" | "partial"; result?: DailyUpdateSummary }
+  | { type: "complete"; message: string; outcome: DailyUpdateOutcome; result?: DailyUpdateSummary }
   | { type: "error"; error: string };
 
 const STAGES = new Set<DailyUpdateProgressStage>([

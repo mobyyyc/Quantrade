@@ -16,7 +16,7 @@ export default async function Home() {
   let portfolio: Awaited<ReturnType<typeof getLatestPaperPortfolio>> = null;
   let previous: Awaited<ReturnType<typeof getPreviousDatedScores>> = null;
   let filingSummary: Awaited<ReturnType<typeof getTodayFilingSummary>> = { filingCount: 0 };
-  let operations: Awaited<ReturnType<typeof getDailyOperationsStatus>> = {};
+  let operations: Awaited<ReturnType<typeof getDailyOperationsStatus>> = { publicationFreshness: "unavailable" };
   let unavailable = false;
   try {
     [latest, portfolio, operations] = await Promise.all([
@@ -93,7 +93,7 @@ export default async function Home() {
           <Link href="/research" className="primary-link">Read methodology</Link>
         </section>
       )}
-      <DailyUpdateControl />
+      <DailyUpdateControl operations={operations} />
     </AppShell>
   );
 }

@@ -4,7 +4,10 @@ import { authenticateTestOwner } from "./auth";
 const appleId = "11111111-1111-4111-8111-111111111111";
 const microsoftId = "22222222-2222-4222-8222-222222222222";
 
-test.beforeEach(async ({ page }) => authenticateTestOwner(page));
+test.beforeEach(async ({ page }, testInfo) => {
+  if (testInfo.title === "unauthenticated pages redirect and APIs fail closed") return;
+  await authenticateTestOwner(page);
+});
 
 test("global search finds a company and opens its research detail", async ({ page }) => {
   await page.goto("/");
@@ -114,8 +117,9 @@ test("daily update partial completion remains retryable without claiming full su
   await button.click();
   await expect(page.getByText("SCORES READY · MAINTENANCE PENDING", { exact: true })).toBeVisible();
   await expect(page.getByText("DAILY UPDATE COMPLETE", { exact: true })).toHaveCount(0);
-  await expect(button).toBeEnabled();
-  await button.click();
+  const retryButton = page.getByRole("button", { name: "Retry maintenance" });
+  await expect(retryButton).toBeEnabled();
+  await retryButton.click();
   await expect(page.getByText("DAILY UPDATE COMPLETE", { exact: true })).toBeVisible();
   await expect(page.getByText("Maintenance completed. No scores were recalculated.", { exact: true })).toBeVisible();
   expect(attempts).toBe(2);
@@ -129,6 +133,7 @@ test("daily update control renders streamed progress and completion safely", asy
       { type: "progress", progress: { stage: "scoring", message: "Eligible scores calculated." } },
       {
         type: "complete",
+        outcome: "complete",
         message: "Daily update completed.",
         result: { scoreDate: "2026-08-25", eligibleCount: 2, totalCount: 2 },
       },
@@ -139,8 +144,39 @@ test("daily update control renders streamed progress and completion safely", asy
   await page.goto("/");
   await page.getByRole("button", { name: "Run daily update" }).click();
   await expect(page.getByRole("heading", { name: "Research for Aug 25, 2026 is ready." })).toBeVisible();
-  await expect(page.getByText("Daily update completed.")).toBeVisible();
+  await expect(page.getByRole("paragraph").filter({ hasText: /^Daily update completed\.$/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Review rankings" })).toHaveAttribute("href", "/rankings?date=2026-08-25");
+});
+
+test("daily update distinguishes skipped and duplicate-prevented outcomes", async ({ page }) => {
+  let attempts = 0;
+  await page.route("**/api/v1/operations/daily-update", async (route) => {
+    attempts += 1;
+    const event = attempts === 1
+      ? { type: "complete", outcome: "skipped", message: "No regular market session was available, so no dated publication was created." }
+      : { type: "complete", outcome: "duplicate_prevented", message: "Today’s scores already exist and maintenance is complete. Nothing was recalculated or duplicated.", result: { scoreDate: "2026-08-25", eligibleCount: 2, totalCount: 2 } };
+    await route.fulfill({ status: 200, contentType: "application/x-ndjson", body: `${JSON.stringify(event)}\n` });
+  });
+  await page.goto("/");
+  const button = page.getByRole("button", { name: "Run daily update" });
+  await button.click();
+  await expect(page.getByText("UPDATE SKIPPED", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No publication was needed." })).toBeVisible();
+  await button.click();
+  await expect(page.getByText("DUPLICATE PREVENTED", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nothing was duplicated." })).toBeVisible();
+});
+
+test("research history preserves every operational state", async ({ page }) => {
+  await page.goto("/research");
+  const history = page.locator("ol.operations-history-list");
+  for (const label of ["Complete", "Retrying provider", "Needs attention", "Scores ready, maintenance pending", "No market session", "Duplicate prevented", "In progress"]) {
+    await expect(history.getByText(label, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByText("provider detail must remain private", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("SEC filing retrieval or validation did not complete. The update stopped safely before publication; no duplicate scores were created.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Newer market data is awaiting publication", { exact: true })).toBeVisible();
+  await expect(page.getByText(/10:15 PM Toronto$/)).toBeVisible();
 });
 
 test("official portfolio shows immutable holdings and completed history", async ({ page }) => {

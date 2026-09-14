@@ -1,4 +1,14 @@
 import { Pool } from "pg";
+import {
+  deriveDailyOperationState,
+  derivePublicationFreshness,
+  safeDailyUpdateError,
+  type DailyOperationRunStatus,
+  type DailyOperationState,
+  type PublicationFreshness,
+} from "@/lib/daily-update-state";
+
+export type { DailyOperationRunStatus, DailyOperationState, PublicationFreshness } from "@/lib/daily-update-state";
 
 export type DatedScore = {
   scoreSnapshotId: string;
@@ -199,25 +209,29 @@ export type TodayFilingSummary = {
   sinceScoreDate?: string;
 };
 
-export type DailyOperationRunStatus = "running" | "completed" | "failed" | "skipped";
-
 export type DailyOperationsStatus = {
   latestRun?: {
     scoreDate: string;
     status: DailyOperationRunStatus;
+    state: DailyOperationState;
     decisionAt?: string;
     completedAt?: string;
     eligibleCount?: number;
-    failureReason?: string;
+    lastEventAt: string;
+    lastStage?: string;
+    safeFailureMessage?: string;
   };
+  latestPublishedScoreDate?: string;
   latestMarketSession?: string;
   latestBenchmarkSession?: string;
   latestSecRefreshAt?: string;
+  publicationFreshness: PublicationFreshness;
 };
 
 export type DailyOperationHistoryEntry = {
   scoreDate: string;
   status: DailyOperationRunStatus;
+  state: DailyOperationState;
   startedAt: string;
   completedAt?: string;
   eligibleCount?: number;
@@ -226,6 +240,7 @@ export type DailyOperationHistoryEntry = {
   duplicatePreventedCount: number;
   warningCount: number;
   lastEventAt: string;
+  safeFailureMessage?: string;
 };
 
 export type ForwardOutcomeReadiness = {
@@ -666,14 +681,31 @@ export async function getLatestModelHealth(): Promise<ModelHealthSnapshot | null
 export async function getDailyOperationsStatus(): Promise<DailyOperationsStatus> {
   const [runResult, freshnessResult] = await Promise.all([
     databasePool().query(
-      `SELECT score_date::text AS score_date, status, decision_at, completed_at,
-              eligible_count, failure_reason
-       FROM quantrade.daily_research_runs
+      `SELECT run.score_date::text AS score_date, run.status, run.decision_at, run.completed_at,
+              run.eligible_count, run.failure_reason,
+              latest.event_type AS last_event_type, latest.stage AS last_stage,
+              COALESCE(latest.occurred_at, run.completed_at, run.started_at) AS last_event_at,
+              (SELECT COUNT(*) FROM quantrade.daily_research_run_events warning
+               WHERE warning.score_date=run.score_date AND warning.event_type='post_publication_warning'
+                 AND warning.daily_research_run_event_id > COALESCE((
+                   SELECT MAX(resolved.daily_research_run_event_id)
+                   FROM quantrade.daily_research_run_events resolved
+                   WHERE resolved.score_date=run.score_date
+                     AND resolved.stage='portfolio' AND resolved.event_type='completed'
+                 ), 0))::int AS warning_count
+       FROM quantrade.daily_research_runs run
+       LEFT JOIN LATERAL (
+         SELECT event_type, stage, occurred_at
+         FROM quantrade.daily_research_run_events event
+         WHERE event.score_date=run.score_date
+         ORDER BY daily_research_run_event_id DESC LIMIT 1
+       ) latest ON TRUE
        ORDER BY score_date DESC
        LIMIT 1`,
     ),
     databasePool().query(
       `SELECT
+         (SELECT MAX(score_date)::text FROM quantrade.score_snapshots) AS published_score_date,
          (SELECT MAX(session_date)::text
           FROM quantrade.daily_price_bars
           WHERE session = 'regular' AND adjustment_basis = 'split_adjusted') AS market_session,
@@ -688,20 +720,32 @@ export async function getDailyOperationsStatus(): Promise<DailyOperationsStatus>
   ]);
   const run = runResult.rows[0] as Record<string, unknown> | undefined;
   const freshness = freshnessResult.rows[0] as Record<string, unknown> | undefined;
+  const publishedScoreDate = freshness?.published_score_date ? String(freshness.published_score_date) : undefined;
+  const marketSession = freshness?.market_session ? String(freshness.market_session) : undefined;
+  const benchmarkSession = freshness?.benchmark_session ? String(freshness.benchmark_session) : undefined;
   return {
     ...(run ? {
       latestRun: {
         scoreDate: String(run.score_date),
         status: run.status as DailyOperationRunStatus,
+        state: deriveDailyOperationState({
+          status: run.status as DailyOperationRunStatus,
+          lastEventType: run.last_event_type ? String(run.last_event_type) : undefined,
+          unresolvedWarningCount: Number(run.warning_count),
+        }),
         ...(run.decision_at ? { decisionAt: new Date(String(run.decision_at)).toISOString() } : {}),
         ...(run.completed_at ? { completedAt: new Date(String(run.completed_at)).toISOString() } : {}),
         ...(run.eligible_count === null ? {} : { eligibleCount: Number(run.eligible_count) }),
-        ...(run.failure_reason ? { failureReason: String(run.failure_reason) } : {}),
+        lastEventAt: new Date(String(run.last_event_at)).toISOString(),
+        ...(run.last_stage ? { lastStage: String(run.last_stage) } : {}),
+        ...(run.status === "failed" && run.failure_reason ? { safeFailureMessage: safeDailyUpdateError(String(run.failure_reason)) } : {}),
       },
     } : {}),
-    ...(freshness?.market_session ? { latestMarketSession: String(freshness.market_session) } : {}),
-    ...(freshness?.benchmark_session ? { latestBenchmarkSession: String(freshness.benchmark_session) } : {}),
+    ...(publishedScoreDate ? { latestPublishedScoreDate: publishedScoreDate } : {}),
+    ...(marketSession ? { latestMarketSession: marketSession } : {}),
+    ...(benchmarkSession ? { latestBenchmarkSession: benchmarkSession } : {}),
     ...(freshness?.sec_refresh_at ? { latestSecRefreshAt: new Date(String(freshness.sec_refresh_at)).toISOString() } : {}),
+    publicationFreshness: derivePublicationFreshness({ scoreDate: publishedScoreDate, marketSession, benchmarkSession }),
   };
 }
 
@@ -709,7 +753,7 @@ export async function getDailyOperationsHistory(limit = 8): Promise<DailyOperati
   const boundedLimit = Math.max(1, Math.min(limit, 20));
   const result = await databasePool().query(
     `SELECT run.score_date::text AS score_date, run.status, run.started_at, run.completed_at,
-            run.eligible_count,
+            run.eligible_count, run.failure_reason,
             COUNT(event.*) FILTER (WHERE event.event_type = 'attempt_started')::int AS attempt_count,
             COUNT(event.*) FILTER (WHERE event.event_type = 'provider_retry')::int AS provider_retry_count,
             COUNT(event.*) FILTER (WHERE event.event_type = 'duplicate_prevented')::int AS duplicate_prevented_count,
@@ -720,11 +764,17 @@ export async function getDailyOperationsHistory(limit = 8): Promise<DailyOperati
                 WHERE resolved.score_date = run.score_date
                   AND resolved.stage = 'portfolio' AND resolved.event_type = 'completed'
               ), 0))::int AS warning_count,
-            COALESCE(MAX(event.occurred_at), run.completed_at, run.started_at) AS last_event_at
+            COALESCE(MAX(event.occurred_at), run.completed_at, run.started_at) AS last_event_at,
+            (SELECT latest.event_type FROM quantrade.daily_research_run_events latest
+             WHERE latest.score_date=run.score_date
+             ORDER BY latest.daily_research_run_event_id DESC LIMIT 1) AS last_event_type,
+            (SELECT latest.stage FROM quantrade.daily_research_run_events latest
+             WHERE latest.score_date=run.score_date
+             ORDER BY latest.daily_research_run_event_id DESC LIMIT 1) AS last_stage
      FROM quantrade.daily_research_runs AS run
      LEFT JOIN quantrade.daily_research_run_events AS event
        ON event.score_date = run.score_date
-     GROUP BY run.score_date, run.status, run.started_at, run.completed_at, run.eligible_count
+     GROUP BY run.score_date, run.status, run.started_at, run.completed_at, run.eligible_count, run.failure_reason
      ORDER BY run.score_date DESC
      LIMIT $1`,
     [boundedLimit],
@@ -732,6 +782,11 @@ export async function getDailyOperationsHistory(limit = 8): Promise<DailyOperati
   return result.rows.map((row) => ({
     scoreDate: String(row.score_date),
     status: row.status as DailyOperationRunStatus,
+    state: deriveDailyOperationState({
+      status: row.status as DailyOperationRunStatus,
+      lastEventType: row.last_event_type ? String(row.last_event_type) : undefined,
+      unresolvedWarningCount: Number(row.warning_count),
+    }),
     startedAt: new Date(String(row.started_at)).toISOString(),
     ...(row.completed_at ? { completedAt: new Date(String(row.completed_at)).toISOString() } : {}),
     ...(row.eligible_count === null ? {} : { eligibleCount: Number(row.eligible_count) }),
@@ -740,6 +795,7 @@ export async function getDailyOperationsHistory(limit = 8): Promise<DailyOperati
     duplicatePreventedCount: Number(row.duplicate_prevented_count),
     warningCount: Number(row.warning_count),
     lastEventAt: new Date(String(row.last_event_at)).toISOString(),
+    ...(row.status === "failed" && row.failure_reason ? { safeFailureMessage: safeDailyUpdateError(String(row.failure_reason)) } : {}),
   }));
 }
 

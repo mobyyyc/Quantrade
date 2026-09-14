@@ -28,20 +28,34 @@ function qualityStatus(
   operations: DailyOperationsStatus,
 ): { headline: string; detail: string } {
   const latestRun = operations.latestRun;
-  if (latestRun?.status === "failed" && latestRun.scoreDate >= scoreDate) {
+  if (latestRun?.state === "failed" && latestRun.scoreDate >= scoreDate) {
     return {
       headline: "Latest refresh needs attention",
       detail: "The last published scores remain intact.",
     };
   }
-  if (
-    operations.latestMarketSession
-    && operations.latestBenchmarkSession
-    && operations.latestMarketSession !== operations.latestBenchmarkSession
-  ) {
+  if (latestRun?.state === "partial" && latestRun.scoreDate >= scoreDate) {
+    return {
+      headline: "Maintenance needs a retry",
+      detail: "Published scores remain available and unchanged.",
+    };
+  }
+  if ((latestRun?.state === "running" || latestRun?.state === "retrying") && latestRun.scoreDate >= scoreDate) {
+    return {
+      headline: latestRun.state === "retrying" ? "Provider retry in progress" : "Daily update in progress",
+      detail: "The prior publication remains visible until completion.",
+    };
+  }
+  if (operations.publicationFreshness === "misaligned") {
     return {
       headline: "Price sources need review",
       detail: "Stock and SPY sessions are not aligned.",
+    };
+  }
+  if (operations.publicationFreshness === "stale") {
+    return {
+      headline: "New market data awaits scores",
+      detail: "The displayed publication is older than stored market data.",
     };
   }
   if (withheldCount > 0) {

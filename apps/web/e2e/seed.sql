@@ -28,15 +28,18 @@ SELECT security_id, session_date::date, 'regular', 'USD', open_price, high_price
 FROM (VALUES
   ('11111111-1111-4111-8111-111111111111'::uuid, '2026-08-22', 224, 226, 223, 225, 50000000),
   ('11111111-1111-4111-8111-111111111111'::uuid, '2026-08-25', 226, 229, 225, 228, 52000000),
+  ('11111111-1111-4111-8111-111111111111'::uuid, '2026-08-26', 228, 230, 227, 228, 51000000),
   ('22222222-2222-4222-8222-222222222222'::uuid, '2026-08-22', 500, 505, 498, 502, 25000000),
-  ('22222222-2222-4222-8222-222222222222'::uuid, '2026-08-25', 503, 507, 501, 506, 27000000)
+  ('22222222-2222-4222-8222-222222222222'::uuid, '2026-08-25', 503, 507, 501, 506, 27000000),
+  ('22222222-2222-4222-8222-222222222222'::uuid, '2026-08-26', 506, 508, 504, 506, 26000000)
 ) AS bars(security_id, session_date, open_price, high_price, low_price, close_price, volume);
 
 INSERT INTO quantrade.benchmark_daily_price_bars
   (benchmark_ticker, session_date, session, currency, open_price, high_price, low_price, close_price, volume, adjustment_basis, observed_at, available_at, ingested_at, raw_artifact_id, source_reference, availability_rule_id)
 VALUES
   ('SPY', '2026-08-22', 'regular', 'USD', 650, 653, 649, 652, 60000000, 'split_adjusted', '2026-08-22T20:00:00Z', '2026-08-22T22:00:00Z', '2026-08-25T22:30:00Z', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'e2e fixture', (SELECT availability_rule_id FROM quantrade.availability_rules WHERE rule_key='alpaca_retrieval' AND rule_version='v1-benchmark')),
-  ('SPY', '2026-08-25', 'regular', 'USD', 653, 655, 651, 654, 61000000, 'split_adjusted', '2026-08-25T20:00:00Z', '2026-08-25T22:00:00Z', '2026-08-25T22:30:00Z', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'e2e fixture', (SELECT availability_rule_id FROM quantrade.availability_rules WHERE rule_key='alpaca_retrieval' AND rule_version='v1-benchmark'));
+  ('SPY', '2026-08-25', 'regular', 'USD', 653, 655, 651, 654, 61000000, 'split_adjusted', '2026-08-25T20:00:00Z', '2026-08-25T22:00:00Z', '2026-08-25T22:30:00Z', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'e2e fixture', (SELECT availability_rule_id FROM quantrade.availability_rules WHERE rule_key='alpaca_retrieval' AND rule_version='v1-benchmark')),
+  ('SPY', '2026-08-26', 'regular', 'USD', 654, 656, 652, 655, 60500000, 'split_adjusted', '2026-08-26T20:00:00Z', '2026-08-26T22:00:00Z', '2026-08-26T22:30:00Z', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'e2e fixture', (SELECT availability_rule_id FROM quantrade.availability_rules WHERE rule_key='alpaca_retrieval' AND rule_version='v1-benchmark'));
 
 INSERT INTO quantrade.filings
   (filing_id, security_id, accession_number, form, filed_at, accepted_at, period_end, published_at, available_at, ingested_at, raw_artifact_id, source_reference)
@@ -71,10 +74,33 @@ VALUES
   ('tier_b_monthly_elastic_net_sec_clean_v3', 'private_beta', 'memory://e2e/approval', '2026-08-01T02:00:00Z', 'e2e');
 
 INSERT INTO quantrade.daily_research_runs
-  (score_date, status, decision_at, started_at, completed_at, score_snapshot_count, eligible_count)
+  (score_date, status, decision_at, started_at, completed_at, score_snapshot_count, eligible_count, failure_reason)
 VALUES
-  ('2026-08-22', 'completed', '2026-08-23T00:00:00Z', '2026-08-23T00:00:00Z', '2026-08-23T00:05:00Z', 2, 2),
-  ('2026-08-25', 'completed', '2026-08-26T00:00:00Z', '2026-08-26T00:00:00Z', '2026-08-26T00:05:00Z', 2, 2);
+  ('2026-08-19', 'running', NULL, '2026-08-20T00:00:00Z', NULL, NULL, NULL, NULL),
+  ('2026-08-20', 'completed', '2026-08-21T00:00:00Z', '2026-08-21T00:00:00Z', '2026-08-21T00:05:00Z', 2, 2, NULL),
+  ('2026-08-21', 'skipped', NULL, '2026-08-22T00:00:00Z', '2026-08-22T00:01:00Z', NULL, NULL, 'No regular SPY session was returned for this date.'),
+  ('2026-08-22', 'completed', '2026-08-23T00:00:00Z', '2026-08-23T00:00:00Z', '2026-08-23T00:05:00Z', 2, 2, NULL),
+  ('2026-08-23', 'failed', NULL, '2026-08-24T00:00:00Z', '2026-08-24T00:01:00Z', NULL, NULL, 'SEC filing ingestion failed: provider detail must remain private'),
+  ('2026-08-24', 'running', NULL, '2026-08-25T00:00:00Z', NULL, NULL, NULL, NULL),
+  ('2026-08-25', 'completed', '2026-08-26T00:00:00Z', '2026-08-26T00:00:00Z', '2026-08-26T00:05:00Z', 2, 2, NULL);
+
+INSERT INTO quantrade.daily_research_run_events
+  (score_date, event_type, stage, attempt_number, detail, occurred_at)
+VALUES
+  ('2026-08-19', 'attempt_started', 'initialization', 1, 'Canonical attempt started.', '2026-08-20T00:00:00Z'),
+  ('2026-08-20', 'attempt_started', 'initialization', 1, 'Canonical attempt started.', '2026-08-21T00:00:00Z'),
+  ('2026-08-20', 'duplicate_prevented', 'initialization', NULL, 'Existing publication reused.', '2026-08-21T00:06:00Z'),
+  ('2026-08-21', 'attempt_started', 'initialization', 1, 'Canonical attempt started.', '2026-08-22T00:00:00Z'),
+  ('2026-08-21', 'skipped', 'validation', NULL, 'No market session.', '2026-08-22T00:01:00Z'),
+  ('2026-08-22', 'attempt_started', 'initialization', 1, 'Canonical attempt started.', '2026-08-23T00:00:00Z'),
+  ('2026-08-22', 'completed', 'completion', NULL, 'Scores published.', '2026-08-23T00:05:00Z'),
+  ('2026-08-22', 'post_publication_warning', 'portfolio', NULL, 'Maintenance pending.', '2026-08-23T00:06:00Z'),
+  ('2026-08-23', 'attempt_started', 'initialization', 1, 'Canonical attempt started.', '2026-08-24T00:00:00Z'),
+  ('2026-08-23', 'failed', 'sec_filings', NULL, 'Provider detail remains private.', '2026-08-24T00:01:00Z'),
+  ('2026-08-24', 'attempt_started', 'initialization', 1, 'Canonical attempt started.', '2026-08-25T00:00:00Z'),
+  ('2026-08-24', 'provider_retry', 'market_data', 2, 'Attempt 2 of 3.', '2026-08-25T00:01:00Z'),
+  ('2026-08-25', 'attempt_started', 'initialization', 1, 'Canonical attempt started.', '2026-08-26T00:00:00Z'),
+  ('2026-08-25', 'completed', 'completion', NULL, 'Scores published.', '2026-08-26T00:05:00Z');
 
 INSERT INTO quantrade.score_snapshots
   (score_snapshot_id, security_id, score_date, decision_at, published_at, score, rank, eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at, data_capability_tier)

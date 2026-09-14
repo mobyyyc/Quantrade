@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { formatPercentagePoints, formatPublicationTime, formatResearchDate } from "@/lib/format";
-import { getActiveModelCard, getActivePredictionContext, getDailyOperationsHistory, getDailyOperationsStatus, getForwardOutcomeReadiness, getLatestDatedScores, getLatestModelHealth, getLatestPaperPortfolio, getRecentScoreRuns, ML_DATASET_MINIMUM_COMPLETED_LABELS, ML_DATASET_MINIMUM_SCORE_DATES, ResearchReadModelError, type DailyOperationHistoryEntry, type DailyOperationRunStatus, type DailyOperationsStatus, type DatedScore, type ForwardOutcomeReadiness, type ModelHealthSnapshot, type PredictionContext, type ScoreRunSummary } from "@/lib/research-read-model";
+import { operationStateLabel, publicationFreshnessLabel } from "@/lib/daily-update-state";
+import { getActiveModelCard, getActivePredictionContext, getDailyOperationsHistory, getDailyOperationsStatus, getForwardOutcomeReadiness, getLatestDatedScores, getLatestModelHealth, getLatestPaperPortfolio, getRecentScoreRuns, ML_DATASET_MINIMUM_COMPLETED_LABELS, ML_DATASET_MINIMUM_SCORE_DATES, ResearchReadModelError, type DailyOperationHistoryEntry, type DailyOperationsStatus, type DatedScore, type ForwardOutcomeReadiness, type ModelHealthSnapshot, type PredictionContext, type ScoreRunSummary } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 
@@ -37,20 +38,12 @@ function readableMetric(value: string) {
 
 function nextScheduledUpdate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23",
+    timeZone: "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).formatToParts(new Date()).reduce<Record<string, string>>((values, part) => ({ ...values, [part.type]: part.value }), {});
   const candidate = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)));
-  if (Number(parts.hour) >= 20) candidate.setUTCDate(candidate.getUTCDate() + 1);
+  if (Number(parts.hour) > 22 || (Number(parts.hour) === 22 && Number(parts.minute) >= 15)) candidate.setUTCDate(candidate.getUTCDate() + 1);
   while (candidate.getUTCDay() === 0 || candidate.getUTCDay() === 6) candidate.setUTCDate(candidate.getUTCDate() + 1);
-  return `${formatResearchDate(candidate.toISOString().slice(0, 10))}, 8:00 PM Toronto`;
-}
-
-function runStatusCopy(status?: DailyOperationRunStatus) {
-  if (status === "completed") return "Published";
-  if (status === "running") return "In progress";
-  if (status === "failed") return "Needs attention";
-  if (status === "skipped") return "Market closed";
-  return "Waiting for first run";
+  return `${formatResearchDate(candidate.toISOString().slice(0, 10))}, 10:15 PM Toronto`;
 }
 
 function runHistoryNote(run: DailyOperationHistoryEntry) {
@@ -59,10 +52,13 @@ function runHistoryNote(run: DailyOperationHistoryEntry) {
   if (run.providerRetryCount) notes.push(`${run.providerRetryCount} provider ${run.providerRetryCount === 1 ? "retry" : "retries"}`);
   if (run.duplicatePreventedCount) notes.push(`${run.duplicatePreventedCount} duplicate ${run.duplicatePreventedCount === 1 ? "blocked" : "attempts blocked"}`);
   if (run.warningCount) notes.push(`${run.warningCount} post-publication ${run.warningCount === 1 ? "warning" : "warnings"}`);
-  if (!notes.length && run.status === "completed") notes.push("Completed without retry");
-  if (!notes.length && run.status === "skipped") notes.push("No market session to publish");
-  if (!notes.length && run.status === "failed") notes.push("Stopped safely before publication");
-  if (!notes.length) notes.push("Update is still running");
+  if (!notes.length && run.state === "complete") notes.push("Completed without retry");
+  if (!notes.length && run.state === "skipped") notes.push("No market session to publish");
+  if (!notes.length && run.state === "failed") notes.push("Stopped safely before publication");
+  if (!notes.length && run.state === "partial") notes.push("Published scores; maintenance needs a retry");
+  if (!notes.length && run.state === "retrying") notes.push("Provider retry is in progress");
+  if (!notes.length && run.state === "duplicate_prevented") notes.push("Existing publication reused safely");
+  if (!notes.length) notes.push("Update is in progress");
   return notes.join(" · ");
 }
 
@@ -72,7 +68,7 @@ export default async function ResearchPage() {
   let latestScores = null;
   let recentRuns: ScoreRunSummary[] = [];
   let forwardReadiness: ForwardOutcomeReadiness[] = [];
-  let operations: DailyOperationsStatus = {};
+  let operations: DailyOperationsStatus = { publicationFreshness: "unavailable" };
   let operationsHistory: DailyOperationHistoryEntry[] = [];
   let predictionContext: PredictionContext | null = null;
   let modelHealth: ModelHealthSnapshot | null = null;
@@ -110,8 +106,8 @@ export default async function ResearchPage() {
     <section className="content-section methodology"><div><p className="eyebrow">FORECAST CONTEXT</p><h2>{predictionContext?.calibrationStatus === "supported" ? "Development-calibrated, still uncertain." : "Raw model output, not an expected return."}</h2></div><div>{predictionContext ? <><p>{predictionContext.calibrationStatus === "supported" ? "Basket percentages use a calibration fitted only on purged development validation folds." : "Purged development validation did not support converting the raw model percentage into a calibrated expected return. Quantrade shows it only as raw model output."}</p><dl><div><dt>Development error range</dt><dd>{formatPercentagePoints(predictionContext.residualLowerQuantile)} to {formatPercentagePoints(predictionContext.residualUpperQuantile)}</dd></div><div><dt>Monthly formations</dt><dd>{predictionContext.monthlyFormationCount}</dd></div><div><dt>Validation period</dt><dd>{formatResearchDate(predictionContext.developmentValidationStart)} to {formatResearchDate(predictionContext.developmentValidationEnd)}</dd></div><div><dt>Holdout used for fitting</dt><dd>No</dd></div></dl><p className="research-freshness-note">The range describes past development errors. It is not a confidence interval or a guarantee for the next portfolio.</p></> : <p>No development-only forecast context is registered for the active model.</p>}</div></section>
     <section className="content-section coverage-health"><div><p className="eyebrow">DATA COVERAGE</p><h2>What this run could score.</h2><p>Incomplete source data is withheld, never estimated or filled in.</p></div><div>{coverage.length ? <><p className="coverage-date">Latest completed run, {formatResearchDate(latestScores!.scoreDate)}</p><dl className="coverage-metrics"><div><dt>Eligible</dt><dd>{eligibleCount}<span>published scores</span></dd></div><div><dt>Withheld</dt><dd>{withheldCount}<span>quality-gated names</span></dd></div><div><dt>Coverage</dt><dd>{coveragePercent}%<span>of this run</span></dd></div></dl>{withheldCount ? <div className="coverage-gates"><p>Most common gates</p><ul>{gateBreakdown.map(([gate, count]) => <li key={gate}><span>{gate}</span><strong>{count} {count === 1 ? "name" : "names"}</strong></li>)}</ul></div> : <p className="coverage-complete">Every company in this run met the required data-quality gates.</p>}</> : <p className="quiet-copy">Coverage will appear after the first completed daily research run.</p>}</div></section>
     <section className="content-section methodology"><div><p className="eyebrow">RESEARCH ACTIVITY</p><h2>Recent score publications</h2></div><div>{recentRuns.length ? <ul className="publication-list">{recentRuns.map((run) => <li key={run.scoreDate}><strong>{formatResearchDate(run.scoreDate)}</strong><span>{run.eligibleCount} eligible names</span></li>)}</ul> : <p>No dated score publication has been recorded yet.</p>}</div></section>
-    <section className="content-section operations-health"><div><p className="eyebrow">OPERATIONS</p><h2>Daily research health</h2><p>The local post-close workflow records one dated publication, or an explicit reason it could not.</p></div><div className="operations-list"><div><span>Latest run</span><strong>{runStatusCopy(operations.latestRun?.status)}</strong><small>{operations.latestRun ? `${formatResearchDate(operations.latestRun.scoreDate)}${operations.latestRun.eligibleCount === undefined ? "" : ` · ${operations.latestRun.eligibleCount} eligible`}` : "No completed publication yet"}</small>{operations.latestRun?.failureReason && <small>{operations.latestRun.failureReason}</small>}</div><div><span>Data freshness</span><strong>{operations.latestMarketSession ? formatResearchDate(operations.latestMarketSession) : "Unavailable"}</strong><small>{operations.latestBenchmarkSession === operations.latestMarketSession ? "Stocks and SPY aligned" : "Check the benchmark refresh"}{operations.latestSecRefreshAt ? ` · SEC ${formatPublicationTime(operations.latestSecRefreshAt)}` : ""}</small></div><div><span>Next scheduled attempt</span><strong>{nextScheduledUpdate()}</strong><small>Requires this PC, a signed-in Windows session, PostgreSQL, and internet access. Codex and the web app may be closed.</small></div></div></section>
-    <section className="content-section operations-history"><div><p className="eyebrow">RUN HISTORY</p><h2>Recent daily updates</h2><p>Retries and blocked duplicate attempts remain visible without creating another publication.</p></div><div>{operationsHistory.length ? <ol className="operations-history-list">{operationsHistory.map((run) => <li key={run.scoreDate}><div><strong>{formatResearchDate(run.scoreDate)}</strong><span>{runHistoryNote(run)}</span></div><div><strong>{runStatusCopy(run.status)}</strong><span>{run.eligibleCount === undefined ? formatPublicationTime(run.lastEventAt) : `${run.eligibleCount} eligible · ${formatPublicationTime(run.lastEventAt)}`}</span></div></li>)}</ol> : <p className="quiet-copy">Run history will appear after the first daily update.</p>}</div></section>
+    <section className="content-section operations-health"><div><p className="eyebrow">OPERATIONS</p><h2>Daily research health</h2><p>The local post-close workflow records every attempt and keeps published evidence intact when a later step fails.</p></div><div className="operations-list"><div><span>Latest operation</span><strong>{operations.latestRun ? operationStateLabel(operations.latestRun.state) : "Waiting for first run"}</strong><small>{operations.latestRun ? `${formatResearchDate(operations.latestRun.scoreDate)} · ${formatPublicationTime(operations.latestRun.lastEventAt)}${operations.latestRun.eligibleCount === undefined ? "" : ` · ${operations.latestRun.eligibleCount} eligible`}` : "No operation has been recorded."}</small>{operations.latestRun?.safeFailureMessage && <small>{operations.latestRun.safeFailureMessage}</small>}</div><div><span>Publication freshness</span><strong>{publicationFreshnessLabel(operations.publicationFreshness)}</strong><small>{operations.latestPublishedScoreDate ? `Scores ${formatResearchDate(operations.latestPublishedScoreDate)}` : "No score publication"}{operations.latestMarketSession ? ` · Stocks ${formatResearchDate(operations.latestMarketSession)}` : ""}{operations.latestBenchmarkSession ? ` · SPY ${formatResearchDate(operations.latestBenchmarkSession)}` : ""}</small></div><div><span>SEC checked</span><strong>{operations.latestSecRefreshAt ? formatPublicationTime(operations.latestSecRefreshAt) : "Unavailable"}</strong><small>This is retrieval freshness, not a claim that a filing was published at that time.</small></div><div><span>Next scheduled attempt</span><strong>{nextScheduledUpdate()}</strong><small>Requires this PC, a signed-in Windows session, PostgreSQL, and internet access. Codex and the web app may be closed.</small></div></div></section>
+    <section className="content-section operations-history"><div><p className="eyebrow">RUN HISTORY</p><h2>Recent daily updates</h2><p>Retries and blocked duplicate attempts remain visible without creating another publication.</p></div><div>{operationsHistory.length ? <ol className="operations-history-list">{operationsHistory.map((run) => <li key={run.scoreDate}><div><strong>{formatResearchDate(run.scoreDate)}</strong><span>{runHistoryNote(run)}</span>{run.safeFailureMessage && <span>{run.safeFailureMessage}</span>}</div><div><strong>{operationStateLabel(run.state)}</strong><span>{run.eligibleCount === undefined ? formatPublicationTime(run.lastEventAt) : `${run.eligibleCount} eligible · ${formatPublicationTime(run.lastEventAt)}`}</span></div></li>)}</ol> : <p className="quiet-copy">Run history will appear after the first daily update.</p>}</div></section>
     <section className="content-section methodology" id="track-record"><div><p className="eyebrow">TRACK RECORD</p><h2>Monthly paper portfolio</h2></div><div>{portfolio ? <><p>An official monthly research basket, formed from scores dated {formatResearchDate(portfolio.scoreDate)} and recorded at the following regular-session open on {formatResearchDate(portfolio.executionDate)}. Daily score changes do not rebalance it.</p><dl><div><dt>Starting NAV</dt><dd>${Number(portfolio.startingNav).toLocaleString("en-CA")}</dd></div><div><dt>Positions</dt><dd>{portfolio.positions.length}</dd></div></dl><div className="portfolio-checkpoints"><p className="portfolio-checkpoints-title">Forward checkpoints</p><ul>{[5, 20, 60].map((horizon) => {
       const outcome = portfolio.outcomes.find((item) => item.horizonSessions === horizon);
       if (!outcome) return <li key={horizon}><strong>{horizon} sessions</strong><span>Awaiting its dated market close</span></li>;

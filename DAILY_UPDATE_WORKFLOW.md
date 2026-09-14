@@ -49,6 +49,35 @@ whether maintenance is still pending; historical warning events are retained.
 - Exit **0** means completion, a fully maintained duplicate, or a non-market skip;
   ordinary pre-publication failures continue to exit nonzero.
 
+## Operational state contract
+
+The web application derives one user-facing state from the run ledger and its
+latest append-only events. It does not infer success from an HTTP response or
+replace a stored state with optimistic browser state.
+
+| State | Meaning | User action |
+| --- | --- | --- |
+| In progress | A locked attempt has started. | Wait for a terminal event. |
+| Retrying provider | A bounded, idempotent provider retry is active. | Wait; no second launch is needed. |
+| Complete | Scores and required maintenance completed. | Review the dated publication. |
+| Scores ready, maintenance pending | Scores are immutable, but portfolio or outcome maintenance failed. | Retry maintenance; scores are not recalculated. |
+| No market session | Validation found no regular session, so no publication was required. | None. |
+| Duplicate prevented | An existing publication was reused without recalculation. | None. |
+| Needs attention | The attempt stopped safely before score publication. | Review the safe error and local log, then retry. |
+
+Publication freshness is separate from operation state. `current` means the
+latest score date matches the latest aligned stock and SPY date stored locally.
+`stale` means aligned market data is newer than the latest scores. `misaligned`
+means stock and SPY dates differ. `unavailable` means the comparison lacks a
+required date. This is evidence about local storage, not a claim that a provider
+has no newer data.
+
+The UI shows the publication date, stock and SPY session dates, SEC retrieval
+time, and last operation event time. Raw exceptions, provider payloads, local
+paths, and credentials remain in local logs; user-facing errors use bounded,
+safe categories. The displayed schedule matches the installed weekday task at
+10:15 p.m. Toronto time.
+
 Missing market observations are fetched on the next run, but knowledge is never
 backdated. Live scores use the versioned `live_after_validation_v1` contract: the
 cutoff is the actual time after ingestion and validation. A failed attempt without
