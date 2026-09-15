@@ -1,0 +1,128 @@
+{
+  "release_contract": "quantrade_private_v1_release_v1",
+  "release_name": "Quantrade private V1 RC1",
+  "tag": "v1.0.0-rc.1",
+  "release_date": "2026-09-15",
+  "audience": "private_beta",
+  "acceptance_baseline_commit": "e40c599",
+  "acceptance_report": "V1_ACCEPTANCE_REPORT.md",
+  "hash_normalization": "SHA-256 of UTF-8 bytes after CRLF and CR are normalized to LF; schema aggregate hashes the sorted '<file-sha256>  <filename>' lines joined by LF",
+  "schema": {
+    "migration_count": 39,
+    "migration_head": "0039_add_model_health_monitoring.sql",
+    "migration_head_sha256": "e5a2dcefc71c8507c7f0bc87fae605c442763994ee941dad55e6c97380b1f086",
+    "api_schema_contract": "v1",
+    "api_schema_aggregate_sha256": "46178e8ee88e6e938ab3e4944fcc991685c120f10082aee40d3dd2715755d712"
+  },
+  "model": {
+    "version": "tier_b_monthly_elastic_net_sec_clean_v3",
+    "approval_scope": "private_beta",
+    "artifact_sha256": "36d6accf1c207fa448a4e6908ee7b525e7c811af66fc28fd36c4b4d66bc00294",
+    "source_experiment_sha256": "00a37e6d8c1dcadf0595d59ac0d0b12855f6992b3c8bca59159043b51d0c7b4f",
+    "approval_decision_sha256": "776b2f7911d3d340d8e74fbe65959d079a2fd2ef39755534ccbd1210239dd487",
+    "model_protocol": "tier_b_monthly_20d_sec_clean_v3",
+    "data_capability_tier": "B"
+  },
+  "features": {
+    "registry_sha256": "c5a0b1fccfe772691a0866893c50a77875224ab48b24e68731ca369fe64006ec",
+    "registered_inputs": 6,
+    "active_nonzero_inputs": 3,
+    "eligibility_contract": "exact_zero_coefficients_v1",
+    "live_score_protocol": "score_snapshot_exact_zero_v1",
+    "historical_score_protocol": "0.1",
+    "inputs": [
+      {
+        "ordinal": 1,
+        "model_column": "momentum_12_1_percentile",
+        "feature_key": "momentum_12_1",
+        "feature_version": "v1",
+        "definition_sha256": "7081274ee51403e4c617ced0bc6a0acf7bf805f83587d7fda2ecc966388bcbfa",
+        "coefficient": 0.0013452198987819147,
+        "active": true
+      },
+      {
+        "ordinal": 2,
+        "model_column": "relative_strength_6m_percentile",
+        "feature_key": "relative_strength_6m",
+        "feature_version": "v1",
+        "definition_sha256": "678ec1fda32a8e41a9201a890b69e09e01cb68fef8a324d14f6bba6dfe9be696",
+        "coefficient": 0.0,
+        "active": false
+      },
+      {
+        "ordinal": 3,
+        "model_column": "trailing_volatility_60d_percentile",
+        "feature_key": "trailing_volatility_60d",
+        "feature_version": "v1",
+        "definition_sha256": "1aca090d601b9c25c0033eb834601260057286cf448496d23f869997a8cb10de",
+        "coefficient": -0.0009748862873250775,
+        "active": true
+      },
+      {
+        "ordinal": 4,
+        "model_column": "median_dollar_volume_20d_percentile",
+        "feature_key": "median_dollar_volume_20d",
+        "feature_version": "v1",
+        "definition_sha256": "5db11180cf66c167ff9e1ad644f446c6b76c86d28bfa25fc8b545a18df60f6c8",
+        "coefficient": -0.0005527345402204111,
+        "active": true
+      },
+      {
+        "ordinal": 5,
+        "model_column": "earnings_yield_ttm_percentile",
+        "feature_key": "earnings_yield_ttm",
+        "feature_version": "v2",
+        "definition_sha256": "749a93ad5a0161481ca83ad20017d330b03ca0607dfa33bf3245cd96e80bdb9a",
+        "coefficient": 0.0,
+        "active": false
+      },
+      {
+        "ordinal": 6,
+        "model_column": "return_on_assets_ttm_percentile",
+        "feature_key": "return_on_assets_ttm",
+        "feature_version": "v2",
+        "definition_sha256": "2fa4827a3bd77f5dc34aa534e8a85f5058b9e719b4b109ec2df1480fdcd500c8",
+        "coefficient": 0.0,
+        "active": false
+      }
+    ]
+  },
+  "content": {
+    "contract": "private_research_content_v1",
+    "source": "UI_CONTENT_RULES.md",
+    "source_sha256": "91eb71cb4198f2b35ccc40da97e4f497e4eeb3de6807643ccfbdc7dbdfee0325"
+  },
+  "research": {
+    "cohort": "sp500_current_survivors_v1",
+    "portfolio_formation_protocol": "monthly_last_session_next_open_v1",
+    "historical_decision_contract": "historical_replay_2000_toronto_v1",
+    "live_decision_contract": "live_after_validation_v1"
+  },
+  "operations": {
+    "daily_update_boundary": "canonical_daily_update_v1",
+    "daily_update_progress": "daily_update_progress_v1",
+    "daily_update_script_sha256": "6fbcdf5ccd1f7df790e2afcfce478356004d684ea5d7e452142ba4d1ec5ba5be",
+    "daily_update_orchestrator_sha256": "c20945d8456a00709f81cc9b82b9376ada2bbd90dd7f3976c6aec4bec95052e4",
+    "windows_daily_task": "windows_daily_update_task_v3",
+    "postgresql_backup": "quantrade_postgresql_backup_v1",
+    "windows_backup_task": "windows_postgresql_backup_task_v3",
+    "postgresql_restore_drill": "quantrade_postgresql_restore_drill_v1",
+    "secret_audit": "quantrade_secret_audit_v1"
+  },
+  "runtime": {
+    "node_package_version": "0.1.0",
+    "research_package_version": "0.1.0",
+    "next": "16.3.1",
+    "react": "19.2.8",
+    "pnpm": "11.19.0",
+    "python": ">=3.12",
+    "validated_postgresql_major": 18
+  },
+  "limitations": [
+    "Private research only; no guaranteed return, trade instruction, or public performance claim.",
+    "The sp500_current_survivors_v1 cohort is survivorship-biased Tier B data, not historical S&P 500 membership.",
+    "Historical sectors are static rather than point-in-time verified.",
+    "The July 2025 through June 2026 holdout has been consumed and cannot be reused for model selection.",
+    "This release runs on one Windows workstation and is not an externally hosted production architecture."
+  ]
+}

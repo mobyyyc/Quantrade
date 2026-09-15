@@ -56,7 +56,7 @@ Goal: freeze a polished and truthful private V1 before changing its hosting mode
 - [x] **Q2.2 — Audit portfolio truthfulness.** Formation now follows the dated month-end model; next-open simulation language, exact holdings, complete/pending/withheld/missed history, gross and 25 bp turnover-adjusted comparisons, and legacy-preview exclusion are reconciled by a read-only integrity audit. See `PORTFOLIO_TRUTHFULNESS_AUDIT.md`.
 - [x] **Q2.3 — Complete the real-state UX matrix.** Test all main pages with real empty, partial, stale, failed, month-end, and long-list states; fix measured accessibility, responsive, layout, and interaction issues under the existing design system. Completed 2026-09-14; see `REAL_STATE_UX_MATRIX.md`.
 - [x] **Q2.4 — Run V1 acceptance.** Migrations, 422 research tests, lint/build, 21 browser and accessibility tests, update dry runs, both schedules, backup verification, a full isolated restore, secret/history scanning, artifact hygiene, retention, and portfolio integrity passed on 2026-09-14. Accepted limitations are recorded in `V1_ACCEPTANCE_REPORT.md`.
-- [ ] **Q2.5 — Cut the private V1 RC.** Freeze schema/model/feature/content/run-contract versions, update release and rollback instructions, and create a recoverable Git tag after Q2.4 passes.
+- [x] **Q2.5 — Cut the private V1 RC.** Schema/model/feature/content/run-contract versions are frozen in `releases/private-v1-rc1.json`; release verification and non-destructive rollback are documented, and the recoverable annotated tag is `v1.0.0-rc.1`.
 
 **Exit:** a reproducible private V1 release candidate with accurate status, model, and portfolio communication.
 
@@ -183,4 +183,4 @@ Goal: remove Tier-B limitations and mature governance before any broad public-pe
 
 ## Next task
 
-**Q2.5 — Cut the private V1 RC**, awaiting explicit approval.
+**Q3.1 — Architecture ADR**, awaiting explicit approval.

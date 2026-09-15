@@ -1,5 +1,11 @@
 # UI Content Rules
 
+**Content contract:** `private_research_content_v1`
+
+**Status:** Frozen for the private V1 release candidate. Changes require a new
+content-contract version; corrections may clarify language but must not weaken
+the research-only, dated-data, or Tier-B disclosures.
+
 ## Language and claims
 
 - Call the output a **research score**, never a buy, sell, trade, prediction, or
