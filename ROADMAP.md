@@ -66,7 +66,7 @@ Goal: freeze a polished and truthful private V1 before changing its hosting mode
 
 Goal: decide how Quantrade can safely leave one Windows workstation before provisioning services.
 
-- [ ] **Q3.1 — Architecture ADR.** Define Next.js web, Python worker, durable jobs, managed PostgreSQL, artifacts, scheduler, identity, and observability; compare Vercel-plus-worker with practical alternatives by failure modes, burden, and cost.
+- [x] **Q3.1 — Architecture ADR.** Accepted a Render-centered Ohio staging architecture with separate Next.js web and Python worker services, PostgreSQL-backed durable jobs, managed PostgreSQL, R2 artifacts, Clerk identity, and OpenTelemetry/Sentry observability. Vercel-plus-worker, Vercel Services/Workflow, Railway, and a VPS were compared by failure modes, burden, and directional cost in `docs/adr/0001-production-architecture.md`; no resource was provisioned.
 - [ ] **Q3.2 — Data-rights audit.** Confirm display, redistribution, caching, and retention rights for Alpaca and SEC-derived data. Prefer free providers; identify paid data only for a concrete unsupported need. Preserve Tier-B warnings.
 - [ ] **Q3.3 — Capacity and cost budget.** Measure database, artifact, backup, request, and compute growth; estimate closed-beta costs at defined volumes and set alerts.
 - [ ] **Q3.4 — Threat and privacy model.** Cover identity, authorization, secrets, watchlists, jobs, dependencies, logs, backups, abuse, retention, deletion, and recovery.
@@ -183,4 +183,4 @@ Goal: remove Tier-B limitations and mature governance before any broad public-pe
 
 ## Next task
 
-**Q3.1 — Architecture ADR**, awaiting explicit approval.
+**Q3.2 — Data-rights audit**, awaiting explicit approval.

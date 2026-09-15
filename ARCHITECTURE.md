@@ -1,5 +1,10 @@
 # Quantrade Architecture
 
+The approved staging and closed-beta target architecture is defined by
+[`docs/adr/0001-production-architecture.md`](docs/adr/0001-production-architecture.md).
+The remainder of this document describes the logical research architecture that
+both local and hosted deployments must preserve.
+
 ## System flow
 
 ```text
