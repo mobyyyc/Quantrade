@@ -55,7 +55,7 @@ Goal: freeze a polished and truthful private V1 before changing its hosting mode
 - [x] **Q2.1 — Finish operational states.** The web now derives running, provider-retrying, complete, partial, skipped, duplicate-prevented, and failed states from the durable run ledger and append-only events. Publication freshness separately identifies aligned, stale, misaligned, and unavailable evidence with score, market, SPY, SEC, and event dates. Streamed button outcomes use the same vocabulary, raw failures stay private, and the displayed schedule matches the installed 10:15 p.m. Toronto task. See `DAILY_UPDATE_WORKFLOW.md`.
 - [x] **Q2.2 — Audit portfolio truthfulness.** Formation now follows the dated month-end model; next-open simulation language, exact holdings, complete/pending/withheld/missed history, gross and 25 bp turnover-adjusted comparisons, and legacy-preview exclusion are reconciled by a read-only integrity audit. See `PORTFOLIO_TRUTHFULNESS_AUDIT.md`.
 - [x] **Q2.3 — Complete the real-state UX matrix.** Test all main pages with real empty, partial, stale, failed, month-end, and long-list states; fix measured accessibility, responsive, layout, and interaction issues under the existing design system. Completed 2026-09-14; see `REAL_STATE_UX_MATRIX.md`.
-- [ ] **Q2.4 — Run V1 acceptance.** Run migrations, research tests, lint/build, browser tests, accessibility checks, update dry runs, backup verification, restore rehearsal, and secret/artifact scanning; record limitations.
+- [x] **Q2.4 — Run V1 acceptance.** Migrations, 422 research tests, lint/build, 21 browser and accessibility tests, update dry runs, both schedules, backup verification, a full isolated restore, secret/history scanning, artifact hygiene, retention, and portfolio integrity passed on 2026-09-14. Accepted limitations are recorded in `V1_ACCEPTANCE_REPORT.md`.
 - [ ] **Q2.5 — Cut the private V1 RC.** Freeze schema/model/feature/content/run-contract versions, update release and rollback instructions, and create a recoverable Git tag after Q2.4 passes.
 
 **Exit:** a reproducible private V1 release candidate with accurate status, model, and portfolio communication.
@@ -183,4 +183,4 @@ Goal: remove Tier-B limitations and mature governance before any broad public-pe
 
 ## Next task
 
-**Q2.2 — Audit portfolio truthfulness**, awaiting explicit approval.
+**Q2.5 — Cut the private V1 RC**, awaiting explicit approval.

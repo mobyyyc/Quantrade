@@ -1,6 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { Client } from "pg";
 import { authenticateTestOwner } from "./auth";
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { e2eDatabaseUrls } = require("./database-url.cjs") as {
+  e2eDatabaseUrls: () => { testUrl: string; testDatabaseName: string };
+};
 
 const appleId = "11111111-1111-4111-8111-111111111111";
 const microsoftId = "22222222-2222-4222-8222-222222222222";
@@ -32,6 +38,18 @@ async function expectMinimumTarget(locator: Locator) {
   expect(box).not.toBeNull();
   expect(box!.width).toBeGreaterThanOrEqual(44);
   expect(box!.height).toBeGreaterThanOrEqual(44);
+}
+
+async function resetWatchlistRateWindow() {
+  const { testUrl, testDatabaseName } = e2eDatabaseUrls();
+  if (!testDatabaseName.endsWith("_e2e")) throw new Error("Refusing to alter a non-E2E rate window.");
+  const database = new Client({ connectionString: testUrl });
+  await database.connect();
+  try {
+    await database.query("DELETE FROM quantrade.web_rate_limit_windows WHERE scope = 'watchlist'");
+  } finally {
+    await database.end();
+  }
 }
 
 test.beforeEach(async ({ page }) => authenticateTestOwner(page, { clearWatchlist: false }));
@@ -94,6 +112,7 @@ test("month-end history distinguishes completed and missed formations on mobile"
 });
 
 test("a long mixed-state watchlist is scrollable, keyboard reachable, and stable", async ({ page }) => {
+  await resetWatchlistRateWindow();
   const response = await page.request.put("/api/v1/watchlist", {
     data: { entries: longWatchlist },
     headers: { Origin: "http://127.0.0.1:3100" },
