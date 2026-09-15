@@ -4,7 +4,7 @@
 
 Date: 2026-08-20
 
-This is a small feasibility audit, not a vendor certification. It tests whether the free-first sources can support the planned private-beta data pipeline and records every unverified assumption.
+This is a small feasibility audit, not a vendor certification. It tests whether the free-first sources can support the planned private-beta data pipeline and records every unverified assumption. It does not grant display or redistribution rights; the later, authoritative engineering decision is recorded in `DATA_RIGHTS_AUDIT.md`.
 
 ## Runtime sample
 
