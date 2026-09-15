@@ -50,6 +50,7 @@ export function WatchlistWorkspace({
   const [removed, setRemoved] = useState<WatchlistEntry | null>(null);
   const [prices, setPrices] = useState<LatestPriceSummary[]>([]);
   const [pricesUnavailable, setPricesUnavailable] = useState(false);
+  const [pricesLoaded, setPricesLoaded] = useState(false);
   const [sortBy, setSortBy] = useState<"score" | "ticker">("score");
   const [editingSecurityId, setEditingSecurityId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
@@ -86,8 +87,12 @@ export function WatchlistWorkspace({
         const body = await response.json() as { prices: LatestPriceSummary[] };
         setPrices(body.prices);
         setPricesUnavailable(false);
+        setPricesLoaded(true);
       } catch (error) {
-        if ((error as Error).name !== "AbortError") setPricesUnavailable(true);
+        if ((error as Error).name !== "AbortError") {
+          setPricesUnavailable(true);
+          setPricesLoaded(true);
+        }
       }
     };
     void loadPrices();
@@ -167,7 +172,7 @@ export function WatchlistWorkspace({
         <div className="segmented-control" aria-label="Watchlist sort order"><button type="button" className={sortBy === "score" ? "segment-active" : ""} aria-pressed={sortBy === "score"} onClick={() => setSortBy("score")}>Score</button><button type="button" className={sortBy === "ticker" ? "segment-active" : ""} aria-pressed={sortBy === "ticker"} onClick={() => setSortBy("ticker")}>Ticker</button></div>
       </div>
       <div className={`watchlist-scroll-frame${scrollEdges.top ? " has-top-fade" : ""}${scrollEdges.bottom ? " has-bottom-fade" : ""}`}>
-        <div ref={scrollRegionRef} className="watchlist-scroll-region" tabIndex={0} aria-label="Saved companies. Scroll to see more.">
+        <div ref={scrollRegionRef} className="watchlist-scroll-region" role="region" tabIndex={0} aria-label="Saved companies. Scroll to see more.">
           <ul className="grouped-list watchlist-list">
             {orderedWatchlist.map((company) => {
               const score = scoresBySecurity.get(company.securityId);
@@ -183,7 +188,7 @@ export function WatchlistWorkspace({
                 <div className="watchlist-row-main">
                   <Link className="watchlist-company" href={href}><strong>{company.ticker}</strong><span>{company.issuerName}</span></Link>
                   <div className="watchlist-market">
-                    {price ? <><strong>{formatUsdPrice(price.closePrice)}</strong>{change ? <span className={change.direction === "positive" ? "positive-change" : "negative-change"}>{change.amount} ({change.percent})</span> : <span>Latest close</span>}</> : <span>{pricesUnavailable ? "Price unavailable" : "Loading price"}</span>}
+                    {price ? <><strong>{formatUsdPrice(price.closePrice)}</strong>{change ? <span className={change.direction === "positive" ? "positive-change" : "negative-change"}>{change.amount} ({change.percent})</span> : <span>Latest close</span>}</> : <span>{pricesUnavailable || pricesLoaded ? "Price unavailable" : "Loading price"}</span>}
                   </div>
                   {score?.eligible ? <div className="watchlist-score"><span className="score-unit"><strong>{formatScore(score.score)}</strong><span>/100</span></span><span>Rank {score.rank}</span>{movement ? <small className="watchlist-change" title={movementTitle}>{movement}</small> : null}</div> : <div className="watchlist-score watchlist-score-unavailable"><span className="watchlist-unavailable">{score ? "Score unavailable" : "No score published"}</span>{movement ? <small className="watchlist-change" title={movementTitle}>{movement}</small> : null}</div>}
                   <details className="row-menu">

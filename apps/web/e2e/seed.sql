@@ -110,7 +110,7 @@ VALUES
   ('2026-08-22', 'completed', '2026-08-23T00:00:00Z', '2026-08-23T00:00:00Z', '2026-08-23T00:05:00Z', 2, 2, NULL),
   ('2026-08-23', 'failed', NULL, '2026-08-24T00:00:00Z', '2026-08-24T00:01:00Z', NULL, NULL, 'SEC filing ingestion failed: provider detail must remain private'),
   ('2026-08-24', 'running', NULL, '2026-08-25T00:00:00Z', NULL, NULL, NULL, NULL),
-  ('2026-08-25', 'completed', '2026-08-26T00:00:00Z', '2026-08-26T00:00:00Z', '2026-08-26T00:05:00Z', 2, 2, NULL);
+  ('2026-08-25', 'completed', '2026-08-26T00:00:00Z', '2026-08-26T00:00:00Z', '2026-08-26T00:05:00Z', 3, 2, NULL);
 
 INSERT INTO quantrade.daily_research_run_events
   (score_date, event_type, stage, attempt_number, detail, occurred_at)
@@ -137,6 +137,11 @@ VALUES
   ('32222222-2222-4222-8222-222222222222', '22222222-2222-4222-8222-222222222222', '2026-08-22', '2026-08-23T00:00:00Z', '2026-08-23T00:05:00Z', 81, 1, true, 'positive', 'tier_b_monthly_elastic_net_sec_clean_v3', 'v3', 'monthly_last_session_next_open_v1', '2026-08-23T00:00:00Z', 'B'),
   ('41111111-1111-4111-8111-111111111111', '11111111-1111-4111-8111-111111111111', '2026-08-25', '2026-08-26T00:00:00Z', '2026-08-26T00:05:00Z', 84, 1, true, 'positive', 'tier_b_monthly_elastic_net_sec_clean_v3', 'v3', 'monthly_last_session_next_open_v1', '2026-08-26T00:00:00Z', 'B'),
   ('42222222-2222-4222-8222-222222222222', '22222222-2222-4222-8222-222222222222', '2026-08-25', '2026-08-26T00:00:00Z', '2026-08-26T00:05:00Z', 80, 2, true, 'positive', 'tier_b_monthly_elastic_net_sec_clean_v3', 'v3', 'monthly_last_session_next_open_v1', '2026-08-26T00:00:00Z', 'B');
+
+INSERT INTO quantrade.score_snapshots
+  (score_snapshot_id, security_id, score_date, decision_at, published_at, score, rank, eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at, data_capability_tier, unavailable_reason)
+VALUES
+  ('49000000-0000-4000-8000-000000000003', '90000000-0000-4000-8000-000000000003', '2026-08-25', '2026-08-26T00:00:00Z', '2026-08-26T00:05:00Z', 0, NULL, false, 'unavailable', 'tier_b_monthly_elastic_net_sec_clean_v3', 'v3', 'monthly_last_session_next_open_v1', '2026-08-26T00:00:00Z', 'B', 'insufficient completed split-adjusted sessions');
 
 INSERT INTO quantrade.score_snapshots
   (score_snapshot_id, security_id, score_date, decision_at, published_at, score, rank, eligible, signal, model_version, feature_version, protocol_version, data_cutoff_at, data_capability_tier)
@@ -200,7 +205,7 @@ INSERT INTO quantrade.model_health_snapshots
 VALUES
   ('61111111-1111-4111-8111-111111111111', '2026-08-25', '2026-08-26T00:00:00Z',
    'tier_b_monthly_elastic_net_sec_clean_v3', 'monthly_last_session_next_open_v1',
-   2, 2, 0, 1.0, '2026-08-22', 0.5, 0.04, '71111111-1111-4111-8111-111111111111', true, true, true, 'healthy', repeat('6', 64));
+   3, 2, 1, 0.6667, '2026-08-22', 0.5, 0.04, '71111111-1111-4111-8111-111111111111', true, true, true, 'healthy', repeat('6', 64));
 
 INSERT INTO quantrade.model_health_feature_metrics
   (model_health_snapshot_id, feature_key, feature_version, definition_hash,

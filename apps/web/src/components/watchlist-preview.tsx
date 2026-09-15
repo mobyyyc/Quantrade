@@ -14,6 +14,7 @@ export function WatchlistPreview({ scoreDate }: { scoreDate?: string }) {
   const [scores, setScores] = useState<WatchlistPreviewScore[]>([]);
   const [prices, setPrices] = useState<LatestPriceSummary[]>([]);
   const [pricesUnavailable, setPricesUnavailable] = useState(false);
+  const [pricesLoaded, setPricesLoaded] = useState(false);
   const scrollRegionRef = useRef<HTMLDivElement>(null);
   const [scrollEdges, setScrollEdges] = useState({ top: false, bottom: false });
   const scoresBySecurity = useMemo(() => new Map(scores.map((score) => [score.securityId, score])), [scores]);
@@ -43,8 +44,12 @@ export function WatchlistPreview({ scoreDate }: { scoreDate?: string }) {
           setScores(scoreBody.scores);
         }
         setPricesUnavailable(false);
+        setPricesLoaded(true);
       } catch (error) {
-        if ((error as Error).name !== "AbortError") setPricesUnavailable(true);
+        if ((error as Error).name !== "AbortError") {
+          setPricesUnavailable(true);
+          setPricesLoaded(true);
+        }
       }
     };
     void loadContext();
@@ -70,12 +75,12 @@ export function WatchlistPreview({ scoreDate }: { scoreDate?: string }) {
 
   return <section className="watchlist-preview" aria-labelledby="watchlist-preview-title">
     <div className="section-heading"><div><p className="eyebrow">YOUR LIST</p><h2 id="watchlist-preview-title">Watchlist</h2></div><Link className="text-link" href="/watchlist">View all</Link></div>
-    {watchlist.length ? <div className={`watchlist-preview-scroll-frame${scrollEdges.top ? " has-top-fade" : ""}${scrollEdges.bottom ? " has-bottom-fade" : ""}`}><div ref={scrollRegionRef} className="watchlist-preview-scroll-region" tabIndex={0} aria-label="Saved companies. Scroll to see more."><ul className="compact-company-list">
+    {watchlist.length ? <div className={`watchlist-preview-scroll-frame${scrollEdges.top ? " has-top-fade" : ""}${scrollEdges.bottom ? " has-bottom-fade" : ""}`}><div ref={scrollRegionRef} className="watchlist-preview-scroll-region" role="region" tabIndex={0} aria-label="Saved companies. Scroll to see more."><ul className="compact-company-list">
       {watchlist.map((company) => {
         const score = scoresBySecurity.get(company.securityId);
         const price = pricesBySecurity.get(company.securityId);
         const change = price ? formatPriceChange(price.closePrice, price.previousClosePrice) : null;
-        return <li key={company.securityId}><Link className="compact-company-link" href={`/stocks/${company.securityId}${scoreDate ? `?date=${scoreDate}&from=watchlist` : "?from=watchlist"}`}><span className="compact-company-identity"><strong>{company.ticker}</strong><span>{company.issuerName}</span></span><span className="compact-company-market">{price ? <><strong>{formatUsdPrice(price.closePrice)}</strong><span className={change?.direction === "positive" ? "positive-change" : change?.direction === "negative" ? "negative-change" : ""}>{change ? change.percent : `${formatMarketSessionDate(price.sessionDate)} close`}</span></> : <span>{pricesUnavailable ? "Price unavailable" : "Latest price"}</span>}</span>{score?.eligible ? <span className="compact-company-score"><span className="score-unit"><strong>{formatScore(score.score)}</strong><span>/100</span></span><small>Rank {score.rank} · {price ? formatMarketSessionDate(price.sessionDate) : "Latest close"}</small></span> : <span className="compact-company-score compact-company-unavailable"><small>{score ? "Score unavailable" : "No score published"}</small></span>}</Link></li>;
+        return <li key={company.securityId}><Link className="compact-company-link" href={`/stocks/${company.securityId}${scoreDate ? `?date=${scoreDate}&from=watchlist` : "?from=watchlist"}`}><span className="compact-company-identity"><strong>{company.ticker}</strong><span>{company.issuerName}</span></span><span className="compact-company-market">{price ? <><strong>{formatUsdPrice(price.closePrice)}</strong><span className={change?.direction === "positive" ? "positive-change" : change?.direction === "negative" ? "negative-change" : ""}>{change ? change.percent : `${formatMarketSessionDate(price.sessionDate)} close`}</span></> : <span>{pricesUnavailable || pricesLoaded ? "Price unavailable" : "Latest price"}</span>}</span>{score?.eligible ? <span className="compact-company-score"><span className="score-unit"><strong>{formatScore(score.score)}</strong><span>/100</span></span><small>Rank {score.rank} · {price ? formatMarketSessionDate(price.sessionDate) : "Latest close"}</small></span> : <span className="compact-company-score compact-company-unavailable"><small>{score ? "Score unavailable" : "No score published"}</small></span>}</Link></li>;
       })}
     </ul></div></div> : <p className="watchlist-preview-empty">Save companies from search or a stock detail page to keep them in view here.</p>}
   </section>;

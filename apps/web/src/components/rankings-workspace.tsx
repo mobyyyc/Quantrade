@@ -133,7 +133,7 @@ export function RankingsWorkspace({ scores, scoreDate, previousScoreDate, previo
     <div className="rankings-context" aria-label="Ranking context">
       <p className="eyebrow">PUBLISHED COVERAGE</p>
       <div className="ranking-coverage"><strong>{eligibleScores.length}</strong><span>of {scores.length} eligible</span></div>
-      <dl className="ranking-run-facts"><div><dt>Withheld</dt><dd>{withheldCount} names</dd></div><div><dt>Published</dt><dd>{formatPublicationTime(publishedAt)}</dd></div></dl>
+      <dl className="ranking-run-facts"><div><dt>Withheld</dt><dd>{withheldCount} {withheldCount === 1 ? "name" : "names"}</dd></div><div><dt>Published</dt><dd>{formatPublicationTime(publishedAt)}</dd></div></dl>
       <form className="rankings-date-form" action="/rankings"><label htmlFor="ranking-score-date">Score date<input id="ranking-score-date" name="date" type="date" defaultValue={scoreDate} required /></label><button type="submit">View date</button></form>
       <p>Only complete, dated inputs are ranked. Missing data is withheld rather than estimated.</p>
     </div>

@@ -150,13 +150,13 @@ export default async function PortfolioPage() {
                     <small>{completed ? `${entry.positionCount} names · closed ${formatResearchDate(entry.outcomeDate!)}` : `${gapReason(entry)} · expected open ${formatResearchDate(entry.executionDate)}`}</small>
                   </span>
                   {completed ? <>
-                    <span className={returnTone(entry.portfolioReturn!)}>{formatRelativeReturn(entry.portfolioReturn!)}</span>
-                    <span className={returnTone(entry.benchmarkReturn!)}>{formatRelativeReturn(entry.benchmarkReturn!)}</span>
-                    <span className={returnTone(entry.estimatedNetBenchmarkRelativeReturn!)}>{formatPercentagePoints(entry.estimatedNetBenchmarkRelativeReturn!)}</span>
-                    <span className="portfolio-history-turnover">{formatWeight(entry.oneWayTurnover)}</span>
+                    <span className={returnTone(entry.portfolioReturn!)} data-label="Gross basket">{formatRelativeReturn(entry.portfolioReturn!)}</span>
+                    <span className={returnTone(entry.benchmarkReturn!)} data-label={`Gross ${entry.benchmarkTicker}`}>{formatRelativeReturn(entry.benchmarkReturn!)}</span>
+                    <span className={returnTone(entry.estimatedNetBenchmarkRelativeReturn!)} data-label="Est. net vs SPY">{formatPercentagePoints(entry.estimatedNetBenchmarkRelativeReturn!)}</span>
+                    <span className="portfolio-history-turnover" data-label="Turnover">{formatWeight(entry.oneWayTurnover)}</span>
                   </> : <>
-                    <span className="portfolio-history-state">{stateLabel}</span>
-                    <span aria-hidden="true">—</span><span aria-hidden="true">—</span><span aria-hidden="true">—</span>
+                    <span className="portfolio-history-state" data-label="Status">{stateLabel}</span>
+                    <span data-label={`Gross ${entry.benchmarkTicker}`} aria-hidden="true">—</span><span data-label="Est. net vs SPY" aria-hidden="true">—</span><span data-label="Turnover" aria-hidden="true">—</span>
                   </>}
                 </li>;
               })}
