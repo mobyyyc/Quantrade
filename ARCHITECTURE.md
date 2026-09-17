@@ -1,61 +1,120 @@
-# Quantrade Architecture
+# Quantrade architecture
 
-The approved staging and closed-beta target architecture is defined by
-[`docs/adr/0001-production-architecture.md`](docs/adr/0001-production-architecture.md).
-The remainder of this document describes the logical research architecture that
-both local and hosted deployments must preserve.
+This document describes the **implemented local architecture**. The separately
+accepted [hosted architecture ADR](docs/adr/0001-production-architecture.md) is a
+proposal only; no hosted resource has been provisioned.
 
-## System flow
+## Implemented system
 
-```text
-Data providers
-  -> immutable raw records
-  -> normalized point-in-time store
-  -> versioned feature panel
-  -> factor scores and model
-  -> risk adjustment and calibrated score
-  -> score snapshots and model cards
-  -> read API
-  -> private-beta web application
+```mermaid
+flowchart LR
+    AP[Alpaca] --> R[Python research service]
+    SEC[SEC EDGAR] --> R
+    R --> D[(Local PostgreSQL)]
+    R --> A[Local ignored artifacts]
+    D --> W[Next.js web application]
+    W --> U[Canonical PowerShell update boundary]
+    T[Windows Task Scheduler] --> U
+    U --> R
+    B[Backup scheduler] --> D
 ```
 
-## Recommended boundaries
+### Runtime boundaries
 
-- `apps/web`: Next.js, TypeScript, read-only product and research surfaces.
-- `services/research`: Python data ingestion, feature generation, experiments, backtests, and scheduled scoring.
-- `packages/contracts`: provider-neutral schemas shared by the API and research services.
-- PostgreSQL: normalized operational and research metadata.
-- Object storage: immutable raw provider payloads and reproducible run artifacts.
+- `apps/web`: Next.js 16 and React 19 server-rendered product pages,
+  authenticated APIs, per-user watchlists, and the local update launcher.
+- `services/research`: Python ingestion, normalization, features, datasets,
+  experiments, scoring, portfolio maintenance, and model-health monitoring.
+- `packages/contracts`: provider-neutral shared schemas.
+- `infra/postgres/migrations`: ordered PostgreSQL schema changes.
+- `scripts`: canonical setup, update, scheduling, backup, audit, and verification
+  entry points.
+- PostgreSQL: normalized point-in-time observations, security/user state,
+  immutable research evidence, and operational ledgers.
+- Local ignored storage: content-addressed historical artifacts, versioned
+  datasets, model files, reports, logs, and verified backups.
+
+The web process reads PostgreSQL directly. A local owner may launch the canonical
+PowerShell update from the web, but the same command also runs independently from
+the terminal or Windows Task Scheduler.
+
+## Data and publication flow
+
+```text
+provider observation
+  -> compact content-hashed receipt and retrieval metadata
+  -> normalized point-in-time row
+  -> decision-time availability filter
+  -> versioned feature and sector percentile
+  -> approved artifact validation
+  -> immutable score, rank, and explanation
+  -> portfolio/outcome and model-health monitoring
+  -> authenticated read model
+```
+
+The daily path requests only missing market observations and discovers SEC
+filings since the previous completed decision. It keeps filing metadata and
+selected normalized facts for the approved 10-K, 10-Q, 20-F, 40-F, and 8-K
+scope. Original SEC filing PDFs/HTML and routine provider response bodies are not
+retained by the compact daily path.
 
 ## Time integrity
 
-Every record must preserve, where applicable:
+Every applicable record distinguishes:
 
-- `observed_at`: when a market observation occurred.
-- `published_at`: when its source published it.
-- `available_at`: earliest permitted model-use time.
+- `observed_at`: when an observation occurred;
+- `published_at`: when the source published it;
+- `available_at`: the earliest permitted model-use time; and
 - `ingested_at`: when Quantrade retrieved it.
 
-The panel builder must reject any observation whose `available_at` is after the decision time. Financial-statement features must use filing availability, not only fiscal-period end dates.
+Feature queries reject any record whose `available_at` exceeds `decision_at`.
+Historical replay uses a versioned 8:00 p.m. Toronto cutoff. Live publication
+sets its cutoff after current ingestion and validation, so data retrieved on a
+retry cannot be backdated into an earlier failed attempt. SEC fundamentals use
+filing acceptance and fact history rather than fiscal-period dates alone.
 
 ## Model path
 
-The first model is an interpretable sector-aware percentile rank of a small factor set. It predicts and ranks 21-trading-day benchmark-relative return, with decisions produced after close and simulated execution at the next regular-session open.
+The active model is `tier_b_monthly_elastic_net_sec_clean_v3`. It ranks a
+500-name Tier-B current-survivor cohort from sector-percentile inputs and targets
+20-session split-adjusted stock return relative to SPY. The artifact registers
+six inputs; momentum, volatility, and liquidity have non-zero coefficients.
 
-Risk adjustment uses only ex-ante volatility, drawdown, and liquidity. A 0-100 score and signal are calibrated from validation, never assigned arbitrary labels. Explanations are calculated from stored feature and factor contributions.
+Raw model outputs order the eligible daily cross-section. Their percentile
+positions become 0–100 display scores. The score is not a calibrated return,
+probability, instruction, or guarantee. Explanations come from stored feature
+contributions, not generated text.
 
-## Initial data model
+## Durability and idempotency
 
-- Security, listing, ticker history, and historical universe membership.
-- Daily price bars, corporate actions, and data-source metadata.
-- Filing, fact, period, accepted timestamp, and source-document reference.
-- Feature definition/version, factor snapshot, model version, score snapshot, and explanation.
-- Backtest run, configuration, transactions, equity curve, metrics, and artifacts.
+- The daily orchestrator holds a PostgreSQL advisory lock.
+- A durable run ledger and append-only events distinguish running, retrying,
+  skipped, completed, partial, duplicate-prevented, and failed states.
+- One canonical score publication may exist per date; completed evidence is not
+  recalculated.
+- Provider retries are bounded and limited to idempotent ingestion.
+- Unfinished post-publication maintenance can resume without changing scores.
+- Source, dataset, feature-registry, model, and decision artifacts are
+  content-hashed and versioned.
+- Data-quality failures block publication.
+- Model changes require a new artifact, model card, validation evidence,
+  approval decision, and append-only deployment event.
 
-## Non-negotiable controls
+## Security boundary
 
-- Private keys only in server-side configuration.
-- Provider adapters are interchangeable.
-- Pipelines are idempotent and preserve prior approved score snapshots.
-- Failed data-quality checks block publication.
-- Model changes require an explicit version, card, validation record, and rollback path.
+The application is private by default. The first owner can be created only from
+loopback. Sessions are database-backed; protected pages and APIs revalidate
+them. State-changing requests require the correct origin, rate limits live in
+PostgreSQL, watchlists are user-scoped, and audit events exclude credentials and
+raw client addresses. Runtime secrets live only in ignored environment files.
+
+## Proposed hosted boundary
+
+The accepted design proposes a Render Next.js service, a separate durable Python
+worker, managed PostgreSQL, Cloudflare R2, Clerk, and OpenTelemetry/Sentry. It
+also replaces child-process web launches with idempotent queued jobs and leases.
+This is **not implemented**. External operation remains blocked by market-data
+rights, budget, and production security/recovery gates.
+
+See [TECHNICAL_CASE_STUDY.md](TECHNICAL_CASE_STUDY.md) for the complete narrative
+and measured evidence.
