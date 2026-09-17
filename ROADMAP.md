@@ -1,8 +1,8 @@
 # Quantrade Forward Roadmap
 
-**Version:** 2026-09-10
+**Version:** 2026-09-16
 
-**Stage:** functional local private beta
+**Stage:** functional local private beta; portfolio-project completion
 
 **Authority:** this file defines future work. Completed history remains in Git and the decision documents listed below.
 
@@ -30,9 +30,11 @@ The active model registers six inputs, but only momentum, volatility, and liquid
 
 ## Priority decision
 
-An immediate next-generation model search is **not** the efficient next phase. Repeated searches on the same history would increase multiple-testing risk without adding independent evidence. Product reliability and deployability now have more value.
+Quantrade is now a **zero-additional-budget resume project**, not an active commercialization or hosted-beta program. The goal is to present the substantial system that already works: a polished local web application, reproducible point-in-time research pipeline, explainable active model, durable daily operations, and honest evaluation record.
 
-One easy, valuable model-correctness change comes first: Phase 9D.1 proved that missing inputs with mathematically exact-zero coefficients can be ignored without changing any previously eligible prediction. After that, close V1 and build staging. New model research resumes after a readiness checkpoint confirms genuinely untouched evidence or materially new data.
+Work now prioritizes reproducibility, maintainability, technical communication, and a convincing local demonstration. The completed architecture and data-rights work remain valuable evidence of production judgment, but they do not trigger infrastructure purchases or deployment. Paid hosting, paid data, external beta access, and broad public release are deferred unless the owner later changes the project goal and explicitly approves a budget.
+
+An immediate next-generation model search also remains inefficient. The existing holdout has been consumed, prior challenger searches are documented, and repeated tuning on the same history would add multiple-testing risk rather than credible evidence. The active model remains frozen while new forward outcomes accumulate through the existing no-cost local workflow.
 
 ---
 
@@ -62,106 +64,60 @@ Goal: freeze a polished and truthful private V1 before changing its hosting mode
 
 ---
 
-## Q3 — Production architecture and external-use decision
+## Q3 — Portfolio-project completion
 
-Goal: decide how Quantrade can safely leave one Windows workstation before provisioning services.
+Goal: turn the working private V1 into a reproducible, technically credible portfolio artifact without buying infrastructure or data.
 
 - [x] **Q3.1 — Architecture ADR.** Accepted a Render-centered Ohio staging architecture with separate Next.js web and Python worker services, PostgreSQL-backed durable jobs, managed PostgreSQL, R2 artifacts, Clerk identity, and OpenTelemetry/Sentry observability. Vercel-plus-worker, Vercel Services/Workflow, Railway, and a VPS were compared by failure modes, burden, and directional cost in `docs/adr/0001-production-architecture.md`; no resource was provisioned.
 - [x] **Q3.2 — Data-rights audit.** SEC reuse is permitted subject to fair-access controls, while private Alpaca research may continue but hosted storage and any third-party display of market data or derived outputs remain blocked pending explicit written rights. The exact external-use questions, data classes, fail-closed gates, adjacent cohort-source gap, and Tier-B limits are recorded in `DATA_RIGHTS_AUDIT.md`; no paid provider was selected.
-- [ ] **Q3.3 — Capacity and cost budget.** Measure database, artifact, backup, request, and compute growth; estimate closed-beta costs at defined volumes and set alerts.
-- [ ] **Q3.4 — Threat and privacy model.** Cover identity, authorization, secrets, watchlists, jobs, dependencies, logs, backups, abuse, retention, deletion, and recovery.
-- [ ] **Q3.5 — Approve staging bill of materials.** Record services, regions, limits, expected cost, owners, and rollback. Provision nothing paid until explicitly approved.
+- [ ] **Q3.3 — Bound the local operating footprint.** Measure database, raw/derived artifacts, backups, daily growth, provider requests, update duration, and free-disk headroom. Confirm deduplication and retention rules, set local warning thresholds, and document how long the current workstation can operate without new spending.
+- [ ] **Q3.4 — Make the repository independently reproducible.** Verify a clean local setup from documented prerequisites through migrations, deterministic fixtures, web startup, research tests, and one representative daily-update dry run. Provide a synthetic or sanitized demo path that requires neither the private database nor redistribution of restricted market data.
+- [ ] **Q3.5 — Publish the technical case study.** Rework the repository entry documentation around architecture, data lineage, point-in-time controls, incremental ingestion, model training/evaluation, deployment boundaries, failed experiments, and measured results. Include diagrams and exact reproduction commands; clearly separate implemented behavior from proposed production architecture.
+- [ ] **Q3.6 — Prepare the portfolio demo package.** Freeze a stable local demonstration state, screenshot checklist, short recording storyboard, feature walkthrough, and concise resume/LinkedIn talking points. Show search, rankings, stock evidence, watchlists, portfolio outcomes, daily operations, and failure handling without exposing credentials or restricted raw data.
+- [ ] **Q3.7 — Cut the final portfolio release.** Run the full acceptance suite, restore drill, secret/history scan, artifact-hygiene check, and documentation-link audit. Record known limitations, ensure the repository is clean, and create the final recoverable release/tag without provisioning paid services.
 
-**Exit:** one approved, costed architecture with acceptable rights and no unresolved critical threat.
-
----
-
-## Q4 — Deployable platform foundation
-
-Goal: remove workstation-only assumptions and make services independently deployable.
-
-- [ ] **Q4.1 — Package the research worker.** Pin runtime/dependencies, define health/readiness, and make non-interactive jobs reproducible.
-- [ ] **Q4.2 — Add a durable job boundary.** Replace hosted web child processes with authenticated enqueue/status APIs while preserving the canonical orchestrator, progress, locks, retries, and one-publication guarantee.
-- [ ] **Q4.3 — Prepare managed PostgreSQL.** Separate migration/app/worker roles; require TLS; configure pooling, timeouts, backups, restore tests, and sanitized staging migrations.
-- [ ] **Q4.4 — Add durable object storage.** Preserve immutable content hashes, provenance, compact receipts, retention, and deduplication; do not copy unnecessary unrestricted raw material.
-- [ ] **Q4.5 — Adopt managed identity.** Add invitations, verified email, secure sessions, MFA/recovery, roles, isolation, and a safe local-owner migration.
-- [ ] **Q4.6 — Separate config and rotate secrets.** Define local/CI/staging/production contracts, rotate exposed Alpaca credentials before staging, and verify redaction.
-
-**Exit:** web, worker, database, identity, and artifacts deploy independently; research never runs inside a hosted web request.
+**Exit:** a reviewer can understand, run, inspect, and discuss Quantrade from the repository and local demo without paid infrastructure, private data leakage, or exaggerated claims.
 
 ---
 
-## Q5 — Durable workflows and observability
+## Q4 — No-cost local maintenance
 
-Goal: make unattended hosted operations recoverable and understandable.
+Goal: keep the completed project healthy and continue collecting genuinely new evidence without turning maintenance into another development program.
 
-- [ ] **Q5.1 — Hosted scheduling/retries.** Schedule market-day updates, SEC catch-up, portfolio maintenance, backups, and cleanup with explicit time zones and bounded retries.
-- [ ] **Q5.2 — Distributed idempotency.** Prevent concurrent workers, repeat clicks, delayed retries, and scheduler overlap from duplicating data, scores, or portfolios.
-- [ ] **Q5.3 — End-to-end telemetry.** Correlate requests, jobs, provider calls, database writes, artifacts, model versions, and publication; measure latency, volume, freshness, coverage, errors, storage, and cost.
-- [ ] **Q5.4 — Actionable alerts.** Alert on missed sessions, stale filings, coverage shifts, failed jobs/backups, abnormal growth, and auth abuse without noisy expected-no-op alerts.
-- [ ] **Q5.5 — Recovery drills.** Test provider outage, partial jobs, worker restart, queue replay, restore, artifact recovery, secret rotation, and release rollback.
+- [ ] **Q4.1 — Operate the existing daily workflow.** Keep the workstation scheduler, incremental market/SEC ingestion, publication lock, backups, and missed-run recovery healthy. Investigate only actionable failures; expected no-op and duplicate-prevented outcomes remain quiet.
+- [ ] **Q4.2 — Accumulate forward model evidence.** Preserve immutable daily scores and completed 20-session outcomes, then publish a periodic report of coverage, drift, rank stability, and basket-versus-SPY results. Do not tune the model from this stream before a new experiment is approved.
+- [ ] **Q4.3 — Perform bounded maintenance reviews.** On a quarterly or release-triggered cadence, review dependencies, restoreability, credentials, disk growth, provider changes, and test health. Prefer small fixes over new platform features.
 
-**Exit:** hosted jobs survive interruption without duplicate publication and material failures are observable and recoverable.
+**Exit:** the local application remains recoverable, current, and capable of producing untouched forward evidence at no additional service cost.
 
 ---
 
-## Q6 — Staging and release gate
+## Q5 — Optional next-model research (deferred)
 
-Goal: prove the complete hosted system before inviting users.
+Goal: attempt another model only when the evidence can support a credible conclusion, using the existing free data path.
 
-- [ ] **Q6.1 — Deploy isolated staging.** Provision approved services, domain/TLS, secrets, migrations, worker, scheduler, storage, and access controls.
-- [ ] **Q6.2 — Seed representative states.** Use sanitized fixtures for normal, empty, stale, partial, failed, month-end, and recovery cases.
-- [ ] **Q6.3 — Hosted E2E/accessibility.** Verify auth, search, rankings, stock, watchlist, research, portfolio, update status, keyboard use, charts, and responsive behavior.
-- [ ] **Q6.4 — Performance/capacity validation.** Measure cold/warm latency, query plans, queue delay, worker duration, provider limits, and concurrency against budgets.
-- [ ] **Q6.5 — Security/failure drills.** Verify isolation, authorization, origin checks, limits, audit logs, leak resistance, restore, and rollback.
-- [ ] **Q6.6 — Staging decision.** Publish an evidence-backed `ready_for_closed_beta` or `not_ready` record.
+- [ ] **Q5.1 — Pass a model-readiness checkpoint.** Inventory genuinely untouched forward outcomes and any materially new free features or corrected data. Stop if the only option is to search the already-consumed evidence again.
+- [ ] **Q5.2 — Pre-register one bounded challenger.** Freeze the hypothesis, features, transformations, chronological folds, purge/embargo, costs, metrics, coefficient expectations, and stopping rule before observing test results.
+- [ ] **Q5.3 — Train and compare reproducibly.** Authenticate the point-in-time dataset, fit inside development folds, and compare one challenger with the active model under identical eligibility and portfolio construction.
+- [ ] **Q5.4 — Shadow or retain.** A passing challenger first runs on untouched forward observations without changing displayed rankings. Promote only after independent confirmation; otherwise preserve the negative result and retain the active model.
 
-**Exit:** staging passes functional, performance, accessibility, security, recovery, cost, and governance gates.
+**Exit:** the current model remains, or one demonstrably better no-cost challenger is promoted without reusing consumed evidence for selection.
 
 ---
 
-## Q7 — Closed external beta
+## Q6 — Optional hosted product (deferred and unfunded)
 
-Goal: validate the product with a small controlled audience without changing research claims.
+Goal: preserve a responsible path to a real product without treating it as active portfolio work.
 
-- [ ] **Q7.1 — Onboarding/disclosures.** Explain dated research, score meaning, Tier-B limits, timing, freshness, privacy, and non-advisory boundaries.
-- [ ] **Q7.2 — Feedback/analytics.** Collect only privacy-conscious signals needed for usability and reliability; document retention and opt-out.
-- [ ] **Q7.3 — Invite first cohort.** Use a capped allowlist, support path, incident process, and feature flags; keep brokerage execution out of scope.
-- [ ] **Q7.4 — Operate observation window.** Monitor reliability, freshness, security, comprehension, support burden, and cost.
-- [ ] **Q7.5 — Resolve and decide.** Fix blockers and record whether to expand, hold, or stop.
+- [ ] **Q6.1 — Reauthorize the product goal.** Define the intended audience, operating period, support commitment, acceptable monthly budget, and success/stop criteria.
+- [ ] **Q6.2 — Clear data rights.** Obtain written market-data display, derived-use, cloud-storage, retention, and cohort-source rights. Do not infer permission from private API access.
+- [ ] **Q6.3 — Revalidate the architecture and threat model.** Revisit the existing ADR against current pricing and requirements, then cover identity, authorization, secrets, jobs, logs, backups, abuse, privacy, deletion, and recovery.
+- [ ] **Q6.4 — Build and prove staging.** Only after explicit budget approval, add managed identity, durable jobs, managed storage/database, observability, security drills, and hosted end-to-end testing.
+- [ ] **Q6.5 — Decide on external beta.** Invite nobody until rights, cost, reliability, security, truthful disclosures, and rollback all pass.
 
-**Exit:** closed beta is stable, understandable, supportable, and within cost/risk budgets.
-
----
-
-## Q8 — Next-generation model program
-
-Goal: one bounded, leakage-safe attempt to improve ranking quality. It may begin after Q6 if Q8.1 passes and must not block reliability work.
-
-- [ ] **Q8.1 — Model-readiness checkpoint.** Inventory genuinely untouched forward outcomes, account for prior experiments, and decide whether evidence supports discovery, shadow qualification, or promotion testing. Stop if there is neither independent evidence nor materially new data.
-- [ ] **Q8.2 — Approve new data capability.** Prefer free point-in-time data. If membership/delistings/sectors/licensing block the question, assess paid data and isolate `sp500_verified_pit_v1`; never mix it with Tier B.
-- [ ] **Q8.3 — Outcome-blind feature feasibility.** Audit availability, timestamps, revisions, coverage, stability, redundancy, rationale, and storage before fitting; reject leakage-prone features.
-- [ ] **Q8.4 — Pre-register one hypothesis.** Freeze features, transformations, model family, hyperparameter budget, chronological folds, purge/embargo, basket rules, costs, metrics, seeds, gates, and stopping rule.
-- [ ] **Q8.5 — Authenticate the dataset.** Materialize decision-time rows, labels, lineage, exclusions, weights, versions, and deterministic hashes; keep the consumed holdout report-only.
-- [ ] **Q8.6 — Nested chronological training.** Fit preprocessing/parameters inside training folds and compare the active model with one challenger under identical eligibility and portfolio construction.
-- [ ] **Q8.7 — Frozen historical decision.** Evaluate rank IC, breadth, stability, turnover, cost-adjusted basket results, coverage, regimes, and feature behavior. Freeze only if every gate passes; otherwise record no-freeze.
-- [ ] **Q8.8 — Untouched forward shadow.** Score active and frozen challenger side by side, keep rankings unchanged, collect only the preregistered evidence, and do not tune mid-window.
-- [ ] **Q8.9 — Promote or retain.** Require independent confirmation, reproducible artifacts, updated model card, rollback rehearsal, and explicit approval. A rejection starts no new search without new evidence/hypothesis.
-
-**Exit:** a demonstrably superior model is safely promoted, or the current model remains with a reproducible negative result.
+**Exit:** an explicitly funded and rights-cleared hosted product is approved—or the local portfolio project remains the final scope.
 
 ---
-
-## Q9 — Verified data and broader public expansion
-
-Goal: remove Tier-B limitations and mature governance before any broad public-performance claim.
-
-- [ ] **Q9.1 — Verified historical cohort.** License dated membership, delistings, identifiers, actions, and sectors; build isolated `sp500_verified_pit_v1` data and rerun the protocol.
-- [ ] **Q9.2 — Independent security review.** Resolve material application, infrastructure, dependency, and privacy findings.
-- [ ] **Q9.3 — Production governance.** Define incident response, access reviews, deletion, model-change approval, vendor review, audit retention, and public methodology maintenance.
-- [ ] **Q9.4 — Public-launch decision.** Require verified rights, reliable operations, external security evidence, truthful performance reporting, and business/legal approval.
-
-**Exit:** public expansion has verified data, mature operations, external security evidence, and defensible claims.
 
 ## Prohibited shortcuts
 
@@ -169,10 +125,10 @@ Goal: remove Tier-B limitations and mature governance before any broad public-pe
 - Do not call the current-survivor cohort historical S&P 500 membership.
 - Do not convert scores into guaranteed returns or promise SPY outperformance.
 - Do not shadow/deploy rejected Phase 9B, 9C, or 9D candidates.
-- Do not run long research inside a hosted web request.
-- Do not copy private production data, unnecessary raw artifacts, or exposed credentials to staging.
-- Do not buy data/services without an approved need and cost decision.
-- Do not let model experiments block correctness, security, V1 closure, or reliability.
+- Do not buy data, hosting, identity, storage, monitoring, or other services under the current portfolio-project scope.
+- Do not publish restricted raw market data, private database contents, unnecessary artifacts, or credentials in the repository or demo media.
+- Do not treat proposed production architecture as implemented behavior.
+- Do not let model experiments or speculative platform work displace reproducibility, documentation, demo quality, or local reliability.
 
 ## Historical evidence
 
@@ -183,4 +139,4 @@ Goal: remove Tier-B limitations and mature governance before any broad public-pe
 
 ## Next task
 
-**Q3.3 — Capacity and cost budget**, awaiting explicit approval.
+**Q3.3 — Bound the local operating footprint**, awaiting explicit approval.
