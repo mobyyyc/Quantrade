@@ -1,0 +1,80 @@
+{
+  "release_contract": "quantrade_portfolio_release_v1",
+  "release_name": "Quantrade final portfolio release",
+  "tag": "v1.0.0-portfolio.1",
+  "release_date": "2026-09-16",
+  "audience": "private_portfolio_demo",
+  "acceptance_baseline_commit": "6ac2d5e",
+  "acceptance_report": "FINAL_PORTFOLIO_RELEASE.md",
+  "hash_normalization": "SHA-256 of UTF-8 bytes after CRLF and CR are normalized to LF",
+  "acceptance": {
+    "result": "passed",
+    "migration_count": 39,
+    "database_table_count": 57,
+    "research_tests": 433,
+    "browser_tests": 21,
+    "web_lint": "passed",
+    "production_build": "passed",
+    "full_history_secret_audit": "passed",
+    "tracked_artifact_hygiene": "passed",
+    "documentation_link_audit": "passed",
+    "backup_restore": "passed",
+    "capacity_gate": "healthy"
+  },
+  "schema": {
+    "migration_head": "0039_add_model_health_monitoring.sql",
+    "migration_head_sha256": "e5a2dcefc71c8507c7f0bc87fae605c442763994ee941dad55e6c97380b1f086",
+    "api_schema_contract": "v1"
+  },
+  "model": {
+    "version": "tier_b_monthly_elastic_net_sec_clean_v3",
+    "approval_scope": "private_beta",
+    "artifact_sha256": "36d6accf1c207fa448a4e6908ee7b525e7c811af66fc28fd36c4b4d66bc00294",
+    "model_protocol": "tier_b_monthly_20d_sec_clean_v3",
+    "data_capability_tier": "B",
+    "registered_inputs": 6,
+    "active_nonzero_inputs": 3,
+    "eligibility_contract": "exact_zero_coefficients_v1",
+    "live_score_protocol": "score_snapshot_exact_zero_v1"
+  },
+  "research": {
+    "cohort": "sp500_current_survivors_v1",
+    "portfolio_formation_protocol": "monthly_last_session_next_open_v1",
+    "historical_decision_contract": "historical_replay_2000_toronto_v1",
+    "live_decision_contract": "live_after_validation_v1",
+    "consumed_holdout": "2025-07 through 2026-06"
+  },
+  "content": {
+    "contract": "private_research_content_v1",
+    "source": "UI_CONTENT_RULES.md",
+    "source_sha256": "91eb71cb4198f2b35ccc40da97e4f497e4eeb3de6807643ccfbdc7dbdfee0325"
+  },
+  "operations": {
+    "daily_update_boundary": "canonical_daily_update_v1",
+    "daily_update_script_sha256": "3c2d1d777544335e0839c3672170a692a9969b210b94cdcdcbff3f3c8d295622",
+    "daily_update_orchestrator_sha256": "9f3c89450c3ee0e6d0e70322a3cf5b09a4387840892d90718ad243b8911bda2a",
+    "release_verifier_sha256": "16e87ad54faf3c53feb5d36973d915d0ffd319784edb845fe58eaed0cdf647e0",
+    "windows_daily_task": "windows_daily_update_task_v3",
+    "postgresql_backup": "quantrade_postgresql_backup_v1",
+    "windows_backup_task": "windows_postgresql_backup_task_v3",
+    "postgresql_restore_drill": "quantrade_postgresql_restore_drill_v1",
+    "secret_audit": "quantrade_secret_audit_v1"
+  },
+  "release_date_operating_incident": {
+    "score_date": "2026-09-16",
+    "stage": "sec_filings",
+    "provider_result": "HTTP 403 for SEC daily master index",
+    "publication_result": "failed safely before publication",
+    "duplicate_or_partial_scores_created": false,
+    "follow_up_roadmap_task": "Q4.1"
+  },
+  "limitations": [
+    "Private research only; no guaranteed return, trade instruction, or public performance claim.",
+    "The sp500_current_survivors_v1 cohort is survivorship-biased Tier B data, not historical S&P 500 membership.",
+    "Historical sectors are static rather than point-in-time verified.",
+    "The July 2025 through June 2026 holdout has been consumed and cannot be reused for model selection.",
+    "The active model is sparse and its measured ranking signal is small and time-varying.",
+    "This release runs on one Windows workstation and is not an externally hosted production architecture.",
+    "Market-data rights have not been cleared for external display."
+  ]
+}

@@ -1,9 +1,12 @@
-# Private V1 Release Runbook
+# Quantrade Release Runbook
 
-The current release candidate is the annotated Git tag `v1.0.0-rc.1`. Its
+The current portfolio release is the annotated Git tag
+`v1.0.0-portfolio.1`. Its acceptance record is
+[`FINAL_PORTFOLIO_RELEASE.md`](FINAL_PORTFOLIO_RELEASE.md), and its
 machine-readable freeze record is
-[`releases/private-v1-rc1.json`](releases/private-v1-rc1.json). The tag, rather
-than a mutable branch name, identifies the exact release commit.
+[`releases/portfolio-v1.json`](releases/portfolio-v1.json). The earlier private
+release candidate remains available as `v1.0.0-rc.1`; published tags are never
+moved or reused.
 
 ## Preconditions
 
@@ -30,8 +33,9 @@ than a mutable branch name, identifies the exact release commit.
    `RECOVERY_RUNBOOK.md` before publishing.
 5. Verify the private-beta web routes show the published date, model context,
    data cutoff, uncertainty notice, and no invented fallback data.
-6. Run the full acceptance procedure in `V1_ACCEPTANCE_REPORT.md` and require a
-   passing result before changing the release tag.
+6. Run `scripts/verify-final-portfolio-release.ps1` and require a passing result
+   before creating a new release tag. A provider-backed daily incident must be
+   recorded separately from this deterministic repository and recovery gate.
 7. Commit the release freeze, create an annotated immutable tag, and push both
    the commit and tag. Never move or reuse a published release tag.
 
@@ -41,16 +45,17 @@ From a clean checkout:
 
 ```powershell
 git fetch origin --tags
-git show --no-patch --decorate v1.0.0-rc.1
-git rev-parse v1.0.0-rc.1^{}
+git show --no-patch --decorate v1.0.0-portfolio.1
+git rev-parse v1.0.0-portfolio.1^{}
 git status --short
 ```
 
-The displayed tag must resolve to the release-freeze commit, and the worktree
-must be clean. Review the freeze record and verify its model and registry hashes
-against the immutable database registry before running an update. Apply all 39
-migrations through `0039_add_model_health_monitoring.sql`; migrations are
-forward-only and are never reversed as part of an application rollback.
+The displayed tag must resolve to the final portfolio-release commit, and the
+worktree must be clean. Review the freeze record and verify its model and
+registry hashes against the immutable database registry before running an
+update. Apply all 39 migrations through
+`0039_add_model_health_monitoring.sql`; migrations are forward-only and are
+never reversed as part of an application rollback.
 
 The supported routine update remains:
 

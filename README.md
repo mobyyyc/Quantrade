@@ -64,6 +64,9 @@ provider response bodies.
 Read the full [technical case study](TECHNICAL_CASE_STUDY.md) for the system
 design, data lineage, model protocol, measured results, failed experiments, and
 the explicit boundary between implemented behavior and proposed infrastructure.
+The reproducible final state is recorded in the
+[portfolio release report](FINAL_PORTFOLIO_RELEASE.md) and annotated Git tag
+`v1.0.0-portfolio.1`.
 
 ## Run the synthetic demo
 
@@ -147,6 +150,8 @@ data/derived/              Local ignored datasets, artifacts, and reports
 ## Design and operating documents
 
 - [Technical case study](TECHNICAL_CASE_STUDY.md)
+- [Final portfolio release](FINAL_PORTFOLIO_RELEASE.md)
+- [Release and rollback runbook](RELEASE_RUNBOOK.md)
 - [Reproducible local setup](REPRODUCIBLE_SETUP.md)
 - [Current local architecture](ARCHITECTURE.md)
 - [Canonical daily-update workflow](DAILY_UPDATE_WORKFLOW.md)
