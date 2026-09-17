@@ -39,3 +39,16 @@ Review the immutable JSON plan under `data/derived/retention-plans`. To move the
 ```
 
 Permanent quarantine purging is intentionally not automated in V1. This prevents a scheduling or classification error from destroying research evidence; a future purge must be a separate, reviewed operation after at least 30 days.
+
+## Capacity check
+
+Run the read-only local footprint check monthly and after a historical backfill:
+
+```powershell
+.\scripts\check-local-capacity.ps1 -FailOnWarning
+```
+
+The command measures drive headroom, PostgreSQL, retained data classes, backup
+steady state, backup freshness, and legacy content-addressed copies. Thresholds
+and the current no-cost runway decision are documented in
+`LOCAL_OPERATING_FOOTPRINT.md`.
