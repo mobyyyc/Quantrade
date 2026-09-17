@@ -39,7 +39,12 @@ class SecretFinding:
 
 def _placeholder(value: str) -> bool:
     normalized = value.strip().strip("'\"").casefold()
-    return normalized in PLACEHOLDERS or normalized.startswith(("replace-", "example-", "ci-"))
+    powershell_expression = normalized.startswith("${") and normalized.endswith("}")
+    return (
+        normalized in PLACEHOLDERS
+        or normalized.startswith(("replace-", "example-", "ci-"))
+        or powershell_expression
+    )
 
 
 def scan_text(path: str, text: str) -> tuple[SecretFinding, ...]:

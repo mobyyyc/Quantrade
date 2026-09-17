@@ -23,6 +23,12 @@ class SecretAuditTests(unittest.TestCase):
         ))
         self.assertEqual(scan_text(".env.example", content), ())
 
+    def test_allows_encoded_powershell_expression_but_not_literal_password(self) -> None:
+        dynamic = 'postgresql://${encodedUser}:${encodedPassword}@${uriHost}:5432/quantrade_demo'
+        literal = 'postgresql://${encodedUser}:' + 'actual-password@${uriHost}:5432/quantrade_demo'
+        self.assertEqual(scan_text("run-demo.ps1", dynamic), ())
+        self.assertEqual(scan_text("run-demo.ps1", literal)[0].rule, "database_password")
+
 
 if __name__ == "__main__":
     unittest.main()
