@@ -1,11 +1,11 @@
 # Quantrade technical case study
 
-**System state described:** private V1 release candidate and local portfolio
-baseline, September 2026  
-**Implemented environment:** one Windows workstation, local PostgreSQL, Next.js
-web process, Python research process, Windows Task Scheduler  
-**Product status:** private research application; no public deployment or trade
-execution
+- **System state described:** private V1 release candidate and local portfolio
+  baseline, September 2026
+- **Implemented environment:** one Windows workstation, local PostgreSQL,
+  Next.js web process, Python research process, Windows Task Scheduler
+- **Product status:** private research application; no public deployment or
+  trade execution
 
 ## 1. The engineering problem
 
