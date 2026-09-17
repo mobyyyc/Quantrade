@@ -20,6 +20,11 @@ Use `.\scripts\run-daily-update.ps1 -Describe` to inspect the resolved launch
 contract without contacting providers or changing the database. A different
 entry point must not invoke the Python module directly.
 
+Use `.\scripts\run-daily-update.ps1 -EnvFile .env.demo -DryRun -ScoreDate
+2026-08-28` to resolve a representative plan against the deterministic demo
+database. This path performs no network requests, database writes, or provider
+authentication and cannot publish scores.
+
 Identical invocations are safe to repeat. The database ledger permits one
 canonical completed publication per score date. A completed date skips ingestion
 and scoring but retries unfinished post-publication maintenance under the same

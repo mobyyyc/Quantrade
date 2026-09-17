@@ -435,11 +435,57 @@ def _sec_network_environment(environment: dict[str, str]) -> dict[str, str]:
     return result
 
 
+def _daily_update_dry_run(database_url: str, score_date: date) -> dict[str, object]:
+    """Resolve the canonical workflow plan without locks, writes, or provider calls."""
+    import psycopg
+
+    symbols = _symbols(database_url, score_date)
+    if not symbols:
+        raise ValueError("No current S&P 500 universe is available for the dry-run date.")
+    ciks = _ciks(database_url, score_date)
+    market_start = _catch_up_start(database_url, score_date)
+    with psycopg.connect(database_url) as connection, connection.cursor() as cursor:
+        sec_start = _sec_index_start_date(connection, score_date)
+        cursor.execute(
+            """SELECT model_version FROM quantrade.model_deployments
+               ORDER BY deployed_at DESC, created_at DESC LIMIT 1"""
+        )
+        active_model_row = cursor.fetchone()
+        cursor.execute("SELECT max(score_date) FROM quantrade.score_snapshots")
+        latest_score_date = cursor.fetchone()[0]
+    if active_model_row is None:
+        raise ValueError("No active research model is registered in the database.")
+    return {
+        "contract": "canonical_daily_update_v1",
+        "mode": "dry_run",
+        "scoreDate": score_date.isoformat(),
+        "symbolCount": len(symbols),
+        "cikCount": len(ciks),
+        "marketCatchUpStart": market_start.isoformat(),
+        "secIndexStart": sec_start.isoformat(),
+        "latestPublishedScoreDate": latest_score_date.isoformat() if latest_score_date else None,
+        "activeModelVersion": str(active_model_row[0]),
+        "stages": ["market_data", "sec_filings", "validation", "scoring", "portfolio"],
+        "networkRequests": 0,
+        "databaseWrites": 0,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the private daily Quantrade update once per market date")
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
+    parser.add_argument("--dry-run", action="store_true", help="Resolve the update plan without provider calls or writes")
+    parser.add_argument("--score-date", type=date.fromisoformat, help="Dry-run date in YYYY-MM-DD format")
     arguments = parser.parse_args()
     settings = _settings(arguments.env_file)
+    if arguments.score_date and not arguments.dry_run:
+        parser.error("--score-date is supported only with --dry-run")
+    if arguments.dry_run:
+        if settings.database_url is None:
+            parser.error("DATABASE_URL is required for a daily-update dry run")
+        plan = _daily_update_dry_run(settings.database_url, arguments.score_date or datetime.now(TORONTO).date())
+        print(json.dumps(plan, separators=(",", ":"), sort_keys=True))
+        return
     settings.require_runtime_storage()
     assert settings.database_url is not None
     now = datetime.now(TORONTO)

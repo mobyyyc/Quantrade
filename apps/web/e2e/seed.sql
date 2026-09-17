@@ -33,6 +33,23 @@ SELECT ('90000000-0000-4000-8000-' || lpad(number::text, 12, '0'))::uuid,
        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'e2e fixture', '2026-08-25T21:00:00Z'
 FROM generate_series(3, 20) AS number;
 
+INSERT INTO quantrade.security_identifiers
+  (security_id, identifier_type, identifier_value, valid_from, raw_artifact_id, source_reference, ingested_at)
+SELECT security_id, 'cik', lpad((9000000000 + row_number() OVER (ORDER BY security_id))::text, 10, '0'),
+       '2020-01-01', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'e2e synthetic fixture', '2026-08-25T21:00:00Z'
+FROM quantrade.securities;
+
+INSERT INTO quantrade.universe_snapshots
+  (universe_snapshot_id, universe_code, as_of_date, historical_membership_verified,
+   data_capability_tier, raw_artifact_id, source_reference, ingested_at)
+VALUES
+  ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'sp500', '2026-08-25', false, 'B',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'e2e synthetic fixture', '2026-08-25T21:00:00Z');
+
+INSERT INTO quantrade.universe_memberships (universe_snapshot_id, security_id)
+SELECT 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', security_id
+FROM quantrade.securities;
+
 INSERT INTO quantrade.daily_price_bars
   (security_id, session_date, session, currency, open_price, high_price, low_price, close_price, volume, adjustment_basis, observed_at, published_at, available_at, ingested_at, raw_artifact_id, source_reference, availability_rule_id)
 SELECT security_id, session_date::date, 'regular', 'USD', open_price, high_price, low_price, close_price, volume, 'split_adjusted',

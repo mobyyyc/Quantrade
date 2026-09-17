@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [string]$EnvFile = ".env",
-    [switch]$Describe
+    [switch]$Describe,
+    [switch]$DryRun,
+    [string]$ScoreDate
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,6 +29,11 @@ $pythonArguments = @(
     "--env-file",
     $resolvedEnvFile
 )
+if ($DryRun) { $pythonArguments += "--dry-run" }
+if ($ScoreDate) {
+    if (-not $DryRun) { throw "-ScoreDate is supported only with -DryRun." }
+    $pythonArguments += @("--score-date", $ScoreDate)
+}
 
 if ($Describe) {
     [pscustomobject]@{

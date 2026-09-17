@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { GlobalSearch } from "@/components/global-search";
 import { MobileSidebarNav } from "@/components/mobile-sidebar-nav";
 import { AccountControl } from "@/components/account-control";
+import { isDemoMode } from "@/lib/demo-mode";
 
 const navigation = [
   { href: "/", label: "Today" },
@@ -13,6 +14,7 @@ const navigation = [
 ];
 
 export function AppShell({ children, current }: { children: ReactNode; current: string }) {
+  const demoMode = isDemoMode();
   return (
     <div className="app-frame">
       <a className="skip-link" href="#main-content">Skip to main content</a>
@@ -23,6 +25,7 @@ export function AppShell({ children, current }: { children: ReactNode; current: 
             <span className="brand-mark">Q</span>
             <span>Quantrade</span>
           </Link>
+          {demoMode && <span className="demo-mode-label" title="Generated values, not live market data">Synthetic demo</span>}
         </div>
         <nav className="desktop-nav" aria-label="Primary navigation">
           {navigation.map((item) => (

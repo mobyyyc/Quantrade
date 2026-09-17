@@ -33,6 +33,8 @@ class DailyUpdateEntrypointContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8"))
         self.assertNotIn("quantrade_research.manual_daily_update", route)
         self.assertIn("dailyUpdateLaunchSpec", route)
+        self.assertIn("if (isDemoMode())", route)
+        self.assertLess(route.index("if (isDemoMode())"), route.index("dailyUpdateLaunchSpec()"))
 
     def test_script_description_has_one_resolved_execution_contract(self) -> None:
         script = (REPOSITORY_ROOT / "scripts" / "run-daily-update.ps1").read_text(encoding="utf-8")
@@ -45,6 +47,22 @@ class DailyUpdateEntrypointContractTests(unittest.TestCase):
             "arguments",
         ):
             self.assertIn(field, script)
+        self.assertIn('if ($DryRun) { $pythonArguments += "--dry-run" }', script)
+        self.assertIn('if (-not $DryRun) { throw "-ScoreDate is supported only with -DryRun." }', script)
+
+    def test_read_only_dry_run_is_explicit_about_side_effects(self) -> None:
+        orchestrator = (
+            REPOSITORY_ROOT
+            / "services"
+            / "research"
+            / "src"
+            / "quantrade_research"
+            / "manual_daily_update.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('"mode": "dry_run"', orchestrator)
+        self.assertIn('"networkRequests": 0', orchestrator)
+        self.assertIn('"databaseWrites": 0', orchestrator)
+        self.assertLess(orchestrator.index("if arguments.dry_run:"), orchestrator.index("settings.require_runtime_storage()"))
 
     def test_provider_retries_keep_incremental_idempotency_flags(self) -> None:
         orchestrator = (

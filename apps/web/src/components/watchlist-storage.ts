@@ -70,12 +70,13 @@ function normalizedEntries(entries: WatchlistEntry[]) {
 export async function loadWatchlist(): Promise<WatchlistEntry[]> {
   const response = await fetch("/api/v1/watchlist", { cache: "no-store" });
   if (!response.ok) throw new Error("Watchlist request failed");
+  const demoMode = response.headers.get("X-Quantrade-Data-Mode") === "synthetic-demo";
   const body = await response.json() as { entries?: unknown };
   const serverEntries = Array.isArray(body.entries) ? body.entries.flatMap((entry) => {
     const normalized = normalizeEntry(entry);
     return normalized ? [normalized] : [];
   }) : [];
-  const localEntries = readWatchlist();
+  const localEntries = demoMode ? [] : readWatchlist();
   if (!serverEntries.length && localEntries.length) {
     await writeWatchlist(localEntries);
     return localEntries;

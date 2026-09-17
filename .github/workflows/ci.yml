@@ -73,6 +73,12 @@ jobs:
       - name: Verify clean database migrations
         run: python -m quantrade_research.verify_migrations
 
+      - name: Verify synthetic demo and read-only update plan
+        run: |
+          python -m quantrade_research.demo_database
+          DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/quantrade_demo \
+            python -m quantrade_research.manual_daily_update --dry-run --score-date 2026-08-28
+
       - name: Run research tests
         run: python -m unittest discover -s services/research/tests
 

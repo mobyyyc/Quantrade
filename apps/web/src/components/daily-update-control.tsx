@@ -50,13 +50,14 @@ function completionLabel(outcome: DailyUpdateOutcome): string {
   }[outcome];
 }
 
-export function DailyUpdateControl({ operations }: { operations: DailyOperationsStatus }) {
+export function DailyUpdateControl({ operations, demoMode = false }: { operations: DailyOperationsStatus; demoMode?: boolean }) {
   const router = useRouter();
   const [status, setStatus] = useState<UiStatus>("idle");
   const [message, setMessage] = useState("");
   const [completion, setCompletion] = useState<Completion | null>(null);
 
   async function runUpdate() {
+    if (demoMode) return;
     setStatus("running");
     setCompletion(null);
     setMessage("Preparing the locked daily update.");
@@ -105,12 +106,12 @@ export function DailyUpdateControl({ operations }: { operations: DailyOperations
   const coverage = summary?.totalCount ? Math.round((summary.eligibleCount / summary.totalCount) * 100) : 0;
   const active = status === "running" || status === "retrying";
   const latestRun = operations.latestRun;
-  const showInlineStatus = status !== "idle" && completion === null;
+  const showInlineStatus = (demoMode || status !== "idle") && completion === null;
 
   return <section className="daily-update" aria-labelledby="daily-update-title" aria-busy={active}>
     <div className="daily-update-control">
-      <div><p className="eyebrow">PRIVATE OPERATIONS</p><h2 id="daily-update-title">Refresh today’s research</h2><p>After market close, validate new evidence and publish one dated result. Repeats are safely deduplicated.</p></div>
-      <div className="daily-update-action"><button type="button" className="primary-link" onClick={runUpdate} disabled={active}>{status === "retrying" ? "Retrying provider…" : status === "running" ? "Updating…" : status === "partial" ? "Retry maintenance" : "Run daily update"}</button><p className={`daily-update-message ${status}`} role={showInlineStatus ? status === "error" ? "alert" : "status" : undefined} aria-live={status === "error" ? "assertive" : "polite"} aria-atomic="true" aria-hidden={!showInlineStatus}>{showInlineStatus ? message : "Daily update status"}</p></div>
+      <div><p className="eyebrow">PRIVATE OPERATIONS</p><h2 id="daily-update-title">Refresh today’s research</h2><p>{demoMode ? "This workspace uses generated fixtures. Provider-backed research updates are unavailable in demo mode." : "After market close, validate new evidence and publish one dated result. Repeats are safely deduplicated."}</p></div>
+      <div className="daily-update-action"><button type="button" className="primary-link" onClick={runUpdate} disabled={active || demoMode} data-demo={demoMode || undefined}>{demoMode ? "Unavailable in demo" : status === "retrying" ? "Retrying provider…" : status === "running" ? "Updating…" : status === "partial" ? "Retry maintenance" : "Run daily update"}</button><p className={`daily-update-message ${demoMode ? "demo" : status}`} role={showInlineStatus ? status === "error" ? "alert" : "status" : undefined} aria-live={status === "error" ? "assertive" : "polite"} aria-atomic="true" aria-hidden={!showInlineStatus}>{demoMode ? "No provider credentials or private data are connected." : showInlineStatus ? message : "Daily update status"}</p></div>
     </div>
     <dl className="daily-update-record" aria-label="Recorded daily update status">
       <div><dt>Last recorded state</dt><dd>{latestRun ? operationStateLabel(latestRun.state) : "Waiting for first run"}<span>{latestRun ? `${formatResearchDate(latestRun.scoreDate)} · ${formatPublicationTime(latestRun.lastEventAt)}` : "No operation has been recorded."}</span></dd></div>

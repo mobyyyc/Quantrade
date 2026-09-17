@@ -21,6 +21,7 @@ build/
 .env
 .env.*
 !.env.example
+!.env.demo.example
 
 # Local raw provider artifacts
 data/raw/

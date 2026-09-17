@@ -6,12 +6,14 @@ import { WatchlistPreview } from "@/components/watchlist-preview";
 import { TodayRankingStream } from "@/components/today-ranking-stream";
 import { ResearchBasket } from "@/components/research-basket";
 import { formatResearchDate, formatScore } from "@/lib/format";
+import { isDemoMode } from "@/lib/demo-mode";
 import { getDailyOperationsStatus, getLatestDatedScores, getLatestPaperPortfolio, getPreviousDatedScores, getTodayFilingSummary, ResearchReadModelError } from "@/lib/research-read-model";
 
 export const dynamic = "force-dynamic";
 const TODAY_RANKING_PREVIEW_LIMIT = 20;
 
 export default async function Home() {
+  const demoMode = isDemoMode();
   let latest: Awaited<ReturnType<typeof getLatestDatedScores>> = null;
   let portfolio: Awaited<ReturnType<typeof getLatestPaperPortfolio>> = null;
   let previous: Awaited<ReturnType<typeof getPreviousDatedScores>> = null;
@@ -93,7 +95,7 @@ export default async function Home() {
           <Link href="/research" className="primary-link">Read methodology</Link>
         </section>
       )}
-      <DailyUpdateControl operations={operations} />
+      <DailyUpdateControl operations={operations} demoMode={demoMode} />
     </AppShell>
   );
 }

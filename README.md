@@ -11,6 +11,24 @@ implemented. Real-data operation still requires a configured PostgreSQL
 database, durable artifact storage, and the free-provider credentials described
 in `.env.example`.
 
+## Run the synthetic demo
+
+An independent reviewer can run the full interface without the private database,
+provider credentials, or redistributed market data:
+
+```powershell
+Copy-Item .env.demo.example .env.demo
+# Set only the local PostgreSQL password in .env.demo.
+.\scripts\bootstrap-demo.ps1
+.\scripts\run-demo.ps1 -SkipSetup
+```
+
+Then open `http://localhost:3000` and create the local demo owner account. The
+interface labels generated values as **Synthetic demo**, and provider-backed
+updates are disabled. See [Reproducible local setup](REPRODUCIBLE_SETUP.md) for
+prerequisites, the read-only daily-update rehearsal, and the complete
+verification command.
+
 ## Guiding documents
 
 - [Product context](PRODUCT.md)
@@ -29,6 +47,7 @@ in `.env.example`.
 - [Market-data provider and failover boundary](PROVIDER_FAILOVER.md)
 - [Recovery runbook](RECOVERY_RUNBOOK.md)
 - [Release runbook](RELEASE_RUNBOOK.md)
+- [Reproducible local setup](REPRODUCIBLE_SETUP.md)
 
 ## Initial V1 direction
 

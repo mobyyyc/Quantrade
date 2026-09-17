@@ -10,6 +10,7 @@ import {
   requestSubject, requireSameOrigin,
 } from "@/lib/auth";
 import { safeDailyUpdateError } from "@/lib/daily-update-state";
+import { isDemoMode } from "@/lib/demo-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,10 +21,17 @@ export async function POST(request: Request) {
     requireSameOrigin(request);
     user = await authorizeApiRequest(request, "daily_update", 6, 60 * 60);
     if (user.role !== "owner") throw new AuthError("Owner access is required.", 403);
-    await auditEvent({ userId: user.userId, eventType: "daily_update", outcome: "allowed", route: "/api/v1/operations/daily-update", subject: requestSubject(request), metadata: { stage: "launch" } });
   } catch (error) {
     return authErrorResponse(error);
   }
+  if (isDemoMode()) {
+    await auditEvent({ userId: user.userId, eventType: "daily_update", outcome: "denied", route: "/api/v1/operations/daily-update", subject: requestSubject(request), metadata: { stage: "launch", mode: "synthetic_demo" } });
+    return Response.json(
+      { error: "Daily updates are disabled in the synthetic demo. No providers or private research data are connected." },
+      { status: 409 },
+    );
+  }
+  await auditEvent({ userId: user.userId, eventType: "daily_update", outcome: "allowed", route: "/api/v1/operations/daily-update", subject: requestSubject(request), metadata: { stage: "launch" } });
   let launch: ReturnType<typeof dailyUpdateLaunchSpec>;
   try {
     launch = dailyUpdateLaunchSpec();

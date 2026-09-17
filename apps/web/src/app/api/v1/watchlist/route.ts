@@ -3,6 +3,7 @@ import {
   requireApiUser, requireSameOrigin,
 } from "@/lib/auth";
 import { databasePool } from "@/lib/research-read-model";
+import { isDemoMode } from "@/lib/demo-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,7 +53,10 @@ export async function GET(request: Request) {
     return Response.json({ entries: result.rows.map((row) => ({
       securityId: String(row.security_id), issuerName: String(row.issuer_name), ticker: String(row.ticker),
       ...(row.note ? { note: String(row.note) } : {}), ...(row.tags?.length ? { tags: row.tags as string[] } : {}),
-    })) }, { headers: { "Cache-Control": "no-store" } });
+    })) }, { headers: {
+      "Cache-Control": "no-store",
+      ...(isDemoMode() ? { "X-Quantrade-Data-Mode": "synthetic-demo" } : {}),
+    } });
   } catch (error) { return authErrorResponse(error); }
 }
 
