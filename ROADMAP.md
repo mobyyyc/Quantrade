@@ -84,7 +84,7 @@ Goal: turn the working private V1 into a reproducible, technically credible port
 
 Goal: keep the completed project healthy and continue collecting genuinely new evidence without turning maintenance into another development program.
 
-- [ ] **Q4.1 — Operate the existing daily workflow.** Keep the workstation scheduler, incremental market/SEC ingestion, publication lock, backups, and missed-run recovery healthy. Investigate only actionable failures; expected no-op and duplicate-prevented outcomes remain quiet.
+- [x] **Q4.1 — Operate the existing daily workflow.** The September 16 failure was traced to a late SEC daily-index publication rather than scoring, storage, or request identity. Current-evening SEC 403/404 responses are now classified accurately, and the installed `windows_daily_update_task_v4` contract adds an explicit idempotent 11:00 p.m. retry after the 10:15 p.m. primary run. Point-in-time integrity remains fail-closed: September 16 stays a recorded miss rather than being backdated with later information. The hidden limited-privilege task, overlap guard, network requirement, logon catch-up, wake setting, canonical launch boundary, and provider access were verified on 2026-09-17.
 - [ ] **Q4.2 — Accumulate forward model evidence.** Preserve immutable daily scores and completed 20-session outcomes, then publish a periodic report of coverage, drift, rank stability, and basket-versus-SPY results. Do not tune the model from this stream before a new experiment is approved.
 - [ ] **Q4.3 — Perform bounded maintenance reviews.** On a quarterly or release-triggered cadence, review dependencies, restoreability, credentials, disk growth, provider changes, and test health. Prefer small fixes over new platform features.
 
@@ -139,4 +139,4 @@ Goal: preserve a responsible path to a real product without treating it as activ
 
 ## Next task
 
-**Q4.1 — Operate the existing daily workflow**, awaiting explicit approval. Its first bounded maintenance item is the recorded September 16 SEC HTTP 403: verify provider access and recover the missed publication through the existing canonical path without bypassing the publication lock.
+**Q4.2 — Accumulate forward model evidence**, awaiting explicit approval.
