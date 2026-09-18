@@ -157,6 +157,7 @@ data/derived/              Local ignored datasets, artifacts, and reports
 - [Canonical daily-update workflow](DAILY_UPDATE_WORKFLOW.md)
 - [Research and evaluation protocol](EXPERIMENT_PROTOCOL.md)
 - [Model health monitoring](MODEL_HEALTH_MONITORING.md)
+- [Forward model evidence reporting](FORWARD_EVIDENCE_REPORTING.md)
 - [Data-rights audit](DATA_RIGHTS_AUDIT.md)
 - [Security boundary](WEB_SECURITY_BOUNDARY.md)
 - [Recovery runbook](RECOVERY_RUNBOOK.md)

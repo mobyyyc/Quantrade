@@ -44,3 +44,16 @@ py -3.14 -m quantrade_research.model_health --env-file .env --score-date 2026-09
 The first valid run creates the snapshot. Repeating it must print `already_verified`. If the same date recomputes to a different logical hash, the monitor fails rather than overwriting history. All health tables reject updates and deletes at the database layer.
 
 The authenticated web endpoint is `GET /api/v1/model-health`. The Research page presents the latest status, integrity lineage, warnings, and progressively disclosed feature metrics. No automated action is attached to any status.
+
+## Periodic forward evidence
+
+Build a cumulative post-deployment view of coverage, feature drift, rank
+stability, label completion, and official basket-versus-SPY outcomes with:
+
+```powershell
+.\scripts\run-forward-evidence-report.ps1
+```
+
+The report is read-only and excludes historical replay and the consumed
+holdout. See [forward evidence reporting](FORWARD_EVIDENCE_REPORTING.md) for its
+evidence boundary.

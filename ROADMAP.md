@@ -85,7 +85,7 @@ Goal: turn the working private V1 into a reproducible, technically credible port
 Goal: keep the completed project healthy and continue collecting genuinely new evidence without turning maintenance into another development program.
 
 - [x] **Q4.1 — Operate the existing daily workflow.** The September 16 failure was traced to a late SEC daily-index publication rather than scoring, storage, or request identity. Current-evening SEC 403/404 responses are now classified accurately, and the installed `windows_daily_update_task_v4` contract adds an explicit idempotent 11:00 p.m. retry after the 10:15 p.m. primary run. Point-in-time integrity remains fail-closed: September 16 stays a recorded miss rather than being backdated with later information. The hidden limited-privilege task, overlap guard, network requirement, logon catch-up, wake setting, canonical launch boundary, and provider access were verified on 2026-09-17.
-- [ ] **Q4.2 — Accumulate forward model evidence.** Preserve immutable daily scores and completed 20-session outcomes, then publish a periodic report of coverage, drift, rank stability, and basket-versus-SPY results. Do not tune the model from this stream before a new experiment is approved.
+- [x] **Q4.2 — Accumulate forward model evidence.** Added a deterministic, read-only `quantrade_forward_evidence_report_v1` publication that begins no earlier than the active model deployment and excludes historical replay and the consumed holdout. It reports coverage, active-feature PSI, rank stability, label completion, integrity, missed formations, and only pre-existing official monthly basket-versus-SPY outcomes. The first real report through 2026-09-15 records three healthy snapshots, 4,723 eligible live labels, 2,310 completed and two withheld 5-session labels across five score dates, no completed 20/60-session forward window yet, and no official monthly formation; unavailable evidence remains explicit rather than reconstructed or imputed. See `FORWARD_EVIDENCE_REPORTING.md`.
 - [ ] **Q4.3 — Perform bounded maintenance reviews.** On a quarterly or release-triggered cadence, review dependencies, restoreability, credentials, disk growth, provider changes, and test health. Prefer small fixes over new platform features.
 
 **Exit:** the local application remains recoverable, current, and capable of producing untouched forward evidence at no additional service cost.
@@ -139,4 +139,4 @@ Goal: preserve a responsible path to a real product without treating it as activ
 
 ## Next task
 
-**Q4.2 — Accumulate forward model evidence**, awaiting explicit approval.
+**Q4.3 — Perform bounded maintenance reviews**, awaiting explicit approval.
