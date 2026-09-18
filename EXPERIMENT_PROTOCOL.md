@@ -9,7 +9,7 @@ Version 0.2. This protocol governs every baseline backtest and research run unti
 All timestamps use America/Toronto time.
 
 1. Historical replay uses `historical_replay_2000_toronto_v1`: a fixed 8:00 p.m. decision timestamp and only records public by that timestamp.
-2. Live daily publication uses `live_after_validation_v1`: after market close, incremental ingestion and validation finish first, then `decision_at` captures the actual local time. The normal scheduler currently begins around 10:15 p.m.
+2. Live daily publication uses `live_after_validation_v1`: after market close, incremental ingestion and validation finish first, then `decision_at` captures the actual local time. The normal scheduler begins at 10:15 p.m. and has an idempotent 11:00 p.m. retry for a late SEC daily index.
 3. A failed live attempt without immutable scores does not reserve its earlier cutoff. Its retry receives a new actual post-validation timestamp, so later-retrieved information is never backdated.
 4. The score is never executed at that same closing price.
 5. On a rebalance date, execute model trades at the next eligible regular-session open.

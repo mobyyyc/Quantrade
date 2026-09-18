@@ -2,7 +2,9 @@
 param(
     [string]$TaskName = "Quantrade Daily Update",
     [ValidatePattern('^([01]\d|2[0-3]):[0-5]\d$')]
-    [string]$At = "22:15"
+    [string]$At = "22:15",
+    [ValidatePattern('^([01]\d|2[0-3]):[0-5]\d$')]
+    [string]$RetryAt = "23:00"
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,6 +31,12 @@ $currentUserSid = $currentIdentity.User.Value
 $triggerTime = [datetime]::Today.Add(
     [TimeSpan]::ParseExact($At, 'hh\:mm', [System.Globalization.CultureInfo]::InvariantCulture)
 )
+$retryTriggerTime = [datetime]::Today.Add(
+    [TimeSpan]::ParseExact($RetryAt, 'hh\:mm', [System.Globalization.CultureInfo]::InvariantCulture)
+)
+if ($retryTriggerTime -le $triggerTime) {
+    throw "The retry time must be later than the primary daily-update time."
+}
 
 $actionArguments = @(
     "-NoLogo",
@@ -52,6 +60,12 @@ $weeklyTrigger = New-ScheduledTaskTrigger `
     -DaysOfWeek Monday, Tuesday, Wednesday, Thursday, Friday `
     -At $triggerTime `
     -ErrorAction Stop
+$weeklyRetryTrigger = New-ScheduledTaskTrigger `
+    -Weekly `
+    -WeeksInterval 1 `
+    -DaysOfWeek Monday, Tuesday, Wednesday, Thursday, Friday `
+    -At $retryTriggerTime `
+    -ErrorAction Stop
 $logonTrigger = New-ScheduledTaskTrigger -AtLogOn -User $currentUser -ErrorAction Stop
 $principal = New-ScheduledTaskPrincipal `
     -UserId $currentUser `
@@ -70,7 +84,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
     -ErrorAction Stop
-$description = "Silently runs Quantrade's canonical post-close daily update at $At on weekdays. A logon trigger catches the same evening window only; it never backdates a prior-day score. Codex and the web app are not required."
+$description = "Silently runs Quantrade's canonical post-close daily update at $At with an idempotent $RetryAt retry on weekdays. A logon trigger catches the same evening window only; it never backdates a prior-day score. Codex and the web app are not required."
 
 if (-not $PSCmdlet.ShouldProcess($TaskName, "Register or replace Windows scheduled task")) {
     return
@@ -78,7 +92,7 @@ if (-not $PSCmdlet.ShouldProcess($TaskName, "Register or replace Windows schedul
 Register-ScheduledTask `
     -TaskName $TaskName `
     -Action $action `
-    -Trigger @($weeklyTrigger, $logonTrigger) `
+    -Trigger @($weeklyTrigger, $weeklyRetryTrigger, $logonTrigger) `
     -Principal $principal `
     -Settings $settings `
     -Description $description `
@@ -88,6 +102,10 @@ Register-ScheduledTask `
 $registered = Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
 $registeredAction = @($registered.Actions)[0]
 $registeredTriggers = @($registered.Triggers)
+$registeredWeeklyTriggers = @($registeredTriggers | Where-Object { $_.CimClass.CimClassName -eq "MSFT_TaskWeeklyTrigger" })
+$registeredLogonTriggers = @($registeredTriggers | Where-Object { $_.CimClass.CimClassName -eq "MSFT_TaskLogonTrigger" })
+$registeredPrimaryTrigger = @($registeredWeeklyTriggers | Where-Object { $_.StartBoundary.Contains("T$At") })
+$registeredRetryTrigger = @($registeredWeeklyTriggers | Where-Object { $_.StartBoundary.Contains("T$RetryAt") })
 $expectedScriptArgument = "-File `"$scheduledUpdateScript`""
 $registeredUserSid = ([System.Security.Principal.NTAccount] $registered.Principal.UserId).Translate(
     [System.Security.Principal.SecurityIdentifier]
@@ -98,7 +116,11 @@ if (
     -or -not $registeredAction.Arguments.Contains("-At $At") `
     -or $registeredAction.WorkingDirectory -ne $workspaceRoot `
     -or $registeredUserSid -ne $currentUserSid `
-    -or $registeredTriggers.Count -ne 2
+    -or $registeredTriggers.Count -ne 3 `
+    -or $registeredWeeklyTriggers.Count -ne 2 `
+    -or $registeredLogonTriggers.Count -ne 1 `
+    -or $registeredPrimaryTrigger.Count -ne 1 `
+    -or $registeredRetryTrigger.Count -ne 1
 ) {
     throw "The registered task does not match the canonical Quantrade launch contract."
 }
@@ -108,14 +130,14 @@ if (
     State = $registered.State
     User = $registered.Principal.UserId
     LogonType = $registered.Principal.LogonType
-    Schedule = "Monday-Friday $At $actualTimeZone"
+    Schedule = "Monday-Friday $At and $RetryAt $actualTimeZone"
     NextRunTime = (Get-ScheduledTaskInfo -TaskName $TaskName).NextRunTime
     ScheduledWrapper = $scheduledUpdateScript
     CanonicalScript = (Resolve-Path (Join-Path $workspaceRoot "scripts\run-daily-update.ps1")).Path
     EnvironmentFile = $envFile
     PowerShell = $powershellExecutable
     PythonLauncher = $pythonLauncher
-    Contract = "windows_daily_update_task_v3"
+    Contract = "windows_daily_update_task_v4"
     CodexRequired = $false
     WebAppRequired = $false
 }

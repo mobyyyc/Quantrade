@@ -3,7 +3,9 @@ param(
     [ValidatePattern('^([01]\d|2[0-3]):[0-5]\d$')]
     [string]$BackupAt = "21:45",
     [ValidatePattern('^([01]\d|2[0-3]):[0-5]\d$')]
-    [string]$DailyUpdateAt = "22:15"
+    [string]$DailyUpdateAt = "22:15",
+    [ValidatePattern('^([01]\d|2[0-3]):[0-5]\d$')]
+    [string]$DailyUpdateRetryAt = "23:00"
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,14 +24,14 @@ $dailyVerifier = Join-Path $PSScriptRoot "verify-daily-update-task.ps1"
 if (-not $PSCmdlet.ShouldProcess("Quantrade scheduled operations", "Install and verify the approved schedule")) { return }
 
 & $backupInstaller -At $BackupAt -Confirm:$false
-& $dailyInstaller -At $DailyUpdateAt -Confirm:$false
+& $dailyInstaller -At $DailyUpdateAt -RetryAt $DailyUpdateRetryAt -Confirm:$false
 $backup = & $backupVerifier -At $BackupAt
-$daily = & $dailyVerifier -At $DailyUpdateAt
+$daily = & $dailyVerifier -At $DailyUpdateAt -RetryAt $DailyUpdateRetryAt
 
 [pscustomobject]@{
     Contract = "quantrade_operations_schedule_v1"
     BackupSchedule = "Daily $BackupAt Eastern Standard Time"
-    DailyUpdateSchedule = "Monday-Friday $DailyUpdateAt Eastern Standard Time"
+    DailyUpdateSchedule = "Monday-Friday $DailyUpdateAt and $DailyUpdateRetryAt Eastern Standard Time"
     BackupVerified = $null -ne $backup
     DailyUpdateVerified = $null -ne $daily
     HiddenLaunchers = $true

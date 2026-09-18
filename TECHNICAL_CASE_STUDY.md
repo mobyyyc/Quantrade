@@ -132,11 +132,12 @@ as “scores ready, maintenance pending” and can be resumed safely.
 
 ### Operational independence
 
-Windows Task Scheduler runs a hidden weekday update at 10:15 p.m. Toronto time
-and a PostgreSQL backup at 9:45 p.m. Codex and the browser do not need to be
-open. The tasks reject overlaps, include guarded missed-run recovery, and write
-local logs. Backups carry verification metadata and have passed an isolated
-restore rehearsal.
+Windows Task Scheduler runs a hidden weekday update at 10:15 p.m. Toronto time,
+with an idempotent 11:00 p.m. retry for a late SEC daily index. It runs a
+PostgreSQL backup separately at 9:45 p.m. Codex and the browser do not need to
+be open. The tasks reject overlaps, include guarded missed-run recovery, and
+write local logs. Backups carry verification metadata and have passed an
+isolated restore rehearsal.
 
 ## 4. Point-in-time data lineage
 

@@ -17,6 +17,9 @@ class DailyUpdateSchedulerContractTests(unittest.TestCase):
             "AtLogOn",
             "RunOnlyIfNetworkAvailable",
             "RestartCount 2",
+            'RetryAt = "23:00"',
+            "weeklyRetryTrigger",
+            "registeredRetryTrigger",
             "LogonType Interactive",
             "currentUserSid",
             "registeredUserSid",
@@ -35,7 +38,7 @@ class DailyUpdateSchedulerContractTests(unittest.TestCase):
     def test_verifier_checks_the_installed_contract(self) -> None:
         verifier = (REPOSITORY_ROOT / "scripts" / "verify-daily-update-task.ps1").read_text(encoding="utf-8")
         for contract in (
-            "windows_daily_update_task_v3",
+            "windows_daily_update_task_v4",
             "run-daily-update-scheduled.ps1",
             "LogonType",
             "RunLevel",
@@ -60,6 +63,8 @@ class DailyUpdateSchedulerContractTests(unittest.TestCase):
         installer = (REPOSITORY_ROOT / "scripts" / "install-operations-schedule.ps1").read_text(encoding="utf-8")
         self.assertIn('[string]$BackupAt = "21:45"', installer)
         self.assertIn('[string]$DailyUpdateAt = "22:15"', installer)
+        self.assertIn('[string]$DailyUpdateRetryAt = "23:00"', installer)
+        self.assertIn('-RetryAt $DailyUpdateRetryAt', installer)
         self.assertIn('install-postgresql-backup-task.ps1', installer)
         self.assertIn('install-daily-update-task.ps1', installer)
         self.assertIn('verify-postgresql-backup-task.ps1', installer)

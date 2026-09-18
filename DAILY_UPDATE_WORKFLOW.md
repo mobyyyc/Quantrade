@@ -81,7 +81,7 @@ The UI shows the publication date, stock and SPY session dates, SEC retrieval
 time, and last operation event time. Raw exceptions, provider payloads, local
 paths, and credentials remain in local logs; user-facing errors use bounded,
 safe categories. The displayed schedule matches the installed weekday task at
-10:15 p.m. Toronto time.
+10:15 p.m. with an idempotent 11:00 p.m. retry, Toronto time.
 
 Missing market observations are fetched on the next run, but knowledge is never
 backdated. Live scores use the versioned `live_after_validation_v1` contract: the
@@ -144,9 +144,10 @@ Temporary network failures and HTTP 408, 425, 429, 500, 502, 503, and 504
 responses receive at most three total attempts with one- and two-second waits.
 Each retry emits one bounded progress event. Authentication and authorization
 errors, invalid data, code failures, and a current SEC index that has not yet
-been published fail immediately. Scoring and post-publication portfolio work
-are not provider-retried. Windows Task Scheduler's whole-run retries remain a
-separate recovery layer for failures that outlast these short attempts.
+been published stop the current attempt immediately. Scoring and
+post-publication portfolio work are not provider-retried. The explicit 11:00
+p.m. trigger is a separate whole-run recovery opportunity for a late SEC index;
+the publication lock makes that second launch a no-op when the first succeeded.
 
 ## Windows scheduling
 
@@ -159,15 +160,16 @@ Install or repair the Codex-independent weekday task with:
 Run this installer once from a PowerShell window opened as Administrator.
 The installed task itself runs with limited privileges under the current user.
 
-The task runs Monday through Friday at 10:15 p.m. in the Windows `Eastern
-Standard Time` zone. It has a guarded logon trigger for a same-evening missed
-start and also uses Windows missed-run recovery. A login before 10:15 p.m., on a
-weekend, or on the morning after a missed run exits silently; it cannot create a
-backdated score. Missing provider observations catch up on a later eligible run.
-The task requires network connectivity, ignores overlapping launches, retries a
-failed process twice at ten-minute intervals, and wakes a sleeping PC when
-Windows permits it. Scheduler output is retained under
-`data/logs/daily-update-scheduler.log`.
+The task runs Monday through Friday at 10:15 p.m. and again at 11:00 p.m. in the
+Windows `Eastern Standard Time` zone. The later launch is an explicit recovery
+opportunity for an SEC daily index that was not ready at 10:15. It has a guarded
+logon trigger for a same-evening missed start and also uses Windows missed-run
+recovery. A login before 10:15 p.m., on a weekend, or on the morning after a
+missed run exits silently; it cannot create a backdated score. Missing provider
+observations catch up on a later eligible run. The task requires network
+connectivity, ignores overlapping launches, retains bounded Windows process
+retries, and wakes a sleeping PC when Windows permits it. Scheduler output is
+retained under `data/logs/daily-update-scheduler.log`.
 
 The current Windows account must remain signed in because Quantrade's Python
 launcher is installed for that user. PostgreSQL, internet access, and `.env`

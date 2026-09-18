@@ -146,9 +146,11 @@ class FilingParserTests(unittest.TestCase):
                 UnavailableClient(), date(2026, 8, 27), attempts=2, retry_seconds=0, sleep=lambda _seconds: None,
             )
 
-    def test_identifies_only_a_current_prepublication_403_as_pending(self) -> None:
+    def test_identifies_only_a_current_evening_403_as_pending(self) -> None:
         before_publication = datetime.fromisoformat("2026-08-28T21:00:00-04:00")
-        after_publication = datetime.fromisoformat("2026-08-28T22:15:00-04:00")
+        scheduled_attempt = datetime.fromisoformat("2026-08-28T22:15:00-04:00")
+        late_evening = datetime.fromisoformat("2026-08-28T23:59:59-04:00")
+        next_day = datetime.fromisoformat("2026-08-29T00:00:00-04:00")
         forbidden = SecEdgarError("SEC returned HTTP 403")
 
         self.assertTrue(_is_pending_current_daily_index(
@@ -160,8 +162,14 @@ class FilingParserTests(unittest.TestCase):
         self.assertFalse(_is_pending_current_daily_index(
             date(2026, 8, 27), forbidden, observed_at=before_publication,
         ))
+        self.assertTrue(_is_pending_current_daily_index(
+            date(2026, 8, 28), forbidden, observed_at=scheduled_attempt,
+        ))
+        self.assertTrue(_is_pending_current_daily_index(
+            date(2026, 8, 28), forbidden, observed_at=late_evening,
+        ))
         self.assertFalse(_is_pending_current_daily_index(
-            date(2026, 8, 28), forbidden, observed_at=after_publication,
+            date(2026, 8, 28), forbidden, observed_at=next_day,
         ))
         self.assertFalse(_is_pending_current_daily_index(
             date(2026, 8, 28), SecEdgarError("SEC returned HTTP 503"), observed_at=before_publication,

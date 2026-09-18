@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$TaskName = "Quantrade Daily Update",
-    [string]$At = "22:15"
+    [string]$At = "22:15",
+    [string]$RetryAt = "23:00"
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,6 +17,8 @@ $action = @($task.Actions)[0]
 $triggers = @($task.Triggers)
 $weeklyTrigger = @($triggers | Where-Object { $_.CimClass.CimClassName -eq "MSFT_TaskWeeklyTrigger" })
 $logonTrigger = @($triggers | Where-Object { $_.CimClass.CimClassName -eq "MSFT_TaskLogonTrigger" })
+$primaryTrigger = @($weeklyTrigger | Where-Object { $_.StartBoundary.Contains("T$At") })
+$retryTrigger = @($weeklyTrigger | Where-Object { $_.StartBoundary.Contains("T$RetryAt") })
 $expectedArguments = @(
     "-WindowStyle Hidden",
     "-File `"$scheduledUpdateScript`"",
@@ -36,8 +39,9 @@ if (-not $task.Settings.RunOnlyIfNetworkAvailable) { $violations.Add("network av
 if (-not $task.Settings.StartWhenAvailable) { $violations.Add("missed-run recovery is disabled") }
 if (-not $task.Settings.WakeToRun) { $violations.Add("wake-to-run is disabled") }
 if (-not $task.Settings.Hidden) { $violations.Add("task is not hidden") }
-if ($triggers.Count -ne 2 -or $weeklyTrigger.Count -ne 1 -or $logonTrigger.Count -ne 1) { $violations.Add("expected one weekly and one logon trigger") }
-if ($weeklyTrigger.Count -eq 1 -and (-not $weeklyTrigger[0].Enabled -or -not $weeklyTrigger[0].StartBoundary.Contains("T$At"))) { $violations.Add("unexpected weekly trigger") }
+if ($triggers.Count -ne 3 -or $weeklyTrigger.Count -ne 2 -or $logonTrigger.Count -ne 1) { $violations.Add("expected two weekly and one logon trigger") }
+if ($primaryTrigger.Count -ne 1 -or -not $primaryTrigger[0].Enabled) { $violations.Add("unexpected primary weekly trigger") }
+if ($retryTrigger.Count -ne 1 -or -not $retryTrigger[0].Enabled) { $violations.Add("unexpected retry weekly trigger") }
 if ($logonTrigger.Count -eq 1 -and -not $logonTrigger[0].Enabled) { $violations.Add("logon catch-up trigger is disabled") }
 $wrapper = Get-Content -LiteralPath $scheduledUpdateScript -Raw
 if (-not $wrapper.Contains($canonicalScript.Split('\')[-1]) -or -not $wrapper.Contains('$isDue')) { $violations.Add("scheduled wrapper does not guard and invoke the canonical update") }
@@ -47,7 +51,7 @@ if ($violations.Count) {
 }
 
 [pscustomobject]@{
-    Contract = "windows_daily_update_task_v3"
+    Contract = "windows_daily_update_task_v4"
     TaskName = $task.TaskName
     State = $task.State
     User = $task.Principal.UserId
@@ -56,8 +60,9 @@ if ($violations.Count) {
     Execute = $action.Execute
     Arguments = $action.Arguments
     WorkingDirectory = $action.WorkingDirectory
-    StartBoundary = if ($weeklyTrigger.Count -eq 1) { $weeklyTrigger[0].StartBoundary } else { $null }
-    DaysOfWeek = if ($weeklyTrigger.Count -eq 1) { $weeklyTrigger[0].DaysOfWeek } else { $null }
+    StartBoundary = if ($primaryTrigger.Count -eq 1) { $primaryTrigger[0].StartBoundary } else { $null }
+    RetryStartBoundary = if ($retryTrigger.Count -eq 1) { $retryTrigger[0].StartBoundary } else { $null }
+    DaysOfWeek = if ($primaryTrigger.Count -eq 1) { $primaryTrigger[0].DaysOfWeek } else { $null }
     LogonCatchUp = $logonTrigger.Count -eq 1
     NextRunTime = $taskInfo.NextRunTime
     LastTaskResult = $taskInfo.LastTaskResult

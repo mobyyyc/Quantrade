@@ -37,7 +37,7 @@ from .security_master import FileRawArtifactStore
 
 _SEC_PARSER_VERSION = "sec_edgar_parser_v1"
 _TORONTO = ZoneInfo("America/Toronto")
-_EXPECTED_DAILY_INDEX_PUBLICATION = wall_time(22, 15)
+_CURRENT_DAILY_INDEX_GRACE_END = wall_time(23, 59, 59)
 
 
 def _record_source(
@@ -196,12 +196,12 @@ def _daily_index_dates(start_date: date, end_date: date) -> list[date]:
 def _is_pending_current_daily_index(
     filing_date: date, error: SecEdgarError, *, observed_at: datetime | None = None,
 ) -> bool:
-    """Identify SEC's pre-publication absence without hiding a later real outage."""
+    """Treat a current-evening 403/404 as delayed publication, not an outage."""
     observed = (observed_at or datetime.now(_TORONTO)).astimezone(_TORONTO)
     return (
         (isinstance(error, SecEdgarNotFoundError) or "HTTP 403" in str(error))
         and filing_date == observed.date()
-        and observed.time() < _EXPECTED_DAILY_INDEX_PUBLICATION
+        and observed.time() <= _CURRENT_DAILY_INDEX_GRACE_END
     )
 
 
@@ -279,7 +279,7 @@ def main() -> None:
                     if _is_pending_current_daily_index(filing_date, error):
                         raise SecEdgarError(
                             f"SEC daily filing index for {filing_date.isoformat()} has not been published yet; "
-                            "retry after 10:00 p.m. Toronto time"
+                            "retry later tonight after SEC publishes it"
                         ) from error
                     raise SecEdgarError(
                         f"daily index discovery is incomplete for expected EDGAR publication date "
@@ -289,7 +289,7 @@ def main() -> None:
                     if _is_pending_current_daily_index(filing_date, error):
                         raise SecEdgarError(
                             f"SEC daily filing index for {filing_date.isoformat()} has not been published yet; "
-                            "retry after 10:00 p.m. Toronto time"
+                            "retry later tonight after SEC publishes it"
                         ) from error
                     raise SecEdgarError(
                         f"daily index discovery is incomplete for {filing_date.isoformat()}; "
